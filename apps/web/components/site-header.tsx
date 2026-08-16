@@ -12,7 +12,9 @@ export function SiteHeader() {
     <header className="site-header">
       <div className="container header-inner">
         <Link className="brand" href="/" aria-label="Tinlance home">
-          <span className="brand-mark" aria-hidden="true">T</span>
+          <span className="brand-mark" aria-hidden="true">
+            T
+          </span>
           <span>Tinlance</span>
         </Link>
         <nav className="desktop-nav" aria-label="Primary navigation">
@@ -22,8 +24,8 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <Link className="button button-small button-dark" href="/contact">
-          Start a conversation
+        <Link className="button button-small button-dark" href="/assessment">
+          Technical assessment
         </Link>
       </div>
     </header>
