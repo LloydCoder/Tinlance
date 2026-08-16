@@ -1,12 +1,15 @@
 import { notFound } from "next/navigation";
 import { insights } from "../../../lib/content";
 
+type InsightParams = Promise<{ slug: string }>;
+
 export function generateStaticParams() {
   return insights.map((insight) => ({ slug: insight.slug }));
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }) {
-  const insight = insights.find((item) => item.slug === params.slug);
+export async function generateMetadata({ params }: { params: InsightParams }) {
+  const { slug } = await params;
+  const insight = insights.find((item) => item.slug === slug);
   if (!insight) return {};
   return {
     title: `${insight.title} | Tinlance Insights`,
@@ -14,8 +17,9 @@ export function generateMetadata({ params }: { params: { slug: string } }) {
   };
 }
 
-export default function InsightPage({ params }: { params: { slug: string } }) {
-  const insight = insights.find((item) => item.slug === params.slug);
+export default async function InsightPage({ params }: { params: InsightParams }) {
+  const { slug } = await params;
+  const insight = insights.find((item) => item.slug === slug);
   if (!insight) notFound();
 
   return (
