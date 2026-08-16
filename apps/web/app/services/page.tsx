@@ -1,29 +1,31 @@
 import Link from "next/link";
-import { SectionHeading } from "../../components/section-heading";
+import { services } from "../../lib/content";
 
-const services = [
-  ["Autonomous AI", "/services/autonomous-ai", "AI workflows that connect models, tools, rules, human review, and observability."],
-  ["AI Infrastructure", "/services/ai-infrastructure", "Production foundations for model gateways, RAG, evaluation, deployment, and telemetry."],
-  ["AI Security", "/services/ai-security", "Threat modeling and security engineering for AI-enabled applications and agents."],
-  ["Automation", "/services/automation", "Operational automation that connects systems and removes repetitive manual work without removing control."],
-  ["Forward Deployed Engineering", "/services/fde", "Embedded engineering for complex operational problems that need to reach production."],
-];
+export const metadata = {
+  title: "Services | Tinlance",
+  description: "AI engineering, AI security, FDE, and enterprise automation services from Tinlance.",
+};
 
 export default function ServicesPage() {
   return (
-    <section className="section">
-      <div className="container">
-        <SectionHeading eyebrow="Services" title="Engineering capacity for difficult systems." description="AI engineering, AI security, automation, and forward-deployed engineering delivered around your operational reality." />
-        <div className="card-grid">
-          {services.map(([title, href, description]) => (
-            <Link className="card" href={href} key={href}>
-              <span className="card-number">SERVICE</span>
-              <h3>{title}</h3>
-              <p>{description}</p>
+    <main className="mx-auto max-w-6xl px-6 py-20">
+      <header className="max-w-3xl">
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-500">Services</p>
+        <h1 className="mt-4 text-5xl font-semibold tracking-tight text-neutral-950">Engineering that moves from requirement to production.</h1>
+        <p className="mt-6 text-lg leading-8 text-neutral-600">Tinlance combines AI engineering, security, automation, and forward-deployed delivery for organizations solving complex technical problems.</p>
+      </header>
+      <section className="mt-14 grid gap-6 md:grid-cols-2" aria-label="Tinlance services">
+        {services.map((service) => (
+          <article key={service.slug} className="rounded-2xl border border-neutral-200 p-7">
+            <p className="text-sm font-medium uppercase tracking-[0.16em] text-neutral-500">{service.eyebrow}</p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-neutral-950">{service.name}</h2>
+            <p className="mt-4 max-w-xl leading-7 text-neutral-600">{service.description}</p>
+            <Link className="mt-6 inline-flex font-medium text-neutral-950 underline underline-offset-4" href={`/services/${service.slug}`}>
+              Explore service
             </Link>
-          ))}
-        </div>
-      </div>
-    </section>
+          </article>
+        ))}
+      </section>
+    </main>
   );
 }
