@@ -1,0 +1,46 @@
+name: Phase 6 formatting diagnostic
+
+on:
+  push:
+    branches: [feat/phase-6-client-portal]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile=false
+      - name: Format Phase 6 files
+        run: |
+          pnpm exec prettier --write \
+            apps/web/app/portal/page.tsx \
+            apps/web/app/portal/projects/page.tsx \
+            apps/web/app/portal/messages/page.tsx \
+            apps/web/app/portal/documents/page.tsx \
+            apps/web/app/portal/settings/page.tsx \
+            apps/web/app/portal/layout.tsx \
+            apps/web/app/portal/portal.css \
+            apps/web/components/portal-shell.tsx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase-6-prettier
+          path: |
+            apps/web/app/portal/page.tsx
+            apps/web/app/portal/projects/page.tsx
+            apps/web/app/portal/messages/page.tsx
+            apps/web/app/portal/documents/page.tsx
+            apps/web/app/portal/settings/page.tsx
+            apps/web/app/portal/layout.tsx
+            apps/web/app/portal/portal.css
+            apps/web/components/portal-shell.tsx
