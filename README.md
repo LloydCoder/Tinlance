@@ -16,6 +16,7 @@ Next.js / Vercel
   ├── Admin
   └── API
        │
+       ├── Security boundary
        ├── PostgreSQL / Prisma
        ├── Auth / RBAC
        ├── Billing
@@ -42,16 +43,20 @@ Next.js / Vercel
 - TypeScript strict mode.
 - Automated linting, type checking, tests, and production builds.
 - Secure-by-default HTTP headers.
-- Secrets remain outside source control.
+- Typed environment boundaries and no secret values in source control.
+- Request correlation IDs for application observability.
+- Health and readiness endpoints for deployment/platform checks.
 - Dependency and supply-chain security are part of CI.
 - Material architecture decisions are documented.
 - Public code is treated as inspectable by prospective CTOs and security teams.
 
-## Status
+## Build status
 
-**Phase 0 — Foundation**
+**Phase 2 — Security & Platform Foundation**
 
-The repository is currently establishing its production foundation before feature development begins.
+Phase 0 (Production Foundation) and Phase 1 (Design & Content Architecture) are complete. Phase 2 establishes the security and runtime boundaries required before production UI, identity, billing, and client-platform features are introduced.
+
+Phase tracking and exit criteria are documented in [`docs/PHASES.md`](./docs/PHASES.md).
 
 ## License
 
