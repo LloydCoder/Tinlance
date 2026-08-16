@@ -52,9 +52,9 @@ Next.js / Vercel
 
 ## Build status
 
-**Phase 7 — Billing, CRM & Operations**
+**Phase 8 — FDE Mastery Integration**
 
-Phases 0–6 are complete. Phase 7 establishes the operational business layer: billing boundaries, invoice/payment workflows, CRM integration contracts, assessment booking operations, transactional communications, and lead/client lifecycle workflows. FDE execution remains isolated until Phase 8.
+Phases 0–7 are complete. Phase 8 integrates the FDE Mastery execution boundary with Tinlance: authenticated service-to-service communication, typed agent contracts, job lifecycle boundaries, RAG/vector interfaces, MCP/tool integration contracts, and telemetry/evaluation surfaces. Enterprise hardening remains isolated until Phase 9.
 
 Phase tracking and exit criteria are documented in [`docs/PHASES.md`](./docs/PHASES.md).
 
