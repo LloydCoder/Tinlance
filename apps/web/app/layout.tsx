@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   description:
     "Production-grade AI engineering, security, automation, and Forward Deployed Engineering for ambitious organizations.",
   robots: { index: true, follow: true },
+  icons: { icon: "/icon.svg" },
   openGraph: {
     title: "Tinlance — AI Engineering & Forward Deployed Engineering",
     description:
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://tinlance.com",
     siteName: "Tinlance",
+    images: [{ url: "/opengraph-image.svg", width: 1200, height: 630, alt: "Tinlance AI engineering and FDE" }],
   },
 };
 
