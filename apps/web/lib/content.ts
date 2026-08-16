@@ -27,10 +27,34 @@ export type Insight = {
 };
 
 export const services: Service[] = [
-  { slug: "ai-engineering", name: "AI Engineering", eyebrow: "Build", description: "Production AI systems, agent workflows, and reliable integrations designed around real business operations." },
-  { slug: "ai-security", name: "AI Security", eyebrow: "Secure", description: "Security engineering for AI applications, agents, data flows, and the infrastructure around them." },
-  { slug: "forward-deployed-engineering", name: "Forward-Deployed Engineering", eyebrow: "Deploy", description: "Hands-on engineering embedded with teams to turn complex technical requirements into working systems." },
-  { slug: "enterprise-automation", name: "Enterprise Automation", eyebrow: "Automate", description: "Workflow automation that connects people, systems, data, and AI without adding operational drag." },
+  {
+    slug: "ai-engineering",
+    name: "AI Engineering",
+    eyebrow: "Build",
+    description:
+      "Production AI systems, agent workflows, and reliable integrations designed around real business operations.",
+  },
+  {
+    slug: "ai-security",
+    name: "AI Security",
+    eyebrow: "Secure",
+    description:
+      "Security engineering for AI applications, agents, data flows, and the infrastructure around them.",
+  },
+  {
+    slug: "forward-deployed-engineering",
+    name: "Forward-Deployed Engineering",
+    eyebrow: "Deploy",
+    description:
+      "Hands-on engineering embedded with teams to turn complex technical requirements into working systems.",
+  },
+  {
+    slug: "enterprise-automation",
+    name: "Enterprise Automation",
+    eyebrow: "Automate",
+    description:
+      "Workflow automation that connects people, systems, data, and AI without adding operational drag.",
+  },
 ];
 
 export const proof: ProofItem[] = [
@@ -38,22 +62,28 @@ export const proof: ProofItem[] = [
     slug: "threatfade",
     name: "ThreatFade",
     category: "Security engineering",
-    description: "A network threat intelligence and defensive security engineering project built to turn security signals into practical decisions.",
-    outcome: "Demonstrates applied security engineering, detection thinking, and production-oriented defensive tooling.",
+    description:
+      "A network threat intelligence and defensive security engineering project built to turn security signals into practical decisions.",
+    outcome:
+      "Demonstrates applied security engineering, detection thinking, and production-oriented defensive tooling.",
   },
   {
     slug: "fde-mastery",
     name: "FDE Mastery",
     category: "AI / FDE platform",
-    description: "A production-oriented execution layer for agent routing, domain adapters, evaluation, resilience, and telemetry.",
-    outcome: "Demonstrates the engineering patterns required to move agent systems beyond prototypes and into governed operations.",
+    description:
+      "A production-oriented execution layer for agent routing, domain adapters, evaluation, resilience, and telemetry.",
+    outcome:
+      "Demonstrates the engineering patterns required to move agent systems beyond prototypes and into governed operations.",
   },
   {
     slug: "open-source-security",
     name: "Open-source security work",
     category: "Public engineering",
-    description: "Security contributions and developer tooling designed to solve concrete problems in the wider engineering ecosystem.",
-    outcome: "Creates independently inspectable evidence of engineering quality, security discipline, and technical problem solving.",
+    description:
+      "Security contributions and developer tooling designed to solve concrete problems in the wider engineering ecosystem.",
+    outcome:
+      "Creates independently inspectable evidence of engineering quality, security discipline, and technical problem solving.",
   },
 ];
 
@@ -61,7 +91,8 @@ export const insights: Insight[] = [
   {
     slug: "building-production-ai-systems",
     title: "What changes when an AI system has to run in production",
-    excerpt: "Reliability, observability, security, evaluation, and human controls become product requirements—not afterthoughts.",
+    excerpt:
+      "Reliability, observability, security, evaluation, and human controls become product requirements—not afterthoughts.",
     category: "AI Engineering",
     publishedAt: "2026-08-16",
     author: "Tinlance Engineering",
@@ -76,7 +107,8 @@ export const insights: Insight[] = [
   {
     slug: "securing-ai-agents",
     title: "A practical security model for AI agents",
-    excerpt: "Identity, tool access, data boundaries, evaluation, and auditability form the minimum control plane for capable agents.",
+    excerpt:
+      "Identity, tool access, data boundaries, evaluation, and auditability form the minimum control plane for capable agents.",
     category: "AI Security",
     publishedAt: "2026-08-16",
     author: "Tinlance Engineering",
@@ -91,7 +123,8 @@ export const insights: Insight[] = [
   {
     slug: "what-fde-means",
     title: "Forward-deployed engineering, explained",
-    excerpt: "Why complex enterprise problems often need engineers close to the customer rather than another generic software package.",
+    excerpt:
+      "Why complex enterprise problems often need engineers close to the customer rather than another generic software package.",
     category: "FDE",
     publishedAt: "2026-08-16",
     author: "Tinlance Engineering",
