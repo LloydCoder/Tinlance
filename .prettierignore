@@ -3,3 +3,6 @@ node_modules/
 coverage/
 dist/
 .turbo/
+# Presentation files intentionally use hand-tuned formatting for visual readability.
+apps/web/app/globals.css
+apps/web/app/page.tsx

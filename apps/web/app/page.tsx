@@ -1,93 +1,254 @@
 import Link from "next/link";
-import { SectionHeading } from "../components/section-heading";
+import {
+  ArrowUpRight,
+  Check,
+  ChevronRight,
+  CircleDot,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
-const services = [
-  ["01", "AI Engineering", "Production AI systems, agent workflows, RAG, and integrations designed around measurable business outcomes."],
-  ["02", "AI Security", "Threat modeling, agent security, application hardening, and security engineering for AI-enabled systems."],
-  ["03", "Forward Deployed Engineering", "Embedded engineering teams that take ambiguous operational problems from discovery to production."],
+const capabilities = [
+  {
+    index: "01",
+    title: "AI Engineering",
+    text: "Production agents, RAG systems, workflow automation, and AI products engineered around real operating constraints.",
+    href: "/services/ai-engineering",
+  },
+  {
+    index: "02",
+    title: "Forward Deployed Engineering",
+    text: "Senior engineering embedded with your team to turn ambiguous business problems into shipped, measurable systems.",
+    href: "/services/forward-deployed-engineering",
+  },
+  {
+    index: "03",
+    title: "AI Security",
+    text: "Threat modeling, agent security, application hardening, and secure AI infrastructure from architecture to production.",
+    href: "/services/ai-security",
+  },
 ];
 
 const proof = [
-  ["Architecture", "Next.js + TypeScript + cloud-native services"],
-  ["Security", "Automated checks, typed boundaries, auditable workflows"],
-  ["Delivery", "Git-based CI/CD with preview-first development"],
-  ["AI", "Dedicated FDE engine boundary for agents and tools"],
+  ["01", "Discover", "Understand the workflow, constraints, data, risk, and business outcome."],
+  ["02", "Design", "Turn the problem into an executable architecture and delivery plan."],
+  ["03", "Deploy", "Build inside the real environment, integrate the systems, and ship."],
+  ["04", "Improve", "Measure adoption, reliability, security, and business impact continuously."],
+];
+
+const signals = [
+  "Production-first engineering",
+  "Security built into the delivery loop",
+  "Model and infrastructure agnostic",
+  "Evidence-driven technical decisions",
 ];
 
 export default function HomePage() {
   return (
-    <>
-      <section className="hero">
-        <div className="container hero-grid">
-          <div>
-            <span className="eyebrow">AI engineering / security / FDE</span>
-            <h1>We build the systems <span>AI makes possible.</span></h1>
-            <p className="hero-copy">
-              Tinlance helps ambitious organizations design, secure, and deploy production-grade AI systems — from the first technical decision to the workflows that run in production.
+    <div className="home-page">
+      <section className="hero-v2">
+        <div className="hero-grid-v2 container">
+          <div className="hero-copy-v2">
+            <div className="status-pill">
+              <CircleDot size={12} /> Available for select engineering engagements
+            </div>
+            <p className="kicker">TINLANCE / AI ENGINEERING / FDE</p>
+            <h1>
+              Make AI <em>work</em> inside the business.
+            </h1>
+            <p className="hero-lede">
+              We design, build, secure, and deploy production AI systems around the way your organization actually operates — not the way a demo looks.
             </p>
             <div className="hero-actions">
-              <Link className="button button-accent" href="/contact">Start a conversation</Link>
-              <Link className="button button-dark" href="/work">See the work</Link>
+              <Link className="button button-accent button-large" href="/contact">
+                Start an assessment <ArrowUpRight size={17} />
+              </Link>
+              <Link className="text-link" href="/work">
+                Explore our work <ChevronRight size={16} />
+              </Link>
+            </div>
+            <div className="hero-signals">
+              {signals.map((signal) => (
+                <span key={signal}>
+                  <Check size={14} /> {signal}
+                </span>
+              ))}
             </div>
           </div>
-          <aside className="hero-aside">
-            <span className="eyebrow">Built to ship</span>
-            <strong>Engineering, not demos.</strong>
-            <p>We connect product intent, infrastructure, security, automation, and AI into systems teams can actually operate.</p>
-          </aside>
+          <div className="system-visual" aria-label="Tinlance engineering system visualization">
+            <div className="visual-label">FDE / SYSTEM MAP</div>
+            <div className="visual-core">
+              <Sparkles size={26} />
+              <span>
+                Business
+                <br />
+                Outcome
+              </span>
+            </div>
+            <div className="orbit orbit-one">
+              <span>Data</span>
+            </div>
+            <div className="orbit orbit-two">
+              <span>Agents</span>
+            </div>
+            <div className="orbit orbit-three">
+              <span>Tools</span>
+            </div>
+            <div className="visual-node node-a">RAG</div>
+            <div className="visual-node node-b">Evals</div>
+            <div className="visual-node node-c">Security</div>
+            <div className="visual-node node-d">Workflow</div>
+            <div className="visual-footer">
+              <span>01</span>
+              <span>Context → Intelligence → Action</span>
+              <span>LIVE</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="section section-muted">
+      <section className="trust-strip">
+        <div className="container trust-inner">
+          <span>ENGINEERING FOR TEAMS THAT NEED TO SHIP</span>
+          <div>
+            <b>AI</b>
+            <b>SECURITY</b>
+            <b>INFRASTRUCTURE</b>
+            <b>AUTOMATION</b>
+          </div>
+        </div>
+      </section>
+
+      <section className="section-v2 capability-section">
         <div className="container">
-          <SectionHeading
-            eyebrow="What we do"
-            title="From ambiguous problem to production system."
-            description="Tinlance combines forward-deployed engineering with AI infrastructure and security discipline so complex initiatives can move without sacrificing reliability."
-          />
-          <div className="card-grid">
-            {services.map(([number, title, description]) => (
-              <article className="card" key={number}>
-                <span className="card-number">{number}</span>
-                <h3>{title}</h3>
-                <p>{description}</p>
-              </article>
+          <div className="section-intro-v2">
+            <div>
+              <p className="kicker">01 / CAPABILITIES</p>
+              <h2>
+                Where strategy ends,
+                <br />
+                <span>engineering begins.</span>
+              </h2>
+            </div>
+            <p>
+              One senior engineering partner across the layers that determine whether an AI initiative becomes a useful production capability.
+            </p>
+          </div>
+          <div className="capability-grid">
+            {capabilities.map((item) => (
+              <Link href={item.href} className="capability-card" key={item.index}>
+                <span className="capability-index">{item.index}</span>
+                <div className="capability-card-body">
+                  <h3>{item.title}</h3>
+                  <p>{item.text}</p>
+                </div>
+                <ArrowUpRight className="capability-arrow" size={20} />
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="section">
-        <div className="container proof">
-          <SectionHeading
-            eyebrow="Engineering standard"
-            title="The work should survive scrutiny."
-            description="Tinlance is built in public where it helps demonstrate the engineering standard behind the services we sell."
-          />
-          <div className="proof-list">
-            {proof.map(([label, value]) => (
-              <div className="proof-item" key={label}>
-                <strong>{label}</strong>
-                <span>{value}</span>
+      <section className="section-v2 dark-section">
+        <div className="container process-layout">
+          <div className="process-sticky">
+            <p className="kicker kicker-dark">02 / HOW WE WORK</p>
+            <h2>
+              Embedded.
+              <br />
+              <span>Accountable.</span>
+              <br />
+              Shipped.
+            </h2>
+            <p>
+              FDE means getting close enough to the real problem to own the engineering outcome. We work in your environment, with your people, against your constraints.
+            </p>
+            <Link className="button button-outline" href="/services/forward-deployed-engineering">
+              See the FDE model <ArrowUpRight size={16} />
+            </Link>
+          </div>
+          <div className="process-list">
+            {proof.map(([index, title, text]) => (
+              <div className="process-row" key={index}>
+                <span>{index}</span>
+                <div>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="section">
+      <section className="section-v2 proof-section">
         <div className="container">
-          <div className="cta">
-            <span className="eyebrow">Start with the problem</span>
-            <h2>Bring us the system that needs to work.</h2>
-            <p>Tell us what is blocked, what is manual, or what needs to become intelligent. We will turn the ambiguity into an executable engineering plan.</p>
-            <div className="hero-actions">
-              <Link className="button button-accent" href="/contact">Book an assessment</Link>
-              <Link className="button button-dark" href="/insights">Read our thinking</Link>
+          <div className="section-intro-v2 compact">
+            <div>
+              <p className="kicker">03 / PROOF</p>
+              <h2>
+                Built by engineers.
+                <br />
+                <span>Proven in public.</span>
+              </h2>
+            </div>
+            <p>
+              Our own systems are part of the proof. Explore the security products, open-source work, and production platforms behind the Tinlance engineering practice.
+            </p>
+          </div>
+          <div className="proof-feature">
+            <div className="proof-feature-main">
+              <div className="proof-icon">
+                <ShieldCheck size={24} />
+              </div>
+              <p className="kicker">THREATFADE / SECURITY ENGINEERING</p>
+              <h3>Engineering security systems that can operate at the edge of real-world risk.</h3>
+              <p>
+                Threat intelligence, security automation, and practical engineering built around adversarial environments.
+              </p>
+              <Link className="text-link" href="/work">
+                View the work <ArrowUpRight size={16} />
+              </Link>
+            </div>
+            <div className="proof-metrics">
+              <div>
+                <strong>01</strong>
+                <span>Open-source security contributions</span>
+              </div>
+              <div>
+                <strong>24/7</strong>
+                <span>Production-minded observability</span>
+              </div>
+              <div>
+                <strong>∞</strong>
+                <span>Continuous improvement loop</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
-    </>
+
+      <section className="section-v2 assessment-section">
+        <div className="container assessment-card">
+          <div>
+            <p className="kicker">04 / START HERE</p>
+            <h2>
+              Bring us the problem.
+              <br />
+              <span>We&apos;ll bring the system.</span>
+            </h2>
+            <p>
+              Tell us what is manual, blocked, expensive, risky, or ready for AI. We&apos;ll turn the ambiguity into an executable engineering path.
+            </p>
+          </div>
+          <div className="assessment-action">
+            <Link className="button button-accent button-large" href="/contact">
+              Book a technical assessment <ArrowUpRight size={18} />
+            </Link>
+            <span>Initial conversation · No slide deck required</span>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
