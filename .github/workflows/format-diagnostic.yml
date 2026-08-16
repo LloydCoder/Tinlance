@@ -1,0 +1,44 @@
+name: Temporary formatting diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile=false
+      - name: Format changed files for diagnosis
+        shell: bash
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          changed=$(git diff --name-only --diff-filter=ACMR "$base" "$head" -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.css' '*.md' '*.mjs' '*.cjs')
+          if [ -n "$changed" ]; then
+            printf '%s\n' "$changed" | xargs pnpm exec prettier --write
+          fi
+      - name: Upload formatted files
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-5-prettier-diagnostic
+          path: |
+            apps/web/app/assessment/page.tsx
+            apps/web/app/contact/page.tsx
+            apps/web/app/api/v1/operations/lead/route.ts
+            apps/web/components/lead-form.tsx
+            apps/web/components/site-header.tsx
+            README.md
+          if-no-files-found: error
