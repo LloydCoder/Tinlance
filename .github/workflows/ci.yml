@@ -17,6 +17,8 @@ jobs:
         working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.14.0
@@ -31,7 +33,14 @@ jobs:
         working-directory: .
       - name: Check formatting for changed files
         run: |
-          changed=$(git diff --name-only --diff-filter=ACMR "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.css' '*.md' '*.yaml' '*.yml' '*.mjs' '*.cjs')
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+          else
+            base="${{ github.event.before }}"
+            head="${{ github.sha }}"
+          fi
+          changed=$(git diff --name-only --diff-filter=ACMR "$base" "$head" -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.css' '*.md' '*.yaml' '*.yml' '*.mjs' '*.cjs')
           if [ -z "$changed" ]; then
             echo "No supported changed files to format-check."
           else
