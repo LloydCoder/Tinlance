@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'feat/**', 'fix/**', 'chore/**']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile=false
+        working-directory: .
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm build
