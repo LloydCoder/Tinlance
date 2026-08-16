@@ -25,16 +25,28 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body>
-          <SiteHeader />
-          <main>{children}</main>
-          <SiteFooter />
-        </body>
-      </html>
+    <html lang="en">
+      <body>
+        <SiteHeader />
+        <main>{children}</main>
+        <SiteFooter />
+      </body>
+    </html>
+  );
+}
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  if (!publishableKey) {
+    return <AppShell>{children}</AppShell>;
+  }
+
+  return (
+    <ClerkProvider publishableKey={publishableKey}>
+      <AppShell>{children}</AppShell>
     </ClerkProvider>
   );
 }
