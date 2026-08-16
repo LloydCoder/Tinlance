@@ -59,28 +59,30 @@ The original engineering foundation (Phases 0–9) is complete. The customer-fac
 2. **Marketing Homepage** — premium enterprise AI/FDE positioning and conversion experience. **Complete.**
 3. **Core Marketing Pages** — FDE, AI engineering, cybersecurity, industries, services, and company pages. **Complete.**
 4. **Proof & Content** — case studies, projects, OSS work, research, and blog/insights. **Complete.**
-5. **Conversion System** — assessment, contact, booking, lead capture, and CTA flows. **Active.**
-6. **Client Portal** — authenticated client workspace, projects, communications, and documents. **Pending.**
+5. **Conversion System** — assessment, contact, booking, lead capture, and CTA flows. **Complete.**
+6. **Client Portal** — authenticated client workspace, projects, communications, and documents. **Active.**
 7. **Admin Portal** — operational administration, leads, clients, projects, content, billing, and controls. **Pending.**
 8. **Production Polish & Launch** — accessibility, responsive QA, SEO, performance, security, E2E, Vercel deployment, and final production verification. **Pending.**
 
 ### Current milestone
 
-**Phase 5 — Conversion System** is the active gated milestone. This phase turns Tinlance's positioning into a disciplined assessment and lead-capture funnel without making unsupported promises or exposing sensitive data.
+**Phase 6 — Client Portal** is the active gated milestone. The portal is being built as a tenant-aware authenticated workspace for project delivery, communications, documents, and workspace controls.
 
-Current Phase 5 scope:
+Current Phase 6 scope:
 
-- Technical assessment request page at `/assessment`.
-- Validated assessment booking API boundary at `/api/v1/operations/booking`.
-- Structured lead capture form on `/contact`.
-- Validated lead API boundary at `/api/v1/operations/lead`.
-- Primary navigation CTA routed to the technical assessment.
-- Accessible labels, focus states, native validation, and error/status messaging.
-- Honeypot bot mitigation and bounded request-body handling on lead capture.
-- Request correlation IDs and `no-store` response controls on conversion endpoints.
-- README status tracking.
+- Authenticated `/portal` workspace protected by the existing Clerk middleware boundary.
+- Server-side identity resolution with Clerk `auth()` / `currentUser()`.
+- Organization-aware workspace context and organization switching.
+- Responsive portal navigation with Overview, Projects, Messages, Documents, and Workspace controls.
+- Project delivery overview with status, progress, and next-decision signals.
+- Project workspace view.
+- Communications workspace boundary.
+- Tenant-scoped document workspace boundary.
+- Workspace security and identity controls surface.
+- Reduced-motion support and mobile responsive behavior.
+- No sensitive operational data is hard-coded into authentication or authorization decisions; downstream persistence remains a future service boundary.
 
-The conversion layer deliberately separates public intake from downstream persistence/CRM workflows so future portal and admin phases can own authenticated operational data without coupling the marketing surface to a database prematurely.
+The portal follows Clerk's current Organizations model: organization context is available to the session, with roles and permissions available for fine-grained authorization. Sensitive access must be enforced at the server boundary rather than relying on client-side visibility alone.
 
 **Gate:** Build → deep audit → fix → README update → CI green → merge → next milestone.
 
