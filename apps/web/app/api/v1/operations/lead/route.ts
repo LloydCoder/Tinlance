@@ -11,7 +11,13 @@ export async function POST(request: Request) {
   if (new TextEncoder().encode(bodyText).byteLength > MAX_BODY_BYTES) {
     return NextResponse.json(
       { error: "payload_too_large", requestId },
-      { status: 413, headers: { "cache-control": "no-store", "x-request-id": requestId } },
+      {
+        status: 413,
+        headers: {
+          "cache-control": "no-store",
+          "x-request-id": requestId,
+        },
+      },
     );
   }
 
@@ -26,14 +32,26 @@ export async function POST(request: Request) {
   if (!body) {
     return NextResponse.json(
       { error: "invalid_json", requestId },
-      { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } },
+      {
+        status: 400,
+        headers: {
+          "cache-control": "no-store",
+          "x-request-id": requestId,
+        },
+      },
     );
   }
 
   if (typeof body.website === "string" && body.website.trim().length > 0) {
     return NextResponse.json(
       { status: "accepted", requestId },
-      { status: 202, headers: { "cache-control": "no-store", "x-request-id": requestId } },
+      {
+        status: 202,
+        headers: {
+          "cache-control": "no-store",
+          "x-request-id": requestId,
+        },
+      },
     );
   }
 
@@ -41,12 +59,24 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "invalid_request", requestId },
-      { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } },
+      {
+        status: 400,
+        headers: {
+          "cache-control": "no-store",
+          "x-request-id": requestId,
+        },
+      },
     );
   }
 
   return NextResponse.json(
     { status: "accepted", requestId, nextStep: "lead_review" },
-    { status: 202, headers: { "cache-control": "no-store", "x-request-id": requestId } },
+    {
+      status: 202,
+      headers: {
+        "cache-control": "no-store",
+        "x-request-id": requestId,
+      },
+    },
   );
 }
