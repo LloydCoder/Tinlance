@@ -1,0 +1,54 @@
+name: Phase 7 formatting diagnostic
+
+on:
+  push:
+    branches: [feat/phase-7-admin-portal]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile=false
+      - name: Format Phase 7 files
+        run: |
+          pnpm exec prettier --write \
+            apps/web/app/admin/page.tsx \
+            apps/web/app/admin/layout.tsx \
+            apps/web/app/admin/admin.css \
+            apps/web/app/admin/leads/page.tsx \
+            apps/web/app/admin/clients/page.tsx \
+            apps/web/app/admin/projects/page.tsx \
+            apps/web/app/admin/billing/page.tsx \
+            apps/web/app/admin/content/page.tsx \
+            apps/web/app/admin/controls/page.tsx \
+            apps/web/components/admin-shell.tsx \
+            apps/web/components/admin-resource-page.tsx \
+            README.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase-7-prettier
+          path: |
+            apps/web/app/admin/page.tsx
+            apps/web/app/admin/layout.tsx
+            apps/web/app/admin/admin.css
+            apps/web/app/admin/leads/page.tsx
+            apps/web/app/admin/clients/page.tsx
+            apps/web/app/admin/projects/page.tsx
+            apps/web/app/admin/billing/page.tsx
+            apps/web/app/admin/content/page.tsx
+            apps/web/app/admin/controls/page.tsx
+            apps/web/components/admin-shell.tsx
+            apps/web/components/admin-resource-page.tsx
+            README.md
