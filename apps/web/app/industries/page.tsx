@@ -85,8 +85,8 @@ export default function IndustriesPage() {
             <p className="kicker">NOT SURE WHERE TO START?</p>
             <h2>Start with the workflow.</h2>
             <p>
-              We will identify where AI, automation, or security engineering
-              can create the highest-value change.
+              We will identify where AI, automation, or security engineering can
+              create the highest-value change.
             </p>
           </div>
           <Link className="button button-accent button-large" href="/contact">

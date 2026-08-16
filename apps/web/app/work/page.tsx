@@ -62,8 +62,8 @@ export default function WorkPage() {
               <h2>Production thinking, made visible.</h2>
               <p>
                 We prefer demonstrable systems, public technical work, and
-                measurable engineering decisions over capability claims
-                without evidence.
+                measurable engineering decisions over capability claims without
+                evidence.
               </p>
             </div>
             <div className="proof-metrics">

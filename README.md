@@ -69,6 +69,7 @@ The original engineering foundation (Phases 0–9) is complete. The customer-fac
 **Phase 3 — Core Marketing Pages** is the active gated milestone. This phase expands the visual system into service detail pages, the services overview, industry positioning, and a stronger engineering-proof/work page while preserving the established Tinlance conversion language and reusable visual primitives.
 
 Current Phase 3 scope:
+
 - `/services`
 - `/services/ai-engineering`
 - `/services/forward-deployed-engineering`
