@@ -20,17 +20,19 @@ Completed. Tinlance visual foundations, responsive layout system, reusable UI pr
 
 ## Phase 4 — Public Website & Conversion System
 
+Completed. Public information architecture, service discovery, work/proof entry points, contact conversion paths, and crawlable customer journeys established.
+
+## Phase 5 — Content, SEO & Monetization
+
 Current phase.
 
 ### Scope
 
-- Clear public information architecture.
-- Service discovery and individual service journeys.
-- Work/proof and case-study entry points.
-- Contact and assessment conversion paths.
-- Strong primary and secondary calls to action.
-- Metadata and crawlable public routes.
-- Mobile-first responsive customer journey.
+- Indexable insight detail pages with per-page metadata.
+- Content-driven sitemap coverage.
+- Resource hub for guides, assessments, and newsletter products.
+- Clear conversion paths from content to commercial services.
+- Foundation for premium guides, assessments, newsletter sponsorships, and other ethical monetization.
 - README and architecture documentation updated for the current phase.
 
 ### Exit criteria
@@ -39,17 +41,15 @@ Current phase.
 - Lint passes.
 - Tests pass.
 - Production build passes.
-- Critical public routes render successfully.
+- Insight detail pages generate correctly.
+- Sitemap includes all public content routes.
+- Resource hub is reachable and conversion-oriented.
 - README reflects the current phase.
 - PR is green and merged to `main`.
 
-## Phase 5 — Content, SEO & Monetization
-
-Not started. Begins only after Phase 4 is complete.
-
 ## Phase 6 — Client Portal & Identity
 
-Not started.
+Not started. Begins only after Phase 5 is complete.
 
 ## Phase 7 — Billing, CRM & Operations
 
