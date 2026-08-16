@@ -52,9 +52,9 @@ Next.js / Vercel
 
 ## Build status
 
-**Phase 6 — Client Portal & Identity**
+**Phase 7 — Billing, CRM & Operations**
 
-Phases 0–5 are complete. Phase 6 establishes the authenticated product boundary: Clerk authentication, protected portal/admin routes, sign-in/sign-up surfaces, organization-aware authorization context, and explicit privileged-role enforcement. Billing, CRM, and FDE execution remain isolated until their dedicated phases.
+Phases 0–6 are complete. Phase 7 establishes the operational business layer: billing boundaries, invoice/payment workflows, CRM integration contracts, assessment booking operations, transactional communications, and lead/client lifecycle workflows. FDE execution remains isolated until Phase 8.
 
 Phase tracking and exit criteria are documented in [`docs/PHASES.md`](./docs/PHASES.md).
 
