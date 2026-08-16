@@ -41,9 +41,7 @@ export default function AssessmentPage() {
           className="container"
           style={{ paddingTop: "7rem", paddingBottom: "6rem" }}
         >
-          <p className="kicker kicker-dark">
-            TINLANCE / TECHNICAL ASSESSMENT
-          </p>
+          <p className="kicker kicker-dark">TINLANCE / TECHNICAL ASSESSMENT</p>
           <h1 style={{ maxWidth: "920px" }}>
             Start with the system, not the sales pitch.
           </h1>
@@ -55,8 +53,8 @@ export default function AssessmentPage() {
             }}
           >
             Choose a time for a focused engineering conversation. Bring the
-            workflow, constraints, existing architecture, and outcome you
-            care about.
+            workflow, constraints, existing architecture, and outcome you care
+            about.
           </p>
         </div>
       </section>
