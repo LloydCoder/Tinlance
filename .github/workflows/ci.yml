@@ -19,6 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: pnpm/action-setup@v4
         with:
           version: 10.14.0
@@ -26,6 +27,8 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --frozen-lockfile=false
+        working-directory: .
+      - run: git checkout -- pnpm-lock.yaml
         working-directory: .
       - run: pnpm typecheck
       - run: pnpm lint
@@ -48,9 +51,9 @@ jobs:
             if ! git diff --quiet; then
               git config user.name "github-actions[bot]"
               git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-              git add -A
+              git add -- $changed
               git commit -m "chore: apply prettier formatting [skip ci]"
-              git push
+              git push origin HEAD:"${{ github.head_ref || github.ref_name }}"
             fi
           fi
       - run: pnpm audit --audit-level=high
