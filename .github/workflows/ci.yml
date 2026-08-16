@@ -23,8 +23,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
       - run: pnpm install --frozen-lockfile=false
         working-directory: .
       - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm --filter @tinlance/web test -- --passWithNoTests
+        working-directory: .
+      - run: pnpm format:check
+        working-directory: .
+      - run: pnpm audit --audit-level=high
+        working-directory: .
       - run: pnpm build
