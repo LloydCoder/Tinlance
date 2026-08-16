@@ -89,10 +89,7 @@ export default function IndustriesPage() {
               can create the highest-value change.
             </p>
           </div>
-          <Link
-            className="button button-accent button-large"
-            href="/contact"
-          >
+          <Link className="button button-accent button-large" href="/contact">
             Book an assessment <ArrowUpRight size={18} />
           </Link>
         </div>
