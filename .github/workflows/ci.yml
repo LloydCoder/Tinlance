@@ -32,8 +32,6 @@ jobs:
       - run: pnpm --filter @tinlance/web test -- --passWithNoTests
         working-directory: .
       - name: Format changed source and documentation files
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base="${{ github.event.pull_request.base.sha }}"
@@ -44,7 +42,13 @@ jobs:
           fi
           changed=$(git diff --name-only --diff-filter=ACMR "$base" "$head" -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.css' '*.md' '*.mjs' '*.cjs')
           if [ -n "$changed" ]; then
-            printf '%s\n' "$changed" | xargs pnpm exec prettier --write
+            failed=0
+            while IFS= read -r file; do
+              pnpm exec prettier --write "$file" || failed=1
+            done <<< "$changed"
+            if [ "$failed" -ne 0 ]; then
+              exit "$failed"
+            fi
             if ! git diff --quiet; then
               git config user.name "github-actions[bot]"
               git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
