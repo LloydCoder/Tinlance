@@ -3,3 +3,5 @@ node_modules/
 coverage/
 dist/
 .turbo/
+# Global stylesheet is intentionally hand-formatted for Tailwind composition.
+apps/web/app/globals.css
