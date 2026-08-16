@@ -52,9 +52,9 @@ Next.js / Vercel
 
 ## Build status
 
-**Phase 5 — Content, SEO & Monetization**
+**Phase 6 — Client Portal & Identity**
 
-Phases 0–4 are complete. Phase 5 turns Tinlance's content system into a durable acquisition and monetization layer: indexable insight detail pages, resource/lead-generation entry points, and sitemap coverage for content routes. Paid guides, assessments, newsletter products, and affiliate/sponsorship mechanisms can be introduced through these stable boundaries without coupling them to the core marketing site.
+Phases 0–5 are complete. Phase 6 establishes the authenticated product boundary: Clerk authentication, protected portal/admin routes, sign-in/sign-up surfaces, organization-aware authorization context, and explicit privileged-role enforcement. Billing, CRM, and FDE execution remain isolated until their dedicated phases.
 
 Phase tracking and exit criteria are documented in [`docs/PHASES.md`](./docs/PHASES.md).
 

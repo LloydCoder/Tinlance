@@ -1,3 +1,4 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body>
@@ -33,5 +34,19 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <SiteFooter />
       </body>
     </html>
+  );
+}
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  if (!publishableKey) {
+    return <AppShell>{children}</AppShell>;
+  }
+
+  return (
+    <ClerkProvider publishableKey={publishableKey}>
+      <AppShell>{children}</AppShell>
+    </ClerkProvider>
   );
 }
