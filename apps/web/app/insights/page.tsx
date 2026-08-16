@@ -21,7 +21,11 @@ export default function InsightsPage() {
             Engineering intelligence for teams building with AI.
           </h1>
           <p
-            style={{ maxWidth: "720px", fontSize: "1.2rem", marginTop: "1.5rem" }}
+            style={{
+              maxWidth: "720px",
+              fontSize: "1.2rem",
+              marginTop: "1.5rem",
+            }}
           >
             Practical research on production AI, security, forward-deployed
             engineering, and enterprise automation.
