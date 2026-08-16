@@ -3,6 +3,3 @@ node_modules/
 coverage/
 dist/
 .turbo/
-# Hand-formatted presentation files; typecheck/lint remain enforced.
-apps/web/app/globals.css
-apps/web/app/page.tsx
