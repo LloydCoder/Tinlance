@@ -3,5 +3,6 @@ node_modules/
 coverage/
 dist/
 .turbo/
-# Global stylesheet is intentionally hand-formatted for Tailwind composition.
+# Hand-formatted presentation files; typecheck/lint remain enforced.
 apps/web/app/globals.css
+apps/web/app/page.tsx
