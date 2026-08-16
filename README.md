@@ -60,29 +60,29 @@ The original engineering foundation (Phases 0–9) is complete. The customer-fac
 3. **Core Marketing Pages** — FDE, AI engineering, cybersecurity, industries, services, and company pages. **Complete.**
 4. **Proof & Content** — case studies, projects, OSS work, research, and blog/insights. **Complete.**
 5. **Conversion System** — assessment, contact, booking, lead capture, and CTA flows. **Complete.**
-6. **Client Portal** — authenticated client workspace, projects, communications, and documents. **Active.**
-7. **Admin Portal** — operational administration, leads, clients, projects, content, billing, and controls. **Pending.**
+6. **Client Portal** — authenticated client workspace, projects, communications, and documents. **Complete.**
+7. **Admin Portal** — operational administration, leads, clients, projects, content, billing, and controls. **Active.**
 8. **Production Polish & Launch** — accessibility, responsive QA, SEO, performance, security, E2E, Vercel deployment, and final production verification. **Pending.**
 
 ### Current milestone
 
-**Phase 6 — Client Portal** is the active gated milestone. The portal is being built as a tenant-aware authenticated workspace for project delivery, communications, documents, and workspace controls.
+**Phase 7 — Admin Portal** is the active gated milestone. The administration surface is designed as a privileged operations workspace and is protected by the existing server-side Tinlance authorization context.
 
-Current Phase 6 scope:
+Current Phase 7 scope:
 
-- Authenticated `/portal` workspace protected by the existing Clerk middleware boundary.
-- Server-side identity resolution with Clerk `auth()` / `currentUser()`.
-- Organization-aware workspace context and organization switching.
-- Responsive portal navigation with Overview, Projects, Messages, Documents, and Workspace controls.
-- Project delivery overview with status, progress, and next-decision signals.
-- Project workspace view.
-- Communications workspace boundary.
-- Tenant-scoped document workspace boundary.
-- Workspace security and identity controls surface.
-- Reduced-motion support and mobile responsive behavior.
-- No sensitive operational data is hard-coded into authentication or authorization decisions; downstream persistence remains a future service boundary.
+- Privileged `/admin` dashboard protected by `getAuthorizationContext()`.
+- Explicit `super-admin` / `admin` role boundary; unauthorized users are redirected to the client portal.
+- Responsive administrative navigation.
+- Lead operations workspace.
+- Client operations workspace.
+- Project operations workspace.
+- Billing operations workspace without exposing payment secrets to the browser.
+- Content and publishing controls surface.
+- Security and privileged-controls surface documenting audit, secrets, and change-management boundaries.
+- Reusable authorized resource workspace for operational tables.
+- Build-safe Clerk controls when development/CI environments do not provide Clerk public configuration.
 
-The portal follows Clerk's current Organizations model: organization context is available to the session, with roles and permissions available for fine-grained authorization. Sensitive access must be enforced at the server boundary rather than relying on client-side visibility alone.
+The authorization model follows a server-first approach: authentication and role resolution happen at the server boundary, while client navigation is treated as presentation only. Clerk Organizations can provide organization roles and custom permissions for fine-grained B2B access, but sensitive operations must still be authorized on the server.
 
 **Gate:** Build → deep audit → fix → README update → CI green → merge → next milestone.
 
