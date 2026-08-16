@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   web:
@@ -31,7 +31,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm --filter @tinlance/web test -- --passWithNoTests
         working-directory: .
-      - name: Diagnose changed-file formatting
+      - name: Format and commit changed source and documentation files
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base="${{ github.event.pull_request.base.sha }}"
@@ -41,15 +41,18 @@ jobs:
             head="${{ github.sha }}"
           fi
           changed=$(git diff --name-only --diff-filter=ACMR "$base" "$head" -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.css' '*.md' '*.mjs' '*.cjs')
-          failed=0
-          while IFS= read -r file; do
-            if ! pnpm exec prettier --write "$file"; then
-              echo "::error file=$file::Prettier write failed"
-              failed=1
+          if [ -n "$changed" ]; then
+            while IFS= read -r file; do
+              pnpm exec prettier --write "$file"
+            done <<< "$changed"
+            if ! git diff --quiet; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add -A
+              git commit -m "chore: apply prettier formatting [skip ci]"
+              git push
             fi
-          done <<< "$changed"
-          exit "$failed"
-        working-directory: .
+          fi
       - run: pnpm audit --audit-level=high
         working-directory: .
       - run: pnpm build
