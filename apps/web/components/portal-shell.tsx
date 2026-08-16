@@ -1,6 +1,5 @@
 "use client";
 
-import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import {
   Files,
   FolderKanban,
@@ -10,6 +9,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
+import { PortalAuthControls } from "./portal-auth-controls";
 
 const links = [
   ["overview", "/portal", "Overview", LayoutDashboard],
@@ -55,7 +55,7 @@ export function PortalShell({ active, children }: PortalShellProps) {
             <span>Secure workspace</span>
           </div>
           <div className="portal-user">
-            <UserButton afterSignOutUrl="/" />
+            <PortalAuthControls />
           </div>
         </div>
       </aside>
@@ -67,7 +67,7 @@ export function PortalShell({ active, children }: PortalShellProps) {
             </Link>
           </div>
           <div className="portal-org">
-            <OrganizationSwitcher hidePersonal />
+            <PortalAuthControls />
           </div>
         </header>
         <main className="portal-content">{children}</main>
