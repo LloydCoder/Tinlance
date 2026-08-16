@@ -44,7 +44,14 @@ jobs:
           if [ -z "$changed" ]; then
             echo "No supported changed files to format-check."
           else
-            printf '%s\n' "$changed" | xargs pnpm exec prettier --check
+            failed=0
+            while IFS= read -r file; do
+              if ! pnpm exec prettier --check "$file"; then
+                echo "::error file=$file::Prettier formatting required"
+                failed=1
+              fi
+            done <<< "$changed"
+            exit "$failed"
           fi
         working-directory: .
       - run: pnpm audit --audit-level=high
