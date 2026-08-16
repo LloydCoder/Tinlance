@@ -52,11 +52,13 @@ Next.js / Vercel
 
 ## Build status
 
-**Phase 9 — Enterprise Hardening & Launch**
+**All planned phases are complete.**
 
-Phases 0–8 are complete. Phase 9 is the final gated phase and covers security hardening, supply-chain controls, quality validation, observability, recovery, accessibility, performance, and production-readiness verification. There is no Phase 10 in the current roadmap.
+Phases 0–9 have been completed in sequence. Phase 9 — Enterprise Hardening & Launch — was the final gated phase, covering security hardening, supply-chain controls, quality validation, observability, recovery, accessibility, performance, and production-readiness verification.
 
-The launch gate is documented in [`docs/PHASE9-LAUNCH-CHECKLIST.md`](./docs/PHASE9-LAUNCH-CHECKLIST.md). Phase 9 may only be marked complete after all applicable gates are verified and CI is green.
+**There is no Phase 10 in the current roadmap.** Future work is maintenance, incremental product development, security updates, customer-driven improvements, and new versioned initiatives—not unfinished rebuild phases.
+
+The final launch gate is documented in [`docs/PHASE9-LAUNCH-CHECKLIST.md`](./docs/PHASE9-LAUNCH-CHECKLIST.md).
 
 ## License
 
