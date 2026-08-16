@@ -78,14 +78,21 @@ export default async function InsightPage({
           <Link href="/insights" className="text-link text-link-dark">
             <ArrowLeft size={16} /> All insights
           </Link>
-          <p className="kicker kicker-dark" style={{ marginTop: "2rem" }}>
+          <p
+            className="kicker kicker-dark"
+            style={{ marginTop: "2rem" }}
+          >
             {insight.category}
           </p>
           <h1 style={{ maxWidth: "980px", marginTop: "1rem" }}>
             {insight.title}
           </h1>
           <p
-            style={{ maxWidth: "760px", fontSize: "1.2rem", marginTop: "1.5rem" }}
+            style={{
+              maxWidth: "760px",
+              fontSize: "1.2rem",
+              marginTop: "1.5rem",
+            }}
           >
             {insight.excerpt}
           </p>
