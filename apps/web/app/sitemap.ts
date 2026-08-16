@@ -1,7 +1,20 @@
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const routes = ["/", "/services", "/work", "/insights", "/about", "/contact"];
+  const routes = [
+    "/",
+    "/services",
+    "/services/autonomous-ai",
+    "/services/ai-infrastructure",
+    "/services/ai-security",
+    "/services/automation",
+    "/services/fde",
+    "/work",
+    "/insights",
+    "/about",
+    "/contact",
+  ];
+
   return routes.map((route) => ({
     url: `https://tinlance.com${route}`,
     lastModified: new Date(),
