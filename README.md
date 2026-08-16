@@ -52,11 +52,11 @@ Next.js / Vercel
 
 ## Build status
 
-**Phase 8 — FDE Mastery Integration**
+**Phase 9 — Enterprise Hardening & Launch**
 
-Phases 0–7 are complete. Phase 8 integrates the FDE Mastery execution boundary with Tinlance: authenticated service-to-service communication, typed agent contracts, job lifecycle boundaries, RAG/vector interfaces, MCP/tool integration contracts, and telemetry/evaluation surfaces. Enterprise hardening remains isolated until Phase 9.
+Phases 0–8 are complete. Phase 9 is the final gated phase and covers security hardening, supply-chain controls, quality validation, observability, recovery, accessibility, performance, and production-readiness verification. There is no Phase 10 in the current roadmap.
 
-Phase tracking and exit criteria are documented in [`docs/PHASES.md`](./docs/PHASES.md).
+The launch gate is documented in [`docs/PHASE9-LAUNCH-CHECKLIST.md`](./docs/PHASE9-LAUNCH-CHECKLIST.md). Phase 9 may only be marked complete after all applicable gates are verified and CI is green.
 
 ## License
 
