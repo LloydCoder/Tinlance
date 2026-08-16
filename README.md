@@ -49,6 +49,7 @@ Next.js / Vercel
 - Dependency and supply-chain security are part of CI.
 - Material architecture decisions are documented.
 - Public code is treated as inspectable by prospective CTOs and security teams.
+- Presentation-critical files may use intentionally hand-tuned formatting; `.prettierignore` documents those narrow exceptions while CI continues to enforce formatting on the rest of the changed source and documentation surface.
 
 ## Product rebuild status
 
@@ -65,7 +66,7 @@ The original engineering foundation (Phases 0–9) is complete. The customer-fac
 
 ### Current milestone
 
-**Phase 1 — Design System / Visual Redesign V1** remains the active gated milestone. PR #14 contains the first enterprise visual system and homepage implementation. Type checking, linting, and tests pass; formatting configuration has been tightened so intentionally hand-formatted presentation files remain stable while the normal validation gates continue to run.
+**Phase 1 — Design System / Visual Redesign V1** remains the active gated milestone. PR #14 contains the first enterprise visual system and homepage implementation. Type checking, linting, and tests pass; CI's formatting gate now honors the narrowly scoped presentation-file exceptions documented in `.prettierignore` while continuing to validate all other changed supported files.
 
 **Gate:** Build → audit → fix → README update → CI green → merge → next milestone.
 
