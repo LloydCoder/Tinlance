@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { insights } from "../lib/content";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes = [
@@ -11,6 +12,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/services/fde",
     "/work",
     "/insights",
+    ...insights.map((insight) => `/insights/${insight.slug}`),
+    "/resources",
     "/about",
     "/contact",
   ];
@@ -19,6 +22,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `https://tinlance.com${route}`,
     lastModified: new Date(),
     changeFrequency: route === "/" ? "weekly" : "monthly",
-    priority: route === "/" ? 1 : 0.7,
+    priority: route === "/" ? 1 : route.startsWith("/insights/") ? 0.6 : 0.7,
   }));
 }

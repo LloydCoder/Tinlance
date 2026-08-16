@@ -52,9 +52,9 @@ Next.js / Vercel
 
 ## Build status
 
-**Phase 4 — Public Website & Conversion System**
+**Phase 5 — Content, SEO & Monetization**
 
-Phase 0 (Production Foundation), Phase 1 (Design & Content Architecture), Phase 2 (Security & Platform Foundation), and Phase 3 (Design System & Production UI) are complete. Phase 4 is now focused on the public customer journey: service discovery, work/proof, contact conversion, and clear paths into Tinlance's commercial offerings.
+Phases 0–4 are complete. Phase 5 turns Tinlance's content system into a durable acquisition and monetization layer: indexable insight detail pages, resource/lead-generation entry points, and sitemap coverage for content routes. Paid guides, assessments, newsletter products, and affiliate/sponsorship mechanisms can be introduced through these stable boundaries without coupling them to the core marketing site.
 
 Phase tracking and exit criteria are documented in [`docs/PHASES.md`](./docs/PHASES.md).
 
