@@ -24,10 +24,7 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <Link
-          className="button button-small button-dark"
-          href="/assessment"
-        >
+        <Link className="button button-small button-dark" href="/assessment">
           Technical assessment
         </Link>
       </div>
