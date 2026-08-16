@@ -52,9 +52,9 @@ Next.js / Vercel
 
 ## Build status
 
-**Phase 2 — Security & Platform Foundation**
+**Phase 4 — Public Website & Conversion System**
 
-Phase 0 (Production Foundation) and Phase 1 (Design & Content Architecture) are complete. Phase 2 establishes the security and runtime boundaries required before production UI, identity, billing, and client-platform features are introduced.
+Phase 0 (Production Foundation), Phase 1 (Design & Content Architecture), Phase 2 (Security & Platform Foundation), and Phase 3 (Design System & Production UI) are complete. Phase 4 is now focused on the public customer journey: service discovery, work/proof, contact conversion, and clear paths into Tinlance's commercial offerings.
 
 Phase tracking and exit criteria are documented in [`docs/PHASES.md`](./docs/PHASES.md).
 

@@ -12,17 +12,25 @@ Completed. Application structure, content model, service taxonomy, reusable page
 
 ## Phase 2 — Security & Platform Foundation
 
+Completed. Security/runtime boundaries, typed environment handling, request correlation, health/readiness endpoints, and security documentation established.
+
+## Phase 3 — Design System & Production UI
+
+Completed. Tinlance visual foundations, responsive layout system, reusable UI primitives, accessibility focus states, and production page styling established.
+
+## Phase 4 — Public Website & Conversion System
+
 Current phase.
 
 ### Scope
 
-- Security headers and CSP policy foundation.
-- Environment-variable validation boundary.
-- Secure API response conventions.
-- Request correlation IDs.
-- Health/readiness endpoints.
-- Standard error handling without secret leakage.
-- Security-focused tests.
+- Clear public information architecture.
+- Service discovery and individual service journeys.
+- Work/proof and case-study entry points.
+- Contact and assessment conversion paths.
+- Strong primary and secondary calls to action.
+- Metadata and crawlable public routes.
+- Mobile-first responsive customer journey.
 - README and architecture documentation updated for the current phase.
 
 ### Exit criteria
@@ -31,21 +39,13 @@ Current phase.
 - Lint passes.
 - Tests pass.
 - Production build passes.
-- Security checks pass.
+- Critical public routes render successfully.
 - README reflects the current phase.
 - PR is green and merged to `main`.
 
-## Phase 3 — Design System & Production UI
-
-Not started. Begins only after Phase 2 is complete.
-
-## Phase 4 — Public Website & Conversion System
-
-Not started.
-
 ## Phase 5 — Content, SEO & Monetization
 
-Not started.
+Not started. Begins only after Phase 4 is complete.
 
 ## Phase 6 — Client Portal & Identity
 
