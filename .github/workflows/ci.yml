@@ -28,7 +28,7 @@ jobs:
           node-version: 22
       - run: pnpm install --frozen-lockfile=false
         working-directory: .
-      - run: git checkout -- pnpm-lock.yaml
+      - run: rm -f pnpm-lock.yaml
         working-directory: .
       - run: pnpm typecheck
       - run: pnpm lint
