@@ -57,8 +57,8 @@ The original engineering foundation (Phases 0–9) is complete. The customer-fac
 
 1. **Design System** — brand, typography, color, spacing, motion, and reusable UI primitives. **Complete.**
 2. **Marketing Homepage** — premium enterprise AI/FDE positioning and conversion experience. **Complete.**
-3. **Core Marketing Pages** — FDE, AI engineering, cybersecurity, industries, services, and company pages. **Active.**
-4. **Proof & Content** — case studies, projects, OSS work, research, and blog/insights. **Pending.**
+3. **Core Marketing Pages** — FDE, AI engineering, cybersecurity, industries, services, and company pages. **Complete.**
+4. **Proof & Content** — case studies, projects, OSS work, research, and blog/insights. **Active.**
 5. **Conversion System** — assessment, contact, booking, lead capture, and CTA flows. **Pending.**
 6. **Client Portal** — authenticated client workspace, projects, communications, and documents. **Pending.**
 7. **Admin Portal** — operational administration, leads, clients, projects, content, billing, and controls. **Pending.**
@@ -66,18 +66,21 @@ The original engineering foundation (Phases 0–9) is complete. The customer-fac
 
 ### Current milestone
 
-**Phase 3 — Core Marketing Pages** is the active gated milestone. This phase expands the visual system into service detail pages, the services overview, industry positioning, and a stronger engineering-proof/work page while preserving the established Tinlance conversion language and reusable visual primitives.
+**Phase 4 — Proof & Content** is the active gated milestone. This phase turns Tinlance's technical work into a durable proof and publishing surface without inventing customer claims or unsupported metrics.
 
-Current Phase 3 scope:
+Current Phase 4 scope:
 
-- `/services`
-- `/services/ai-engineering`
-- `/services/forward-deployed-engineering`
-- `/services/ai-security`
-- `/services/enterprise-automation`
-- `/industries`
-- `/work`
-- Existing `/about` and `/contact` pages remain part of the core marketing surface.
+- Shared proof/evidence content model.
+- Engineering proof / work page backed by shared content.
+- Rich insights index and article pages.
+- Author, date, reading-time, tags, and article metadata.
+- BlogPosting structured data for individual insights.
+- RSS feed at `/feed.xml`.
+- Static generation for published insights.
+- Internal conversion path from research to assessment.
+- README status tracking.
+
+The content system deliberately favors people-first technical material and verifiable engineering evidence.
 
 **Gate:** Build → deep audit → fix → README update → CI green → merge → next milestone.
 
