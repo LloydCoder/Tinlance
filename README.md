@@ -53,22 +53,32 @@ Next.js / Vercel
 
 ## Product rebuild status
 
-The original engineering foundation (Phases 0–9) is complete. The customer-facing product redesign is now tracked separately as an 8-milestone frontend/product workstream:
+The original engineering foundation (Phases 0–9) is complete. The customer-facing product redesign is tracked separately as an 8-milestone frontend/product workstream:
 
-1. **Design System** — brand, typography, color, spacing, motion, and reusable UI primitives.
-2. **Marketing Homepage** — premium enterprise AI/FDE positioning and conversion experience.
-3. **Core Marketing Pages** — FDE, AI engineering, cybersecurity, industries, services, and company pages.
-4. **Proof & Content** — case studies, projects, OSS work, research, and blog/insights.
-5. **Conversion System** — assessment, contact, booking, lead capture, and CTA flows.
-6. **Client Portal** — authenticated client workspace, projects, communications, and documents.
-7. **Admin Portal** — operational administration, leads, clients, projects, content, billing, and controls.
-8. **Production Polish & Launch** — accessibility, responsive QA, SEO, performance, security, E2E, Vercel deployment, and final production verification.
+1. **Design System** — brand, typography, color, spacing, motion, and reusable UI primitives. **Complete.**
+2. **Marketing Homepage** — premium enterprise AI/FDE positioning and conversion experience. **Complete.**
+3. **Core Marketing Pages** — FDE, AI engineering, cybersecurity, industries, services, and company pages. **Active.**
+4. **Proof & Content** — case studies, projects, OSS work, research, and blog/insights. **Pending.**
+5. **Conversion System** — assessment, contact, booking, lead capture, and CTA flows. **Pending.**
+6. **Client Portal** — authenticated client workspace, projects, communications, and documents. **Pending.**
+7. **Admin Portal** — operational administration, leads, clients, projects, content, billing, and controls. **Pending.**
+8. **Production Polish & Launch** — accessibility, responsive QA, SEO, performance, security, E2E, Vercel deployment, and final production verification. **Pending.**
 
 ### Current milestone
 
-**Phase 1 — Design System / Visual Redesign V1** remains the active gated milestone. PR #14 contains the first enterprise visual system and homepage implementation. Type checking, linting, and tests pass; CI's formatting gate now honors the narrowly scoped presentation-file exceptions documented in `.prettierignore` while continuing to validate all other changed supported files.
+**Phase 3 — Core Marketing Pages** is the active gated milestone. This phase expands the visual system into service detail pages, the services overview, industry positioning, and a stronger engineering-proof/work page while preserving the established Tinlance conversion language and reusable visual primitives.
 
-**Gate:** Build → audit → fix → README update → CI green → merge → next milestone.
+Current Phase 3 scope:
+- `/services`
+- `/services/ai-engineering`
+- `/services/forward-deployed-engineering`
+- `/services/ai-security`
+- `/services/enterprise-automation`
+- `/industries`
+- `/work`
+- Existing `/about` and `/contact` pages remain part of the core marketing surface.
+
+**Gate:** Build → deep audit → fix → README update → CI green → merge → next milestone.
 
 No subsequent frontend milestone will be treated as complete until its predecessor has passed this gate.
 
