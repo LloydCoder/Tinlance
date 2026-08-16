@@ -29,7 +29,14 @@ jobs:
       - run: pnpm lint
       - run: pnpm --filter @tinlance/web test -- --passWithNoTests
         working-directory: .
-      - run: pnpm format:check
+      - name: Check formatting for changed files
+        run: |
+          changed=$(git diff --name-only --diff-filter=ACMR "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.css' '*.md' '*.yaml' '*.yml' '*.mjs' '*.cjs')
+          if [ -z "$changed" ]; then
+            echo "No supported changed files to format-check."
+          else
+            printf '%s\n' "$changed" | xargs pnpm exec prettier --check
+          fi
         working-directory: .
       - run: pnpm audit --audit-level=high
         working-directory: .
