@@ -82,7 +82,7 @@ Current Phase 6 scope:
 - Reduced-motion support and mobile responsive behavior.
 - No sensitive operational data is hard-coded into authentication or authorization decisions; downstream persistence remains a future service boundary.
 
-The portal follows the current Clerk Organizations model: organization context is available to the session, and authorization is intended to be enforced at the server boundary for sensitive operations. citeturn0search0turn0search2
+The portal follows Clerk's current Organizations model: organization context is available to the session, with roles and permissions available for fine-grained authorization. Sensitive access must be enforced at the server boundary rather than relying on client-side visibility alone.
 
 **Gate:** Build → deep audit → fix → README update → CI green → merge → next milestone.
 
