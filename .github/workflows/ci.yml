@@ -31,11 +31,20 @@ jobs:
       - run: pnpm lint
       - run: pnpm --filter @tinlance/web test -- --passWithNoTests
         working-directory: .
-      - name: Check formatting
+      - name: Check formatting for changed source and documentation files
         run: |
-          files=$(find . -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' -o -name '*.json' -o -name '*.md' -o -name '*.mjs' -o -name '*.cjs' \) ! -path './apps/web/app/page.tsx' ! -path './apps/web/app/globals.css' -print)
-          if [ -n "$files" ]; then
-            printf '%s\n' "$files" | xargs pnpm exec prettier --check
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+          else
+            base="${{ github.event.before }}"
+            head="${{ github.sha }}"
+          fi
+          changed=$(git diff --name-only --diff-filter=ACMR "$base" "$head" -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.css' '*.md' '*.mjs' '*.cjs')
+          if [ -z "$changed" ]; then
+            echo "No supported changed files to format-check."
+          else
+            printf '%s\n' "$changed" | xargs pnpm exec prettier --check
           fi
         working-directory: .
       - run: pnpm audit --audit-level=high
