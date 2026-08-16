@@ -122,10 +122,7 @@ export default async function ServicePage({
             {service.summary}
           </p>
           <div style={{ marginTop: "2rem" }}>
-            <Link
-              className="button button-accent button-large"
-              href="/contact"
-            >
+            <Link className="button button-accent button-large" href="/contact">
               Discuss a project <ArrowUpRight size={18} />
             </Link>
           </div>
@@ -182,10 +179,7 @@ export default async function ServicePage({
               will help define the engineering path.
             </p>
           </div>
-          <Link
-            className="button button-accent button-large"
-            href="/contact"
-          >
+          <Link className="button button-accent button-large" href="/contact">
             Book an assessment <ArrowUpRight size={18} />
           </Link>
         </div>
