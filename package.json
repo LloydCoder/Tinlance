@@ -11,6 +11,11 @@
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
+  "pnpm": {
+    "overrides": {
+      "sharp": ">=0.35.0"
+    }
+  },
   "devDependencies": {
     "prettier": "3.6.2",
     "turbo": "^2.5.6",
