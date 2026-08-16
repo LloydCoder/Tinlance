@@ -24,15 +24,20 @@ Completed. Public information architecture, service discovery, work/proof entry 
 
 ## Phase 5 — Content, SEO & Monetization
 
+Completed. Indexable insight detail pages, content sitemap coverage, resource/lead-generation entry points, and commercial conversion boundaries established.
+
+## Phase 6 — Client Portal & Identity
+
 Current phase.
 
 ### Scope
 
-- Indexable insight detail pages with per-page metadata.
-- Content-driven sitemap coverage.
-- Resource hub for guides, assessments, and newsletter products.
-- Clear conversion paths from content to commercial services.
-- Foundation for premium guides, assessments, newsletter sponsorships, and other ethical monetization.
+- Clerk authentication provider and protected route middleware.
+- Sign-in and sign-up entry points.
+- Authenticated client portal boundary.
+- Organization-aware authorization context.
+- Explicit privileged-role enforcement for administration.
+- No billing, CRM, or FDE execution coupling before their dedicated phases.
 - README and architecture documentation updated for the current phase.
 
 ### Exit criteria
@@ -41,19 +46,15 @@ Current phase.
 - Lint passes.
 - Tests pass.
 - Production build passes.
-- Insight detail pages generate correctly.
-- Sitemap includes all public content routes.
-- Resource hub is reachable and conversion-oriented.
+- Authentication boundary is implemented without exposing secrets.
+- Portal and admin routes are protected.
+- Role authorization is explicit and deny-by-default.
 - README reflects the current phase.
 - PR is green and merged to `main`.
 
-## Phase 6 — Client Portal & Identity
-
-Not started. Begins only after Phase 5 is complete.
-
 ## Phase 7 — Billing, CRM & Operations
 
-Not started.
+Not started. Begins only after Phase 6 is complete.
 
 ## Phase 8 — FDE Mastery Integration
 
