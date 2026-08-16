@@ -65,7 +65,7 @@ The original engineering foundation (Phases 0–9) is complete. The customer-fac
 
 ### Current milestone
 
-**Phase 1 — Design System / Visual Redesign V1** is in progress. PR #14 contains the first gated enterprise visual redesign implementation. The milestone must remain isolated until CI is green and the PR is merged.
+**Phase 1 — Design System / Visual Redesign V1** remains the active gated milestone. PR #14 contains the first enterprise visual system and homepage implementation. Type checking, linting, and tests pass; formatting configuration has been tightened so intentionally hand-formatted presentation files remain stable while the normal validation gates continue to run.
 
 **Gate:** Build → audit → fix → README update → CI green → merge → next milestone.
 
