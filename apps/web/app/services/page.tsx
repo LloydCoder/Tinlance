@@ -5,6 +5,7 @@ const services = [
   ["Autonomous AI", "/services/autonomous-ai", "AI workflows that connect models, tools, rules, human review, and observability."],
   ["AI Infrastructure", "/services/ai-infrastructure", "Production foundations for model gateways, RAG, evaluation, deployment, and telemetry."],
   ["AI Security", "/services/ai-security", "Threat modeling and security engineering for AI-enabled applications and agents."],
+  ["Automation", "/services/automation", "Operational automation that connects systems and removes repetitive manual work without removing control."],
   ["Forward Deployed Engineering", "/services/fde", "Embedded engineering for complex operational problems that need to reach production."],
 ];
 
