@@ -1,30 +1,103 @@
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { insights } from "../../lib/content";
 
 export const metadata = {
   title: "Insights | Tinlance",
-  description: "Engineering, AI security, FDE, and enterprise automation insights from Tinlance.",
+  description:
+    "Practical engineering intelligence on AI engineering, security, FDE, and enterprise automation.",
 };
 
 export default function InsightsPage() {
   return (
-    <main className="mx-auto max-w-6xl px-6 py-20">
-      <header className="max-w-3xl">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-500">Tinlance Insights</p>
-        <h1 className="mt-4 text-5xl font-semibold tracking-tight text-neutral-950">Engineering intelligence for teams building with AI.</h1>
-        <p className="mt-6 text-lg leading-8 text-neutral-600">Practical thinking on AI engineering, security, forward-deployed engineering, and enterprise automation.</p>
-      </header>
-      <section className="mt-14 grid gap-6 md:grid-cols-3" aria-label="Latest insights">
-        {insights.map((insight) => (
-          <article key={insight.slug} className="rounded-2xl border border-neutral-200 p-6">
-            <p className="text-sm text-neutral-500">{insight.category}</p>
-            <h2 className="mt-3 text-xl font-semibold tracking-tight text-neutral-950">{insight.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-neutral-600">{insight.excerpt}</p>
-            <Link className="mt-6 inline-flex font-medium text-neutral-950 underline underline-offset-4" href={`/insights/${insight.slug}`}>
-              Read insight
-            </Link>
-          </article>
-        ))}
+    <main>
+      <section className="section-v2 dark-section">
+        <div
+          className="container"
+          style={{ paddingTop: "7rem", paddingBottom: "6rem" }}
+        >
+          <p className="kicker kicker-dark">TINLANCE / INSIGHTS</p>
+          <h1 style={{ maxWidth: "920px" }}>
+            Engineering intelligence for teams building with AI.
+          </h1>
+          <p
+            style={{
+              maxWidth: "720px",
+              fontSize: "1.2rem",
+              marginTop: "1.5rem",
+            }}
+          >
+            Practical research on production AI, security, forward-deployed
+            engineering, and enterprise automation.
+          </p>
+        </div>
+      </section>
+
+      <section className="section-v2">
+        <div className="container">
+          <div className="proof-feature">
+            <div className="proof-feature-main">
+              <p className="kicker">RESEARCH / PRACTICE</p>
+              <h2>Useful ideas should survive contact with production.</h2>
+              <p>
+                Tinlance insights focus on architecture, delivery, security, and
+                operating models that engineering and product teams can actually
+                apply.
+              </p>
+            </div>
+            <div className="proof-metrics">
+              <div>
+                <strong>{String(insights.length).padStart(2, "0")}</strong>
+                <span>Published insights</span>
+              </div>
+              <div>
+                <strong>AI</strong>
+                <span>Primary research lens</span>
+              </div>
+              <div>
+                <strong>FDE</strong>
+                <span>Delivery perspective</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section-v2">
+        <div className="container">
+          <div className="capability-grid">
+            {insights.map((insight) => (
+              <article key={insight.slug} className="capability-card">
+                <p className="kicker">{insight.category}</p>
+                <h2>{insight.title}</h2>
+                <p>{insight.excerpt}</p>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.75rem",
+                    flexWrap: "wrap",
+                    marginTop: "1rem",
+                  }}
+                >
+                  {insight.tags.map((tag) => (
+                    <span key={tag} className="tag">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <p style={{ marginTop: "1rem", fontSize: "0.9rem" }}>
+                  {insight.readingTime} · {insight.publishedAt}
+                </p>
+                <Link
+                  className="text-link"
+                  href={`/insights/${insight.slug}`}
+                >
+                  Read insight <ArrowUpRight size={16} />
+                </Link>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
     </main>
   );
