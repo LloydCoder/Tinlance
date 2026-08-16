@@ -5,7 +5,7 @@ on:
     branches: [feat/phase-7-admin-portal]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -36,19 +36,14 @@ jobs:
             apps/web/components/admin-shell.tsx \
             apps/web/components/admin-resource-page.tsx \
             README.md
-      - uses: actions/upload-artifact@v4
-        with:
-          name: phase-7-prettier
-          path: |
-            apps/web/app/admin/page.tsx
-            apps/web/app/admin/layout.tsx
-            apps/web/app/admin/admin.css
-            apps/web/app/admin/leads/page.tsx
-            apps/web/app/admin/clients/page.tsx
-            apps/web/app/admin/projects/page.tsx
-            apps/web/app/admin/billing/page.tsx
-            apps/web/app/admin/content/page.tsx
-            apps/web/app/admin/controls/page.tsx
-            apps/web/components/admin-shell.tsx
-            apps/web/components/admin-resource-page.tsx
-            README.md
+      - name: Commit formatted files
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/app/admin apps/web/components/admin-shell.tsx apps/web/components/admin-resource-page.tsx README.md
+          git commit -m "style: format Phase 7 admin portal"
+          git push
