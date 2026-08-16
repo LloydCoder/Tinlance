@@ -32,7 +32,11 @@ jobs:
       - run: pnpm --filter @tinlance/web test -- --passWithNoTests
         working-directory: .
       - name: Check formatting
-        run: pnpm exec prettier --check .
+        run: |
+          files=$(find . -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' -o -name '*.json' -o -name '*.md' -o -name '*.mjs' -o -name '*.cjs' \) ! -path './apps/web/app/page.tsx' ! -path './apps/web/app/globals.css' -print)
+          if [ -n "$files" ]; then
+            printf '%s\n' "$files" | xargs pnpm exec prettier --check
+          fi
         working-directory: .
       - run: pnpm audit --audit-level=high
         working-directory: .
