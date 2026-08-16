@@ -28,17 +28,21 @@ Completed. Indexable insight detail pages, content sitemap coverage, resource/le
 
 ## Phase 6 — Client Portal & Identity
 
+Completed. Clerk authentication, protected portal/admin routes, sign-in/sign-up surfaces, organization-aware authorization context, and privileged-role enforcement established.
+
+## Phase 7 — Billing, CRM & Operations
+
 Current phase.
 
 ### Scope
 
-- Clerk authentication provider and protected route middleware.
-- Sign-in and sign-up entry points.
-- Authenticated client portal boundary.
-- Organization-aware authorization context.
-- Explicit privileged-role enforcement for administration.
-- No billing, CRM, or FDE execution coupling before their dedicated phases.
-- README and architecture documentation updated for the current phase.
+- Typed business contracts for leads, assessments, invoices, and payment intents.
+- Provider adapter boundaries for payments, CRM, and invoicing.
+- Constant-time Paystack webhook signature verification.
+- Validated assessment-booking API boundary with request correlation.
+- Signed billing webhook boundary with safe error responses.
+- Lead lifecycle contract for CRM workflows.
+- README and phase documentation updated for the current phase.
 
 ### Exit criteria
 
@@ -46,19 +50,15 @@ Current phase.
 - Lint passes.
 - Tests pass.
 - Production build passes.
-- Authentication boundary is implemented without exposing secrets.
-- Portal and admin routes are protected.
-- Role authorization is explicit and deny-by-default.
+- Payment webhook verification is authenticated and timing-safe.
+- External provider integrations remain behind explicit adapter contracts.
+- Operational API inputs are schema-validated and do not leak sensitive details.
 - README reflects the current phase.
 - PR is green and merged to `main`.
 
-## Phase 7 — Billing, CRM & Operations
-
-Not started. Begins only after Phase 6 is complete.
-
 ## Phase 8 — FDE Mastery Integration
 
-Not started.
+Not started. Begins only after Phase 7 is complete.
 
 ## Phase 9 — Enterprise Hardening & Launch
 
