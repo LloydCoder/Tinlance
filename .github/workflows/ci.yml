@@ -43,7 +43,7 @@ jobs:
           changed=$(git diff --name-only --diff-filter=ACMR "$base" "$head" -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.css' '*.md' '*.mjs' '*.cjs')
           if [ -n "$changed" ]; then
             while IFS= read -r file; do
-              pnpm exec prettier --write "$file"
+              pnpm exec prettier --write "$GITHUB_WORKSPACE/$file"
             done <<< "$changed"
             if ! git diff --quiet; then
               git config user.name "github-actions[bot]"
