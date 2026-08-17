@@ -51,7 +51,8 @@ export default async function ProjectsPage() {
                   Next<strong>{project.nextDecision ?? "—"}</strong>
                 </span>
                 <span>
-                  Target<strong>{project.dueAt?.toLocaleDateString() ?? "—"}</strong>
+                  Target
+                  <strong>{project.dueAt?.toLocaleDateString() ?? "—"}</strong>
                 </span>
               </div>
               <div
