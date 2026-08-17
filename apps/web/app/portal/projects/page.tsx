@@ -26,9 +26,7 @@ export default async function ProjectsPage() {
         <div>
           <p className="kicker">DELIVERY / PROJECTS</p>
           <h1>Your projects.</h1>
-          <p>
-            Milestones, current state, and the next decision in one place.
-          </p>
+          <p>Milestones, current state, and the next decision in one place.</p>
         </div>
       </div>
       <div className="portal-project-list portal-project-list-large">
