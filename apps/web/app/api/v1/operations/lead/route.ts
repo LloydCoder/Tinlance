@@ -112,7 +112,7 @@ export async function POST(request: Request) {
             country: parsed.data.country,
             service: parsed.data.service,
             notes: parsed.data.notes,
-            status: parsed.data.status,
+            status: "new",
             source: "website",
             idempotencyKey,
           },
