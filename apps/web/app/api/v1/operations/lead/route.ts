@@ -92,17 +92,16 @@ export async function POST(request: Request) {
       );
     }
 
-    let lead: { id: string };
-    let duplicate = false;
+    let result: { id: string; duplicate: boolean };
 
     try {
-      lead = await db.$transaction(async (tx) => {
+      result = await db.$transaction(async (tx) => {
         if (idempotencyKey) {
           const existing = await tx.lead.findUnique({
             where: { idempotencyKey },
             select: { id: true },
           });
-          if (existing) return existing;
+          if (existing) return { id: existing.id, duplicate: true };
         }
 
         const created = await tx.lead.create({
@@ -130,16 +129,8 @@ export async function POST(request: Request) {
           },
         });
 
-        return created;
+        return { id: created.id, duplicate: false };
       });
-
-      if (idempotencyKey) {
-        const existing = await db.lead.findUnique({
-          where: { idempotencyKey },
-          select: { id: true },
-        });
-        duplicate = existing?.id === lead.id && existing.idempotencyKey === idempotencyKey;
-      }
     } catch (error) {
       if (
         idempotencyKey &&
@@ -148,11 +139,10 @@ export async function POST(request: Request) {
       ) {
         const existing = await db.lead.findUnique({
           where: { idempotencyKey },
-          select: { id: true, idempotencyKey: true },
+          select: { id: true },
         });
         if (!existing) throw error;
-        lead = { id: existing.id };
-        duplicate = true;
+        result = { id: existing.id, duplicate: true };
       } else {
         throw error;
       }
@@ -162,9 +152,9 @@ export async function POST(request: Request) {
       {
         status: "accepted",
         requestId,
-        leadId: lead.id,
+        leadId: result.id,
         nextStep: "lead_review",
-        duplicate,
+        duplicate: result.duplicate,
       },
       {
         status: 202,
