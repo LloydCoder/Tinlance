@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifyPaystackSignature } from "@/lib/operations/paystack";
 import { getRequestId } from "@/lib/security/request-id";
+import { validateProductionEnv } from "@/lib/security/env";
 
 const MAX_BODY_BYTES = 65_536;
 
@@ -30,6 +31,15 @@ export async function POST(request: Request) {
     "cache-control": "no-store",
     "x-request-id": requestId,
   } as const;
+
+  try {
+    validateProductionEnv({ billing: true });
+  } catch {
+    return NextResponse.json(
+      { error: "billing_not_configured", requestId },
+      { status: 503, headers: jsonHeaders },
+    );
+  }
 
   const payload = await request.text();
   if (new TextEncoder().encode(payload).byteLength > MAX_BODY_BYTES) {
@@ -78,8 +88,6 @@ export async function POST(request: Request) {
 
   try {
     await db.$transaction(async (tx) => {
-      // The unique provider/eventId constraint makes delivery idempotent while
-      // keeping event recording and invoice application atomic.
       await tx.webhookEvent.create({
         data: { provider: "paystack", eventId, eventType },
       });
@@ -132,7 +140,10 @@ export async function POST(request: Request) {
       });
     });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
       return NextResponse.json(
         { received: true, duplicate: true, requestId },
         { headers: jsonHeaders },
