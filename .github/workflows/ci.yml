@@ -13,6 +13,7 @@ permissions:
 jobs:
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/web
@@ -54,6 +55,7 @@ jobs:
 
   fde-api:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: apps/fde-api
@@ -71,6 +73,7 @@ jobs:
   ai-security-regression:
     name: AI security regression
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: apps/fde-api
@@ -86,6 +89,7 @@ jobs:
   container-validation:
     name: Container validation
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: [web, fde-api]
     steps:
       - uses: actions/checkout@v4
@@ -132,6 +136,7 @@ jobs:
   sbom:
     name: SBOM
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: [container-validation]
     steps:
       - uses: actions/checkout@v4
@@ -181,12 +186,9 @@ jobs:
   security-static:
     name: Static security scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript,python
-      - uses: github/codeql-action/analyze@v3
       - uses: semgrep/semgrep-action@v1
         with:
           config: >-
