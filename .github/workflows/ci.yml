@@ -44,19 +44,12 @@ jobs:
           fi
 
           mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "$base" "$head" | grep -E '\.(js|jsx|ts|tsx|json|css|md|mjs|cjs)$' || true)
-          if [ "${#changed[@]}" -eq 0 ]; then
-            echo "No supported changed files to format-check."
-            exit 0
-          fi
-
-          failed=0
           for file in "${changed[@]}"; do
-            if ! pnpm exec prettier --check --ignore-unknown "$file"; then
-              echo "::error file=$file::Prettier check failed"
-              failed=1
-            fi
+            pnpm exec prettier --write --ignore-unknown "$file"
           done
-          exit "$failed"
+          git diff -- .
+          echo "Formatter diagnostic run intentionally fails; generated diff above."
+          exit 1
         working-directory: .
       - run: pnpm audit --audit-level=high
         working-directory: .
