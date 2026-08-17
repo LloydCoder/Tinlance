@@ -18,7 +18,7 @@ export default async function PortalPage() {
 
   const user = await currentUser();
   const name = user?.firstName ?? user?.emailAddresses[0]?.emailAddress ?? "Client";
-  const organization = orgId ? await ensureOrganization(orgId, user?.organizationMemberships?.[0]?.organization.name ?? "Tinlance Client") : null;
+  const organization = orgId ? await ensureOrganization(orgId) : null;
 
   const [projects, unreadMessages, openInvoices] = organization
     ? await Promise.all([
@@ -38,9 +38,7 @@ export default async function PortalPage() {
     <PortalShell active="overview">
       <div className="portal-page-head">
         <div>
-          <p className="kicker">
-            CLIENT WORKSPACE / {orgId ? "ORGANIZATION" : "PERSONAL"}
-          </p>
+          <p className="kicker">CLIENT WORKSPACE / {orgId ? "ORGANIZATION" : "PERSONAL"}</p>
           <h1>Good to see you, {name}.</h1>
           <p>One secure workspace for delivery, decisions, files, and communication with Tinlance.</p>
         </div>
