@@ -9,9 +9,8 @@ const vercelOrigin = process.env.VERCEL_URL
 const baseURL =
   process.env.BETTER_AUTH_URL ??
   (vercelOrigin || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
-const bootstrapAdminEmail = process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL
-  ?.trim()
-  .toLowerCase();
+const bootstrapAdminEmail =
+  process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
 
 // Temporary cutover bridge: the existing high-entropy Clerk secret can sign
 // Better Auth sessions until BETTER_AUTH_SECRET is provisioned. No Clerk SDK
