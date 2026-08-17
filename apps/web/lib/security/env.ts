@@ -44,7 +44,9 @@ export function validateProductionEnv(options?: { billing?: boolean }) {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
   };
 
-  if (options?.billing) required.PAYSTACK_SECRET_KEY = env.PAYSTACK_SECRET_KEY;
+  if (options?.billing) {
+    required.PAYSTACK_SECRET_KEY = env.PAYSTACK_SECRET_KEY;
+  }
 
   const missing = Object.entries(required)
     .filter(([, value]) => !value)
