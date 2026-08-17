@@ -54,7 +54,10 @@ export default async function ProjectsPage() {
                   Target<strong>{project.dueAt?.toLocaleDateString() ?? "—"}</strong>
                 </span>
               </div>
-              <div className="portal-progress" aria-label={`${project.progress}% complete`}>
+              <div
+                className="portal-progress"
+                aria-label={`${project.progress}% complete`}
+              >
                 <div style={{ width: `${project.progress}%` }} />
               </div>
               <div className="portal-project-footer">
