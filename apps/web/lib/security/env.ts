@@ -25,7 +25,10 @@ export const env = baseEnvSchema.parse({
   PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
 });
 
-function isProductionClerkKey(value: string | undefined, prefix: "pk_live_" | "sk_live_") {
+function isProductionClerkKey(
+  value: string | undefined,
+  prefix: "pk_live_" | "sk_live_",
+) {
   return typeof value === "string" && value.startsWith(prefix);
 }
 
@@ -53,8 +56,15 @@ export function validateProductionEnv(options?: { billing?: boolean }) {
     );
   }
 
-  if (!isProductionClerkKey(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, "pk_live_")) {
-    throw new Error("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be a production pk_live_ key");
+  if (
+    !isProductionClerkKey(
+      env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+      "pk_live_",
+    )
+  ) {
+    throw new Error(
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be a production pk_live_ key",
+    );
   }
 
   if (!isProductionClerkKey(env.CLERK_SECRET_KEY, "sk_live_")) {
