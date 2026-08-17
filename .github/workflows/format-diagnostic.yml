@@ -22,16 +22,19 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --frozen-lockfile=false
-      - name: Format changed files and capture patch
+      - name: Format target files and capture canonical source
         run: |
-          git fetch origin main --depth=1
-          base="$(git merge-base HEAD origin/main)"
-          mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "$base" HEAD | grep -E '\.(js|jsx|ts|tsx|json|css|md|mjs|cjs)$' || true)
-          for file in "${changed[@]}"; do
+          files=(
+            apps/web/app/portal/documents/page.tsx
+            apps/web/app/portal/projects/page.tsx
+            apps/web/lib/auth.ts
+            apps/web/lib/auth/authorization.ts
+          )
+          for file in "${files[@]}"; do
             pnpm exec prettier --write --ignore-unknown "$file"
           done
           mkdir -p /tmp/formatted
-          for file in "${changed[@]}"; do
+          for file in "${files[@]}"; do
             mkdir -p "/tmp/formatted/$(dirname "$file")"
             cp "$file" "/tmp/formatted/$file"
           done
