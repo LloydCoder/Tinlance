@@ -2,7 +2,12 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-export type TinlanceRole = "super-admin" | "admin" | "client-admin" | "member" | "viewer";
+export type TinlanceRole =
+  | "super-admin"
+  | "admin"
+  | "client-admin"
+  | "member"
+  | "viewer";
 
 const privilegedRoles = new Set<TinlanceRole>(["super-admin", "admin"]);
 const allowedRoles = new Set<TinlanceRole>([
