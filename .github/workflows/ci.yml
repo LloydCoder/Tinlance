@@ -34,25 +34,6 @@ jobs:
       - run: pnpm lint
       - run: pnpm --filter @tinlance/web test -- --passWithNoTests
         working-directory: .
-      - name: Temporary formatter patch diagnostic
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base="${{ github.event.pull_request.base.sha }}"
-            head="${{ github.event.pull_request.head.sha }}"
-          else
-            base="${{ github.event.before }}"
-            head="${{ github.sha }}"
-          fi
-          mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "$base" "$head" | grep -E '\.(js|jsx|ts|tsx|json|css|md|mjs|cjs)$' || true)
-          for file in "${changed[@]}"; do
-            pnpm exec prettier --write --ignore-unknown "$file"
-          done
-          git diff --no-ext-diff > /tmp/prettier-format.patch
-      - uses: actions/upload-artifact@v4
-        with:
-          name: temporary-prettier-patch
-          path: /tmp/prettier-format.patch
-          if-no-files-found: error
       - name: Check formatting for changed source and documentation files
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
