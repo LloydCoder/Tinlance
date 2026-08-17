@@ -30,9 +30,14 @@ jobs:
           for file in "${changed[@]}"; do
             pnpm exec prettier --write --ignore-unknown "$file"
           done
-          git diff --no-ext-diff > /tmp/prettier-format.patch
+          mkdir -p /tmp/formatted
+          for file in "${changed[@]}"; do
+            mkdir -p "/tmp/formatted/$(dirname "$file")"
+            cp "$file" "/tmp/formatted/$file"
+          done
+          tar -czf /tmp/formatted-source.tar.gz -C /tmp/formatted .
       - uses: actions/upload-artifact@v4
         with:
-          name: post-merge-prettier-patch
-          path: /tmp/prettier-format.patch
+          name: post-merge-formatted-source
+          path: /tmp/formatted-source.tar.gz
           if-no-files-found: error
