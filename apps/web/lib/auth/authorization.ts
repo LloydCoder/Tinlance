@@ -3,11 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export type TinlanceRole =
-  | "super-admin"
-  | "admin"
-  | "client-admin"
-  | "member"
-  | "viewer";
+  "super-admin" | "admin" | "client-admin" | "member" | "viewer";
 
 const privilegedRoles = new Set<TinlanceRole>(["super-admin", "admin"]);
 const allowedRoles = new Set<TinlanceRole>([
@@ -32,9 +28,8 @@ export async function getAuthorizationContext() {
     } as const;
   }
 
-  const rawRole = (
-    session.user as typeof session.user & { role?: unknown }
-  ).role;
+  const rawRole = (session.user as typeof session.user & { role?: unknown })
+    .role;
   const role: TinlanceRole | null =
     typeof rawRole === "string" && allowedRoles.has(rawRole as TinlanceRole)
       ? (rawRole as TinlanceRole)
