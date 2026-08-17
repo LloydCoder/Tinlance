@@ -12,7 +12,9 @@ COPY apps/fde-api/pyproject.toml ./
 COPY apps/fde-api/app ./app
 RUN pip install --upgrade pip \
     && pip install . \
-    && pip install --upgrade "setuptools>=78.1.1" "msgpack>=1.2.1" \
+    && pip uninstall -y setuptools msgpack \
+    && pip install --no-cache-dir --force-reinstall "setuptools>=78.1.1" "msgpack>=1.2.1" \
+    && python -m pip check \
     && rm -rf /root/.cache/pip
 USER app
 EXPOSE 8000
