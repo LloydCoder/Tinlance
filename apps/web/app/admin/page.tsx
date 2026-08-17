@@ -17,20 +17,42 @@ export default async function AdminPage() {
   if (!context.isAuthenticated) redirect("/sign-in");
   if (!context.isPrivileged) redirect("/portal");
 
-  const [openLeads, activeClients, activeProjects, outstandingInvoices, recentLeads] =
-    await Promise.all([
-      db.lead.count({ where: { status: { not: "lost" } } }),
-      db.organization.count(),
-      db.project.count({ where: { status: { not: "completed" } } }),
-      db.invoice.count({ where: { status: { in: ["draft", "sent", "overdue"] } } }),
-      db.lead.findMany({ orderBy: { createdAt: "desc" }, take: 3 }),
-    ]);
+  const [
+    openLeads,
+    activeClients,
+    activeProjects,
+    outstandingInvoices,
+    recentLeads,
+  ] = await Promise.all([
+    db.lead.count({ where: { status: { not: "lost" } } }),
+    db.organization.count(),
+    db.project.count({ where: { status: { not: "completed" } } }),
+    db.invoice.count({
+      where: { status: { in: ["draft", "sent", "overdue"] } },
+    }),
+    db.lead.findMany({ orderBy: { createdAt: "desc" }, take: 3 }),
+  ]);
 
   const metrics = [
     ["Open leads", String(openLeads), "Persisted website leads", Users],
-    ["Active clients", String(activeClients), "Organizations in the platform", BriefcaseBusiness],
-    ["Projects in delivery", String(activeProjects), "Database-backed delivery records", ShieldCheck],
-    ["Open invoices", String(outstandingInvoices), "Billing records requiring action", CreditCard],
+    [
+      "Active clients",
+      String(activeClients),
+      "Organizations in the platform",
+      BriefcaseBusiness,
+    ],
+    [
+      "Projects in delivery",
+      String(activeProjects),
+      "Database-backed delivery records",
+      ShieldCheck,
+    ],
+    [
+      "Open invoices",
+      String(outstandingInvoices),
+      "Billing records requiring action",
+      CreditCard,
+    ],
   ] as const;
 
   return (
@@ -40,7 +62,8 @@ export default async function AdminPage() {
           <p className="kicker">TINLANCE / CONTROL CENTER</p>
           <h1>Operate the business.</h1>
           <p>
-            Privileged workspace for leads, clients, delivery, billing, content, and platform controls.
+            Privileged workspace for leads, clients, delivery, billing, content,
+            and platform controls.
           </p>
         </div>
         <span className="admin-role-badge">
@@ -48,7 +71,10 @@ export default async function AdminPage() {
         </span>
       </div>
 
-      <div className="admin-metric-grid" aria-label="Business operations summary">
+      <div
+        className="admin-metric-grid"
+        aria-label="Business operations summary"
+      >
         {metrics.map(([label, value, detail, Icon]) => (
           <article className="admin-metric" key={label}>
             <Icon size={19} aria-hidden="true" />
@@ -74,7 +100,10 @@ export default async function AdminPage() {
             <article>
               <div>
                 <strong>No leads captured yet.</strong>
-                <p>New website submissions will appear here after persistence is configured.</p>
+                <p>
+                  New website submissions will appear here after persistence is
+                  configured.
+                </p>
               </div>
             </article>
           ) : (
@@ -84,7 +113,8 @@ export default async function AdminPage() {
                 <div>
                   <strong>{lead.organizationName}</strong>
                   <p>
-                    {lead.service} · {lead.status} · {lead.createdAt.toLocaleString()}
+                    {lead.service} · {lead.status} · {" "}
+                    {lead.createdAt.toLocaleString()}
                   </p>
                 </div>
                 <Link
@@ -105,7 +135,8 @@ export default async function AdminPage() {
           <p className="kicker">CONTENT</p>
           <h2>Publishing queue</h2>
           <p>
-            Research and case-study content can be reviewed before publication without touching production content directly.
+            Research and case-study content can be reviewed before publication
+            without touching production content directly.
           </p>
           <Link href="/admin/content" className="text-link">
             Open content <ArrowUpRight size={16} aria-hidden="true" />
@@ -116,7 +147,8 @@ export default async function AdminPage() {
           <p className="kicker kicker-dark">SECURITY</p>
           <h2>Privileged by default.</h2>
           <p>
-            Administrative routes require the existing server-side Tinlance role boundary. Client-side navigation never grants access.
+            Administrative routes require the existing server-side Tinlance role
+            boundary. Client-side navigation never grants access.
           </p>
           <Link href="/admin/controls" className="text-link">
             Review controls <ArrowUpRight size={16} aria-hidden="true" />
