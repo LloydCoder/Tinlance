@@ -14,7 +14,7 @@ RUN rm -rf /usr/local/lib/python3.12/site-packages/setuptools* \
            /usr/local/lib/python3.12/site-packages/msgpack* \
     && pip install --upgrade pip \
     && pip install . \
-    && pip install --no-cache-dir --force-reinstall "setuptools>=78.1.1" "msgpack>=1.2.1" \
+    && pip uninstall -y setuptools msgpack || true \
     && python -m pip check \
     && rm -rf /root/.cache/pip
 USER app
