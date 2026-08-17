@@ -13,7 +13,9 @@ export async function POST(request: Request) {
 
   try {
     validateProductionEnv();
-    const limit = await enforcePublicRateLimit(`booking:${getClientIp(request)}`);
+    const limit = await enforcePublicRateLimit(
+      `booking:${getClientIp(request)}`,
+    );
     if (!limit.allowed) {
       return NextResponse.json(
         { error: "rate_limited", requestId },
