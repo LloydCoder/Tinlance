@@ -203,16 +203,20 @@ jobs:
 
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
+      - name: Review pull request dependencies
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+      - name: Dependency review not applicable to push
+        if: github.event_name != 'pull_request'
+        run: echo "Dependency review is PR-only; package audits run in the application gates."
 
   enterprise-gate:
     name: Enterprise CI gate
