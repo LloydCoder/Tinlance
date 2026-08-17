@@ -104,7 +104,12 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(
-      { status: "accepted", requestId, leadId: lead.id, nextStep: "lead_review" },
+      {
+        status: "accepted",
+        requestId,
+        leadId: lead.id,
+        nextStep: "lead_review",
+      },
       {
         status: 202,
         headers: {
