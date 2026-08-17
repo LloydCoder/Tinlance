@@ -33,15 +33,18 @@ export async function POST(request: Request) {
     if (new TextEncoder().encode(bodyText).byteLength > MAX_BODY_BYTES) {
       return NextResponse.json(
         { error: "payload_too_large", requestId },
-        { status: 413, headers: { "cache-control": "no-store", "x-request-id": requestId } },
+        {
+          status: 413,
+          headers: { "cache-control": "no-store", "x-request-id": requestId },
+        },
       );
     }
 
-    const body = await (() => {
+    const body = (() => {
       try {
-        return Promise.resolve(JSON.parse(bodyText) as Record<string, unknown>);
+        return JSON.parse(bodyText) as Record<string, unknown>;
       } catch {
-        return Promise.resolve(null);
+        return null;
       }
     })();
 
@@ -49,7 +52,10 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: "invalid_request", requestId },
-        { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } },
+        {
+          status: 400,
+          headers: { "cache-control": "no-store", "x-request-id": requestId },
+        },
       );
     }
 
@@ -96,7 +102,10 @@ export async function POST(request: Request) {
     console.error("booking_submission_failed", { requestId, error });
     return NextResponse.json(
       { error: "service_unavailable", requestId },
-      { status: 503, headers: { "cache-control": "no-store", "x-request-id": requestId } },
+      {
+        status: 503,
+        headers: { "cache-control": "no-store", "x-request-id": requestId },
+      },
     );
   }
 }
