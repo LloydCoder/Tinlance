@@ -17,7 +17,7 @@ model Organization {
   leads       Lead[]
   bookings    Booking[]
   projects    Project[]
-  documents   Document[]
+  documents  Document[]
   messages    Message[]
   invoices    Invoice[]
 }
@@ -111,12 +111,10 @@ model Message {
   organizationId String
   authorUserId   String
   body           String
-  readAt         DateTime?
   createdAt      DateTime     @default(now())
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, createdAt])
-  @@index([organizationId, readAt])
 }
 
 model Invoice {
