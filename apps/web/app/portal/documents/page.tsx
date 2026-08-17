@@ -1,25 +1,21 @@
-import { Download, FileText, LockKeyhole } from "lucide-react";
+import { FileText, LockKeyhole } from "lucide-react";
+import { auth } from "@clerk/nextjs/server";
 import { PortalShell } from "../../../components/portal-shell";
+import { requireOrganization } from "../../../lib/tenant";
+import { db } from "../../../lib/db";
 
-const documents = [
-  {
-    name: "Security assessment report",
-    meta: "PDF · Restricted · Aug 15",
-    state: "Ready",
-  },
-  {
-    name: "Project statement of work",
-    meta: "PDF · Contract · Aug 08",
-    state: "Ready",
-  },
-  {
-    name: "Architecture decision record",
-    meta: "PDF · Technical · Aug 12",
-    state: "Ready",
-  },
-];
+export default async function DocumentsPage() {
+  const { userId, orgId } = await auth();
+  if (!userId) return null;
+  const organization = await requireOrganization(orgId);
+  const documents = organization
+    ? await db.document.findMany({
+        where: { organizationId: organization.id },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      })
+    : [];
 
-export default function DocumentsPage() {
   return (
     <PortalShell active="documents">
       <div className="portal-page-head">
@@ -38,27 +34,33 @@ export default function DocumentsPage() {
             <LockKeyhole size={16} aria-hidden="true" />
             Tenant-scoped
           </span>
-          <span>3 documents</span>
+          <span>{documents.length} documents</span>
         </div>
-        {documents.map((doc) => (
-          <article className="portal-doc" key={doc.name}>
-            <div className="portal-doc-icon">
-              <FileText size={19} aria-hidden="true" />
-            </div>
-            <div>
-              <h2>{doc.name}</h2>
-              <p>{doc.meta}</p>
-            </div>
-            <span className="portal-doc-state">{doc.state}</span>
-            <button
-              type="button"
-              aria-label={`Download ${doc.name}`}
-              className="icon-button"
-            >
-              <Download size={17} aria-hidden="true" />
-            </button>
-          </article>
-        ))}
+        {documents.length === 0 ? (
+          <div className="portal-panel">
+            <p className="kicker">NO DOCUMENTS</p>
+            <h2>Your document workspace is ready.</h2>
+            <p>
+              Files will appear here after they are uploaded and assigned to
+              this organization.
+            </p>
+          </div>
+        ) : (
+          documents.map((document) => (
+            <article className="portal-doc" key={document.id}>
+              <div className="portal-doc-icon">
+                <FileText size={19} aria-hidden="true" />
+              </div>
+              <div>
+                <h2>{document.name}</h2>
+                <p>
+                  {document.contentType} · {document.createdAt.toLocaleDateString()}
+                </p>
+              </div>
+              <span className="portal-doc-state">Available</span>
+            </article>
+          ))
+        )}
       </section>
     </PortalShell>
   );
