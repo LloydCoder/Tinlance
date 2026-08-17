@@ -1,0 +1,5 @@
+# Verified false positives from the python:3.12-slim base image's stale Python package SBOM.
+# The FDE runtime explicitly removes setuptools/msgpack and `pip check` passes;
+# container validation therefore treats these base-layer findings as non-exploitable.
+GHSA-6v7p-g79w-8964
+CVE-2025-47273
