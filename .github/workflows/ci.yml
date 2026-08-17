@@ -18,13 +18,13 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.14.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: pnpm install --frozen-lockfile=false
@@ -42,12 +42,21 @@ jobs:
             base="${{ github.event.before }}"
             head="${{ github.sha }}"
           fi
-          changed=$(git diff --name-only --diff-filter=ACMR "$base" "$head" -- '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.css' '*.md' '*.mjs' '*.cjs')
-          if [ -z "$changed" ]; then
+
+          mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "$base" "$head" | grep -E '\.(js|jsx|ts|tsx|json|css|md|mjs|cjs)$' || true)
+          if [ "${#changed[@]}" -eq 0 ]; then
             echo "No supported changed files to format-check."
-          else
-            printf '%s\n' "$changed" | xargs pnpm exec prettier --check
+            exit 0
           fi
+
+          failed=0
+          for file in "${changed[@]}"; do
+            if ! pnpm exec prettier --check --ignore-unknown "$file"; then
+              echo "::error file=$file::Prettier check failed"
+              failed=1
+            fi
+          done
+          exit "$failed"
         working-directory: .
       - run: pnpm audit --audit-level=high
         working-directory: .
@@ -60,7 +69,7 @@ jobs:
       run:
         working-directory: apps/fde-api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -83,7 +92,7 @@ jobs:
       run:
         working-directory: apps/fde-api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -97,7 +106,7 @@ jobs:
     timeout-minutes: 25
     needs: [web, fde-api]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v3
       - name: Build web image
         uses: docker/build-push-action@v6
@@ -146,7 +155,7 @@ jobs:
     timeout-minutes: 25
     needs: [container-validation]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v3
       - name: Build web image for SBOM
         uses: docker/build-push-action@v6
@@ -196,7 +205,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: semgrep/semgrep-action@v1
         with:
           config: >-
@@ -211,7 +220,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Review pull request dependencies
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v4
