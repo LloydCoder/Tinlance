@@ -35,19 +35,19 @@ model OrganizationMember {
 }
 
 model Lead {
-  id             String        @id @default(cuid())
-  organizationId String?
+  id               String        @id @default(cuid())
+  organizationId   String?
   organizationName String
-  contactName    String
-  email          String
-  country        String
-  service        String
-  notes          String?
-  status         String        @default("new")
-  source         String        @default("website")
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  contactName      String
+  email            String
+  country          String
+  service          String
+  notes            String?
+  status           String        @default("new")
+  source           String        @default("website")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, status])
   @@index([email])
@@ -55,19 +55,19 @@ model Lead {
 }
 
 model Booking {
-  id             String        @id @default(cuid())
-  organizationId String?
+  id               String        @id @default(cuid())
+  organizationId   String?
   organizationName String
-  contactName    String
-  email          String
-  startsAt       DateTime
-  timezone       String
-  notes          String?
-  status         String        @default("requested")
-  source         String        @default("website")
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  contactName      String
+  email            String
+  startsAt         DateTime
+  timezone         String
+  notes            String?
+  status           String        @default("requested")
+  source           String        @default("website")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, status])
   @@index([startsAt])
@@ -78,7 +78,11 @@ model Project {
   id             String       @id @default(cuid())
   organizationId String
   name           String
+  type           String?
   status         String       @default("active")
+  progress       Int          @default(0)
+  nextDecision   String?
+  dueAt          DateTime?
   description    String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
