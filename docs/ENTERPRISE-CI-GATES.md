@@ -14,3 +14,5 @@ Tinlance CI verifies the application and FDE gateway as production artifacts, no
 - Static security analysis with Semgrep using OWASP Top 10, JavaScript, and Python rules.
 
 The CI gates are intended to provide repeatable evidence for enterprise security review. They do not replace production infrastructure validation, secrets management, runtime monitoring, disaster recovery testing, or external compliance certification.
+
+Container images are built from the same commit that passed application tests, so the enterprise gate validates the deployable artifact rather than a separate source-only build.
