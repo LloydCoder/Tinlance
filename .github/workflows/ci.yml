@@ -106,7 +106,7 @@ jobs:
           file: apps/web/Dockerfile
           tags: tinlance-web:ci
           load: true
-          provenance: true
+          provenance: false
       - name: Build FDE API image
         uses: docker/build-push-action@v6
         with:
@@ -114,7 +114,7 @@ jobs:
           file: apps/fde-api/Dockerfile
           tags: tinlance-fde-api:ci
           load: true
-          provenance: true
+          provenance: false
       - name: Validate image hardening
         run: |
           test "$(docker inspect -f '{{.Config.User}}' tinlance-web:ci)" = "nextjs"
