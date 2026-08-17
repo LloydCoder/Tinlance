@@ -130,6 +130,17 @@ model Invoice {
   @@index([organizationId, status])
 }
 
+model WebhookEvent {
+  id         String   @id @default(cuid())
+  provider   String
+  eventId    String
+  eventType  String
+  receivedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([provider, receivedAt])
+}
+
 model AuditEvent {
   id             String   @id @default(cuid())
   organizationId String?
