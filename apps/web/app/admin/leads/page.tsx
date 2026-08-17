@@ -1,39 +1,27 @@
 import { AdminResourcePage } from "../../../components/admin-resource-page";
+import { db } from "../../../lib/db";
+import { getAuthorizationContext } from "../../../lib/auth/authorization";
+import { redirect } from "next/navigation";
 
-const rows = [
-  {
-    name: "Fintech infrastructure team",
-    detail: "Enterprise assessment",
-    status: "New",
-    meta: "42m ago",
-  },
-  {
-    name: "Health automation startup",
-    detail: "AI engineering",
-    status: "Qualified",
-    meta: "Today",
-  },
-  {
-    name: "US software agency",
-    detail: "FDE engagement",
-    status: "Discovery",
-    meta: "Yesterday",
-  },
-  {
-    name: "European security team",
-    detail: "Threat assessment",
-    status: "Proposal",
-    meta: "Aug 14",
-  },
-];
+export default async function LeadsPage() {
+  const context = await getAuthorizationContext();
+  if (!context.isAuthenticated) redirect("/sign-in");
+  if (!context.isPrivileged) redirect("/portal");
 
-export default function LeadsPage() {
+  const leads = await db.lead.findMany({ orderBy: { createdAt: "desc" }, take: 50 });
+  const rows = leads.map((lead) => [
+    lead.organizationName,
+    lead.service,
+    lead.createdAt.toLocaleString(),
+    lead.status,
+  ]);
+
   return (
     <AdminResourcePage
       active="leads"
       kicker="PIPELINE / LEADS"
       title="Lead operations."
-      description="Review inbound demand and move qualified opportunities through the Tinlance sales process."
+      description="Review persisted inbound demand and move qualified opportunities through the Tinlance sales process."
       columns={["Lead", "Need", "Activity", "Status"]}
       rows={rows}
     />
