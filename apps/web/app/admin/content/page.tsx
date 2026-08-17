@@ -12,11 +12,12 @@ export default async function ContentPage() {
     <AdminShell active="content">
       <div className="admin-page-head">
         <div>
-          <p className="kicker">CONTENT / PUBLISHING</p>
-          <h1>Content operations.</h1>
+          <p className="kicker">CONTENT / GOVERNANCE</p>
+          <h1>Content governance.</h1>
           <p>
-            Review research, case studies, and SEO-critical content before it
-            reaches the public site.
+            Review the publication standards that protect research, case-study,
+            and SEO content. Editing and publishing remain repository-controlled
+            until a dedicated CMS workflow is connected.
           </p>
         </div>
       </div>
@@ -24,14 +25,18 @@ export default async function ContentPage() {
         <article className="admin-control">
           <FileText size={20} aria-hidden="true" />
           <h2>Research library</h2>
-          <p>Manage long-form technical research and evidence-led articles.</p>
+          <p>
+            Long-form technical research is versioned in the repository and
+            reviewed before it reaches the public site.
+          </p>
           <code>draft → review → approved → published</code>
         </article>
         <article className="admin-control">
           <PenLine size={20} aria-hidden="true" />
           <h2>Case studies</h2>
           <p>
-            Maintain proof, outcomes, project context, and publication status.
+            Proof, outcomes, project context, and publication state remain
+            reviewable before public release.
           </p>
           <code>private → internal → public</code>
         </article>
@@ -39,8 +44,8 @@ export default async function ContentPage() {
           <Search size={20} aria-hidden="true" />
           <h2>SEO health</h2>
           <p>
-            Keep metadata, canonical URLs, structured data, and internal links
-            reviewable.
+            Metadata, canonical URLs, structured data, sitemap, and internal
+            links are validated as application code.
           </p>
           <code>indexable → canonical → schema</code>
         </article>
@@ -48,8 +53,8 @@ export default async function ContentPage() {
           <ShieldCheck size={20} aria-hidden="true" />
           <h2>Publishing guardrail</h2>
           <p>
-            Privileged publishing stays separate from the public marketing
-            surface.
+            Public content changes remain separated from client and privileged
+            operational data and pass the repository's review gates.
           </p>
           <code>role: super-admin | admin</code>
         </article>
