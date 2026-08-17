@@ -17,13 +17,14 @@ export default async function AdminPage() {
   if (!context.isAuthenticated) redirect("/sign-in");
   if (!context.isPrivileged) redirect("/portal");
 
-  const [openLeads, activeClients, activeProjects, outstandingInvoices, recentLeads] = await Promise.all([
-    db.lead.count({ where: { status: { not: "lost" } } }),
-    db.organization.count(),
-    db.project.count({ where: { status: { not: "completed" } } }),
-    db.invoice.count({ where: { status: { in: ["draft", "sent", "overdue"] } } }),
-    db.lead.findMany({ orderBy: { createdAt: "desc" }, take: 3 }),
-  ]);
+  const [openLeads, activeClients, activeProjects, outstandingInvoices, recentLeads] =
+    await Promise.all([
+      db.lead.count({ where: { status: { not: "lost" } } }),
+      db.organization.count(),
+      db.project.count({ where: { status: { not: "completed" } } }),
+      db.invoice.count({ where: { status: { in: ["draft", "sent", "overdue"] } } }),
+      db.lead.findMany({ orderBy: { createdAt: "desc" }, take: 3 }),
+    ]);
 
   const metrics = [
     ["Open leads", String(openLeads), "Persisted website leads", Users],
@@ -38,7 +39,9 @@ export default async function AdminPage() {
         <div>
           <p className="kicker">TINLANCE / CONTROL CENTER</p>
           <h1>Operate the business.</h1>
-          <p>Privileged workspace for leads, clients, delivery, billing, content, and platform controls.</p>
+          <p>
+            Privileged workspace for leads, clients, delivery, billing, content, and platform controls.
+          </p>
         </div>
         <span className="admin-role-badge">
           <ShieldCheck size={15} aria-hidden="true" /> {context.role}
@@ -80,9 +83,14 @@ export default async function AdminPage() {
                 <span className="admin-dot admin-dot-accent" />
                 <div>
                   <strong>{lead.organizationName}</strong>
-                  <p>{lead.service} · {lead.status} · {lead.createdAt.toLocaleString()}</p>
+                  <p>
+                    {lead.service} · {lead.status} · {lead.createdAt.toLocaleString()}
+                  </p>
                 </div>
-                <Link href="/admin/leads" aria-label={`Review lead from ${lead.organizationName}`}>
+                <Link
+                  href="/admin/leads"
+                  aria-label={`Review lead from ${lead.organizationName}`}
+                >
                   <ArrowUpRight size={17} />
                 </Link>
               </article>
@@ -96,7 +104,9 @@ export default async function AdminPage() {
           <FileText size={20} aria-hidden="true" />
           <p className="kicker">CONTENT</p>
           <h2>Publishing queue</h2>
-          <p>Research and case-study content can be reviewed before publication without touching production content directly.</p>
+          <p>
+            Research and case-study content can be reviewed before publication without touching production content directly.
+          </p>
           <Link href="/admin/content" className="text-link">
             Open content <ArrowUpRight size={16} aria-hidden="true" />
           </Link>
@@ -105,7 +115,9 @@ export default async function AdminPage() {
           <ShieldCheck size={20} aria-hidden="true" />
           <p className="kicker kicker-dark">SECURITY</p>
           <h2>Privileged by default.</h2>
-          <p>Administrative routes require the existing server-side Tinlance role boundary. Client-side navigation never grants access.</p>
+          <p>
+            Administrative routes require the existing server-side Tinlance role boundary. Client-side navigation never grants access.
+          </p>
           <Link href="/admin/controls" className="text-link">
             Review controls <ArrowUpRight size={16} aria-hidden="true" />
           </Link>
