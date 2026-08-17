@@ -1,7 +1,7 @@
-import { AdminResourcePage } from "../../../components/admin-resource-page";
-import { db } from "../../../lib/db";
-import { getAuthorizationContext } from "../../../lib/auth/authorization";
 import { redirect } from "next/navigation";
+import { AdminResourcePage } from "../../../components/admin-resource-page";
+import { getAuthorizationContext } from "../../../lib/auth/authorization";
+import { db } from "../../../lib/db";
 
 export default async function ProjectsPage() {
   const context = await getAuthorizationContext();
@@ -9,17 +9,16 @@ export default async function ProjectsPage() {
   if (!context.isPrivileged) redirect("/portal");
 
   const projects = await db.project.findMany({
-    include: { organization: true },
     orderBy: { updatedAt: "desc" },
     take: 50,
   });
 
-  const rows = projects.map((project) => [
-    project.name,
-    project.type ?? "Engineering",
-    project.status,
-    `${project.progress}%`,
-  ]);
+  const rows = projects.map((project) => ({
+    name: project.name,
+    detail: project.type ?? "Engineering",
+    status: project.status,
+    meta: `${project.progress}%`,
+  }));
 
   return (
     <AdminResourcePage
