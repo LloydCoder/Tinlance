@@ -1,7 +1,7 @@
-import { AdminResourcePage } from "../../../components/admin-resource-page";
-import { db } from "../../../lib/db";
-import { getAuthorizationContext } from "../../../lib/auth/authorization";
 import { redirect } from "next/navigation";
+import { AdminResourcePage } from "../../../components/admin-resource-page";
+import { getAuthorizationContext } from "../../../lib/auth/authorization";
+import { db } from "../../../lib/db";
 
 export default async function LeadsPage() {
   const context = await getAuthorizationContext();
@@ -9,12 +9,12 @@ export default async function LeadsPage() {
   if (!context.isPrivileged) redirect("/portal");
 
   const leads = await db.lead.findMany({ orderBy: { createdAt: "desc" }, take: 50 });
-  const rows = leads.map((lead) => [
-    lead.organizationName,
-    lead.service,
-    lead.createdAt.toLocaleString(),
-    lead.status,
-  ]);
+  const rows = leads.map((lead) => ({
+    name: lead.organizationName,
+    detail: lead.service,
+    status: lead.status,
+    meta: lead.createdAt.toLocaleString(),
+  }));
 
   return (
     <AdminResourcePage
