@@ -37,8 +37,7 @@ export default async function SettingsPage() {
           <h2>Authentication</h2>
           <p>
             Sign-in, session management, MFA, and enterprise identity
-            connections are handled by the configured Clerk production
-            instance.
+            connections are handled by the configured Clerk production instance.
           </p>
         </section>
         <section className="portal-panel portal-panel-dark">

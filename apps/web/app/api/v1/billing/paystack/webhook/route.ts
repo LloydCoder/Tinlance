@@ -75,7 +75,8 @@ export async function POST(request: Request) {
 
   const eventType = body.event;
   const eventId = String(body.data.id ?? body.data.reference ?? "");
-  const reference = typeof body.data.reference === "string" ? body.data.reference : null;
+  const reference =
+    typeof body.data.reference === "string" ? body.data.reference : null;
 
   if (!eventId) {
     return NextResponse.json(
@@ -105,7 +106,9 @@ export async function POST(request: Request) {
         return;
       }
 
-      const invoice = await tx.invoice.findFirst({ where: { externalId: reference } });
+      const invoice = await tx.invoice.findFirst({
+        where: { externalId: reference },
+      });
       if (!invoice) {
         await tx.auditEvent.create({
           data: {

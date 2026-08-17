@@ -85,7 +85,10 @@ export async function POST(request: Request) {
     }
 
     const startsAt = new Date(parsed.data.startsAt);
-    if (!Number.isFinite(startsAt.getTime()) || startsAt.getTime() <= Date.now()) {
+    if (
+      !Number.isFinite(startsAt.getTime()) ||
+      startsAt.getTime() <= Date.now()
+    ) {
       return NextResponse.json(
         { error: "invalid_start_time", requestId },
         {

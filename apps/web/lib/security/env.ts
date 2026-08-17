@@ -59,10 +59,7 @@ export function validateProductionEnv(options?: { billing?: boolean }) {
   }
 
   if (
-    !isProductionClerkKey(
-      env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-      "pk_live_",
-    )
+    !isProductionClerkKey(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, "pk_live_")
   ) {
     throw new Error(
       "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be a production pk_live_ key",
