@@ -3,7 +3,10 @@ import { prismaAdapter } from "@better-auth/prisma-adapter";
 import { organization } from "better-auth/plugins";
 import { db } from "@/lib/db";
 
-const baseURL = process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const vercelOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
+const baseURL =
+  process.env.BETTER_AUTH_URL ??
+  (vercelOrigin || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
 const bootstrapAdminEmail = process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
 
 // Temporary cutover bridge: the existing high-entropy Clerk secret can sign
@@ -11,12 +14,13 @@ const bootstrapAdminEmail = process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL?.trim().t
 // or Clerk identity APIs are used. Remove the fallback after provisioning the
 // dedicated Better Auth secret in every deployment environment.
 const authSecret = process.env.BETTER_AUTH_SECRET ?? process.env.CLERK_SECRET_KEY;
+const trustedOrigins = [baseURL, vercelOrigin].filter((origin): origin is string => Boolean(origin));
 
 export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
   experimental: { joins: true },
   baseURL,
-  trustedOrigins: [baseURL],
+  trustedOrigins,
   secret: authSecret,
   emailAndPassword: {
     enabled: true,
