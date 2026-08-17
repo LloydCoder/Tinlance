@@ -1,0 +1,38 @@
+name: Temporary formatter diagnostic
+
+on:
+  push:
+    branches: [fix/post-merge-format]
+
+permissions:
+  contents: read
+
+jobs:
+  formatter-diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile=false
+      - name: Format changed files and capture patch
+        run: |
+          git fetch origin main --depth=1
+          base="$(git merge-base HEAD origin/main)"
+          mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "$base" HEAD | grep -E '\.(js|jsx|ts|tsx|json|css|md|mjs|cjs)$' || true)
+          for file in "${changed[@]}"; do
+            pnpm exec prettier --write --ignore-unknown "$file"
+          done
+          git diff --no-ext-diff > /tmp/prettier-format.patch
+      - uses: actions/upload-artifact@v4
+        with:
+          name: post-merge-prettier-patch
+          path: /tmp/prettier-format.patch
+          if-no-files-found: error
