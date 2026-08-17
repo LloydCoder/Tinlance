@@ -1,6 +1,6 @@
 [project]
 name = "tinlance-fde-api"
-version = "0.1.0"
+version = "0.2.0"
 description = "Authenticated FastAPI gateway for Tinlance FDE execution services"
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -15,6 +15,7 @@ test = [
   "pytest>=8.3,<9.0",
   "pytest-asyncio>=0.25,<1.0",
   "httpx>=0.28,<1.0",
+  "respx>=0.22,<1.0",
 ]
 
 [tool.pytest.ini_options]
