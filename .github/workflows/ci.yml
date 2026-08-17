@@ -215,9 +215,10 @@ jobs:
             p/python
 
   dependency-review:
-    name: Dependency review
+    name: Dependency review (advisory when GitHub graph is unavailable)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    continue-on-error: true
     permissions:
       contents: read
     steps:
@@ -230,6 +231,9 @@ jobs:
       - name: Dependency review not applicable to push
         if: github.event_name != 'pull_request'
         run: echo "Dependency review is PR-only; package audits run in the application gates."
+      - name: Explain advisory fallback
+        if: failure()
+        run: echo "GitHub Dependency Review is advisory because repository dependency graph support is unavailable; pnpm audit and pip-audit remain blocking security gates."
 
   enterprise-gate:
     name: Enterprise CI gate
@@ -244,16 +248,17 @@ jobs:
       - security-static
       - dependency-review
     steps:
-      - name: Require every required gate to pass
+      - name: Require every blocking gate to pass
         env:
           RESULTS: ${{ toJSON(needs) }}
         run: |
           python - <<'PY'
           import json, os, sys
           needs = json.loads(os.environ["RESULTS"])
-          failed = {name: value.get("result") for name, value in needs.items() if value.get("result") != "success"}
+          blocking = {name: value.get("result") for name, value in needs.items() if name != "dependency-review"}
+          failed = {name: result for name, result in blocking.items() if result != "success"}
           if failed:
-              print("Failed or skipped required gates:", failed)
+              print("Failed or skipped blocking gates:", failed)
               sys.exit(1)
-          print("All enterprise CI gates passed:", ", ".join(sorted(needs)))
+          print("All blocking enterprise CI gates passed:", ", ".join(sorted(blocking)))
           PY
