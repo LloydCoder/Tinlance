@@ -72,7 +72,8 @@ export default async function MessagesPage() {
             </div>
           )}
           <span className="mt-6 inline-flex items-center gap-2 text-sm text-neutral-500">
-            Tenant-scoped workspace <ArrowUpRight size={16} aria-hidden="true" />
+            Tenant-scoped workspace{" "}
+            <ArrowUpRight size={16} aria-hidden="true" />
           </span>
         </div>
       </section>
