@@ -8,18 +8,18 @@ datasource db {
 }
 
 model User {
-  id            String               @id @default(cuid())
+  id            String       @id @default(cuid())
   name          String
-  email         String               @unique
-  emailVerified Boolean              @default(false)
+  email         String       @unique
+  emailVerified Boolean      @default(false)
   image         String?
-  role          String               @default("viewer")
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  role          String       @default("viewer")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
   sessions      Session[]
   accounts      Account[]
   members       Member[]
-  invitations   Invitation[]         @relation("InvitationInviter")
+  invitations   Invitation[] @relation("InvitationInviter")
   messages      Message[]
   auditEvents   AuditEvent[]
 
@@ -27,17 +27,17 @@ model User {
 }
 
 model Session {
-  id                   String       @id @default(cuid())
+  id                   String   @id @default(cuid())
   expiresAt            DateTime
-  token                String       @unique
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
+  token                String   @unique
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
   ipAddress             String?
   userAgent             String?
   userId               String
   activeOrganizationId String?
   activeTeamId         String?
-  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -76,23 +76,23 @@ model Verification {
 }
 
 model Organization {
-  id          String               @id @default(cuid())
-  clerkOrgId  String?              @unique
-  name        String
-  slug        String               @unique @default(cuid())
-  logo        String?
-  metadata    String?              @db.Text
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  members     Member[]
-  invitations Invitation[]
-  legacyMembers OrganizationMember[]
-  leads       Lead[]
-  bookings    Booking[]
-  projects    Project[]
-  documents   Document[]
-  messages    Message[]
-  invoices    Invoice[]
+  id            String               @id @default(cuid())
+  clerkOrgId    String?              @unique
+  name          String
+  slug          String               @unique @default(cuid())
+  logo          String?
+  metadata      String?              @db.Text
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  members       Member[]
+  invitations   Invitation[]
+  legacyMembers OrganizationMember[] @relation("LegacyOrganizationMembers")
+  leads         Lead[]
+  bookings      Booking[]
+  projects     Project[]
+  documents    Document[]
+  messages     Message[]
+  invoices     Invoice[]
 }
 
 model Member {
