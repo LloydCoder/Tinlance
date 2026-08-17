@@ -58,8 +58,7 @@ export default async function DocumentsPage() {
               <div>
                 <h2>{document.name}</h2>
                 <p>
-                  {document.contentType} · {" "}
-                  {document.createdAt.toLocaleDateString()}
+                  {document.contentType} · {document.createdAt.toLocaleDateString()}
                 </p>
               </div>
               <span className="portal-doc-state">Available</span>
