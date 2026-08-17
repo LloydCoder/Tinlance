@@ -16,23 +16,26 @@ Next.js / Vercel
   ├── Admin
   └── API
        │
-       ├── Security boundary
+       ├── Security boundary / rate limiting
        ├── PostgreSQL / Prisma
-       ├── Auth / RBAC
+       ├── Auth / RBAC / tenant scoping
        ├── Billing
        ├── Communications
-       └── FDE Mastery API
-              ├── Agent Router
-              ├── Domain Agents
-              ├── RAG
-              ├── Tools / MCP
-              └── Evaluation / Telemetry
+       └── FDE Mastery gateway
+              │
+              ▼
+         FastAPI / Python
+              ├── authenticated service boundary
+              ├── execution contract
+              ├── upstream FDE routing
+              └── health / readiness / telemetry hooks
 ```
 
 ## Repository layout
 
 - `apps/web` — Tinlance's Next.js application.
-- `apps/fde-api` — reserved boundary for the Python FDE execution service.
+- `apps/web/prisma` — PostgreSQL schema and migrations.
+- `apps/fde-api` — authenticated Python FastAPI gateway for FDE execution.
 - `packages` — shared contracts, UI, and configuration.
 - `content` — case studies, research, insights, services, and industry content.
 - `docs` — architecture, security, design, and architecture decision records.
@@ -40,16 +43,19 @@ Next.js / Vercel
 
 ## Engineering standards
 
-- TypeScript strict mode.
-- Automated linting, type checking, tests, and production builds.
-- Secure-by-default HTTP headers.
-- Typed environment boundaries and no secret values in source control.
-- Request correlation IDs for application observability.
+- TypeScript strict mode and Python 3.12 typing.
+- Automated linting, type checking, tests, formatting, dependency auditing, and production builds.
+- Secure-by-default HTTP headers including CSP and HSTS.
+- Distributed public API rate limiting with Upstash Redis.
+- Typed environment boundaries with explicit production secret validation.
+- Request correlation IDs across application boundaries.
+- PostgreSQL persistence through Prisma with versioned migrations.
+- Server-side tenant scoping using Clerk organization identity; client-side filtering is never an authorization boundary.
+- Authenticated FastAPI service-to-service execution boundary.
 - Health and readiness endpoints for deployment/platform checks.
 - Dependency and supply-chain security are part of CI.
 - Material architecture decisions are documented.
 - Public code is treated as inspectable by prospective CTOs and security teams.
-- Presentation-critical files may use intentionally hand-tuned formatting; `.prettierignore` documents those narrow exceptions while CI continues to enforce formatting on the rest of the changed source and documentation surface.
 
 ## Product rebuild status
 
@@ -61,32 +67,41 @@ The original engineering foundation (Phases 0–9) is complete. The customer-fac
 4. **Proof & Content** — case studies, projects, OSS work, research, and blog/insights. **Complete.**
 5. **Conversion System** — assessment, contact, booking, lead capture, and CTA flows. **Complete.**
 6. **Client Portal** — authenticated client workspace, projects, communications, and documents. **Complete.**
-7. **Admin Portal** — operational administration, leads, clients, projects, content, billing, and controls. **Active.**
-8. **Production Polish & Launch** — accessibility, responsive QA, SEO, performance, security, E2E, Vercel deployment, and final production verification. **Pending.**
+7. **Admin Portal** — operational administration, leads, clients, projects, content, billing, and controls. **Complete.**
+8. **Production Integration, Polish & Launch** — persistence, tenant isolation, API protection, security headers, environment validation, FastAPI integration, accessibility, responsive QA, SEO, performance, E2E, Vercel deployment, and final production verification. **Active.**
 
 ### Current milestone
 
-**Phase 7 — Admin Portal** is the active gated milestone. The administration surface is designed as a privileged operations workspace and is protected by the existing server-side Tinlance authorization context.
+**Phase 8 — Production Integration, Polish & Launch** is the active gated milestone.
 
-Current Phase 7 scope:
+Phase 8 has now addressed the previously identified architecture gaps in code:
 
-- Privileged `/admin` dashboard protected by `getAuthorizationContext()`.
-- Explicit `super-admin` / `admin` role boundary; unauthorized users are redirected to the client portal.
-- Responsive administrative navigation.
-- Lead operations workspace.
-- Client operations workspace.
-- Project operations workspace.
-- Billing operations workspace without exposing payment secrets to the browser.
-- Content and publishing controls surface.
-- Security and privileged-controls surface documenting audit, secrets, and change-management boundaries.
-- Reusable authorized resource workspace for operational tables.
-- Build-safe Clerk controls when development/CI environments do not provide Clerk public configuration.
+- Lead and assessment booking submissions persist to PostgreSQL instead of returning an acknowledgement without storage.
+- Public lead and booking endpoints use distributed rate limiting and request-size limits.
+- CSP and HSTS are enforced alongside the existing security headers.
+- Production infrastructure and authentication secrets are explicitly validated at runtime.
+- Client portal project and summary data are queried through the authenticated Clerk organization boundary.
+- Admin lead, client, project, billing, and dashboard surfaces use persisted records instead of placeholder operational rows where the corresponding database models exist.
+- `apps/fde-api` contains an authenticated FastAPI gateway with request contracts, health/readiness endpoints, upstream routing, timeout handling, and tests.
+- Prisma schema and an initial PostgreSQL migration establish the persistence boundary.
+- CI now validates both the Next.js application and the FastAPI service.
 
-The authorization model follows a server-first approach: authentication and role resolution happen at the server boundary, while client navigation is treated as presentation only. Clerk Organizations can provide organization roles and custom permissions for fine-grained B2B access, but sensitive operations must still be authorized on the server.
+### Phase 8 production gates
 
-**Gate:** Build → deep audit → fix → README update → CI green → merge → next milestone.
+The final launch gate remains strict:
 
-No subsequent frontend milestone will be treated as complete until its predecessor has passed this gate.
+1. Build and integration implementation.
+2. Deep security and architecture audit.
+3. Fix all findings without weakening CI.
+4. README updated to the current verified state.
+5. Web and FastAPI CI green.
+6. E2E and tenant-isolation verification green.
+7. Production environment and database migration verification.
+8. Vercel/FastAPI deployment verification.
+9. Final production smoke test.
+10. Merge only after all required checks are green.
+
+The FastAPI gateway is a real service boundary, but the external FDE Mastery upstream must be configured through `FDE_MASTER_UPSTREAM_URL` and its service credential before upstream execution is considered production-live. The repository does not claim that external execution is live merely because the gateway exists.
 
 ## License
 
