@@ -28,7 +28,9 @@ export default async function PortalPage() {
           orderBy: { updatedAt: "desc" },
           take: 5,
         }),
-        db.message.count({ where: { organizationId: organization.id } }),
+        db.message.count({
+          where: { organizationId: organization.id, readAt: null },
+        }),
         db.invoice.count({
           where: {
             organizationId: organization.id,
@@ -70,7 +72,7 @@ export default async function PortalPage() {
         <article className="portal-stat-card">
           <MessageSquare size={20} aria-hidden="true" />
           <strong>{unreadMessages}</strong>
-          <span>Messages</span>
+          <span>Unread messages</span>
         </article>
         <article className="portal-stat-card">
           <ShieldCheck size={20} aria-hidden="true" />
