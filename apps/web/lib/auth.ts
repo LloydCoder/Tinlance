@@ -8,6 +8,7 @@ const bootstrapAdminEmail = process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL?.trim().t
 
 export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
+  experimental: { joins: true },
   baseURL,
   trustedOrigins: [baseURL],
   secret: process.env.BETTER_AUTH_SECRET,
