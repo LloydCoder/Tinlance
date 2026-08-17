@@ -20,11 +20,20 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://tinlance.com",
     siteName: "Tinlance",
-    images: [{ url: "/opengraph-image.svg", width: 1200, height: 630, alt: "Tinlance AI engineering and FDE" }],
+    images: [
+      {
+        url: "/opengraph-image.svg",
+        width: 1200,
+        height: 630,
+        alt: "Tinlance AI engineering and FDE",
+      },
+    ],
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body>
