@@ -11,7 +11,9 @@ export async function ensureOrganization(
   });
 }
 
-export async function requireOrganization(clerkOrgId: string | null | undefined) {
+export async function requireOrganization(
+  clerkOrgId: string | null | undefined,
+) {
   if (!clerkOrgId) return null;
   return db.organization.findUnique({ where: { clerkOrgId } });
 }
