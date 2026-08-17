@@ -102,13 +102,19 @@ async def get_upstream_token() -> str | None:
                 response.raise_for_status()
                 payload = response.json()
             except (httpx.HTTPError, ValueError) as exc:
-                raise HTTPException(status_code=503, detail="Unable to obtain upstream credentials") from exc
+                raise HTTPException(
+                    status_code=503,
+                    detail="Unable to obtain upstream credentials",
+                ) from exc
 
         access_token = payload.get("access_token")
         try:
             expires_in = int(payload.get("expires_in", 60))
         except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=503, detail="Upstream token response was malformed") from exc
+            raise HTTPException(
+                status_code=503,
+                detail="Upstream token response was malformed",
+            ) from exc
         if not isinstance(access_token, str) or not access_token:
             raise HTTPException(status_code=503, detail="Upstream token response was malformed")
 
