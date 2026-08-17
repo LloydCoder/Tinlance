@@ -1,7 +1,7 @@
-import { AdminResourcePage } from "../../../components/admin-resource-page";
-import { db } from "../../../lib/db";
-import { getAuthorizationContext } from "../../../lib/auth/authorization";
 import { redirect } from "next/navigation";
+import { AdminResourcePage } from "../../../components/admin-resource-page";
+import { getAuthorizationContext } from "../../../lib/auth/authorization";
+import { db } from "../../../lib/db";
 
 export default async function ClientsPage() {
   const context = await getAuthorizationContext();
@@ -14,12 +14,12 @@ export default async function ClientsPage() {
     take: 50,
   });
 
-  const rows = clients.map((client) => [
-    client.name,
-    client.projects[0]?.name ?? "No active engagement",
-    "Active",
-    client.projects[0]?.status ?? "Onboarding",
-  ]);
+  const rows = clients.map((client) => ({
+    name: client.name,
+    detail: client.projects[0]?.name ?? "No active engagement",
+    status: "Active",
+    meta: client.projects[0]?.status ?? "Onboarding",
+  }));
 
   return (
     <AdminResourcePage
