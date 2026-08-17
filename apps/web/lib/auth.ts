@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth/minimal";
 import { prismaAdapter } from "@better-auth/prisma-adapter";
+import { dash } from "@better-auth/infra";
 import { organization } from "better-auth/plugins";
 import { db } from "@/lib/db";
 
@@ -11,13 +12,8 @@ const baseURL =
   (vercelOrigin || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
 const bootstrapAdminEmail =
   process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
-
-// Temporary cutover bridge: the existing high-entropy Clerk secret can sign
-// Better Auth sessions until BETTER_AUTH_SECRET is provisioned. No Clerk SDK
-// or Clerk identity APIs are used. Remove the fallback after provisioning the
-// dedicated Better Auth secret in every deployment environment.
-const authSecret =
-  process.env.BETTER_AUTH_SECRET ?? process.env.CLERK_SECRET_KEY;
+const authSecret = process.env.BETTER_AUTH_SECRET;
+const betterAuthApiKey = process.env.BETTER_AUTH_API_KEY;
 const trustedOrigins = [baseURL, vercelOrigin].filter(
   (origin): origin is string => Boolean(origin),
 );
@@ -85,6 +81,9 @@ export const auth = betterAuth({
       organizationLimit: 20,
       invitationExpiresIn: 60 * 60 * 24 * 7,
       disableOrganizationDeletion: true,
+    }),
+    dash({
+      apiKey: betterAuthApiKey,
     }),
   ],
 });
