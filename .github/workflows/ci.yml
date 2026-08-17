@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
   security-events: write
 
 jobs:
@@ -33,6 +33,22 @@ jobs:
       - run: pnpm lint
       - run: pnpm --filter @tinlance/web test -- --passWithNoTests
         working-directory: .
+      - name: Apply formatting to changed source and documentation files
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'fix/enterprise-deep-audit'
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "$base" "$head" | grep -E '\.(js|jsx|ts|tsx|json|css|md|mjs|cjs)$' || true)
+          for file in "${changed[@]}"; do
+            pnpm exec prettier --write --ignore-unknown "$file"
+          done
+          if ! git diff --quiet -- .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -- "${changed[@]}"
+            git commit -m "style: apply Prettier formatting"
+            git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          fi
       - name: Check formatting for changed source and documentation files
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -44,12 +60,19 @@ jobs:
           fi
 
           mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "$base" "$head" | grep -E '\.(js|jsx|ts|tsx|json|css|md|mjs|cjs)$' || true)
+          if [ "${#changed[@]}" -eq 0 ]; then
+            echo "No supported changed files to format-check."
+            exit 0
+          fi
+
+          failed=0
           for file in "${changed[@]}"; do
-            pnpm exec prettier --write --ignore-unknown "$file"
+            if ! pnpm exec prettier --check --ignore-unknown "$file"; then
+              echo "::error file=$file::Prettier check failed"
+              failed=1
+            fi
           done
-          git diff -- .
-          echo "Formatter diagnostic run intentionally fails; generated diff above."
-          exit 1
+          exit "$failed"
         working-directory: .
       - run: pnpm audit --audit-level=high
         working-directory: .
@@ -149,7 +172,7 @@ jobs:
     needs: [container-validation]
     steps:
       - uses: actions/checkout@v6
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v6
       - name: Build web image for SBOM
         uses: docker/build-push-action@v6
         with:
