@@ -59,7 +59,8 @@ export function LeadForm() {
           constraints, and desired outcome before the next conversation.
         </p>
         <a className="button button-dark mt-7" href="/assessment">
-          Book a technical assessment <ArrowUpRight size={17} aria-hidden="true" />
+          Book a technical assessment{" "}
+          <ArrowUpRight size={17} aria-hidden="true" />
         </a>
       </div>
     );
