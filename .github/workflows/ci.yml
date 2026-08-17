@@ -70,7 +70,10 @@ jobs:
       - run: ruff check .
       - run: python -m pip check
       - run: pytest -q
-      - run: pip-audit --strict --skip-editable
+      - name: Audit installed third-party dependencies
+        run: |
+          pip uninstall -y tinlance-fde-api
+          pip-audit --strict
 
   ai-security-regression:
     name: AI security regression
