@@ -17,7 +17,8 @@ export default async function PortalPage() {
   if (!userId) return null;
 
   const user = await currentUser();
-  const name = user?.firstName ?? user?.emailAddresses[0]?.emailAddress ?? "Client";
+  const name =
+    user?.firstName ?? user?.emailAddresses[0]?.emailAddress ?? "Client";
   const organization = orgId ? await ensureOrganization(orgId) : null;
 
   const [projects, unreadMessages, openInvoices] = organization
@@ -46,7 +47,8 @@ export default async function PortalPage() {
           </p>
           <h1>Good to see you, {name}.</h1>
           <p>
-            One secure workspace for delivery, decisions, files, and communication with Tinlance.
+            One secure workspace for delivery, decisions, files, and
+            communication with Tinlance.
           </p>
         </div>
         <Link className="button button-dark" href="/assessment">
@@ -93,7 +95,8 @@ export default async function PortalPage() {
               <p className="kicker">NO ACTIVE PROJECTS</p>
               <h2>Your delivery workspace is ready.</h2>
               <p>
-                Projects will appear here as soon as they are assigned to this organization.
+                Projects will appear here as soon as they are assigned to this
+                organization.
               </p>
             </div>
           ) : (
@@ -129,7 +132,8 @@ export default async function PortalPage() {
           <p className="kicker">COMMUNICATIONS</p>
           <h2>Keep decisions moving.</h2>
           <p>
-            Your project thread, delivery updates, and important decisions stay together instead of disappearing into email.
+            Your project thread, delivery updates, and important decisions stay
+            together instead of disappearing into email.
           </p>
           <Link className="text-link" href="/portal/messages">
             Open messages <ArrowUpRight size={16} aria-hidden="true" />
@@ -140,7 +144,8 @@ export default async function PortalPage() {
           <p className="kicker kicker-dark">SECURITY</p>
           <h2>Built for sensitive work.</h2>
           <p>
-            Access is scoped to your authenticated organization. Server-side queries enforce the same tenant boundary.
+            Access is scoped to your authenticated organization. Server-side
+            queries enforce the same tenant boundary.
           </p>
           <Link className="text-link" href="/portal/settings">
             Workspace settings <ArrowUpRight size={16} aria-hidden="true" />
