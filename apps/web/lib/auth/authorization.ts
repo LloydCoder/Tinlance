@@ -32,7 +32,9 @@ export async function getAuthorizationContext() {
     } as const;
   }
 
-  const rawRole = (session.user as typeof session.user & { role?: unknown }).role;
+  const rawRole = (
+    session.user as typeof session.user & { role?: unknown }
+  ).role;
   const role: TinlanceRole | null =
     typeof rawRole === "string" && allowedRoles.has(rawRole as TinlanceRole)
       ? (rawRole as TinlanceRole)
