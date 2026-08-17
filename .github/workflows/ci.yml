@@ -115,7 +115,7 @@ jobs:
           docker inspect -f '{{json .Config.Healthcheck}}' tinlance-web:ci | grep -q 'api/health'
           docker inspect -f '{{json .Config.Healthcheck}}' tinlance-fde-api:ci | grep -q '/health'
       - name: Scan web image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: tinlance-web:ci
           format: table
@@ -124,7 +124,7 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL,HIGH
       - name: Scan FDE API image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: tinlance-fde-api:ci
           format: table
