@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --frozen-lockfile=false
-      - name: Format target files and capture canonical source
+      - name: Capture canonical Prettier output
         run: |
           files=(
             apps/web/app/portal/documents/page.tsx
@@ -30,17 +30,14 @@ jobs:
             apps/web/lib/auth.ts
             apps/web/lib/auth/authorization.ts
           )
+          mkdir -p /tmp/canonical
           for file in "${files[@]}"; do
-            pnpm exec prettier --write --ignore-unknown "$file"
+            mkdir -p "/tmp/canonical/$(dirname "$file")"
+            pnpm exec prettier "$file" > "/tmp/canonical/$file"
           done
-          mkdir -p /tmp/formatted
-          for file in "${files[@]}"; do
-            mkdir -p "/tmp/formatted/$(dirname "$file")"
-            cp "$file" "/tmp/formatted/$file"
-          done
-          tar -czf /tmp/formatted-source.tar.gz -C /tmp/formatted .
+          tar -czf /tmp/canonical-source.tar.gz -C /tmp/canonical .
       - uses: actions/upload-artifact@v4
         with:
-          name: post-merge-formatted-source
-          path: /tmp/formatted-source.tar.gz
+          name: canonical-prettier-source
+          path: /tmp/canonical-source.tar.gz
           if-no-files-found: error
