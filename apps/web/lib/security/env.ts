@@ -1,7 +1,9 @@
 import { z } from "zod";
 
 const baseEnvSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .default("development"),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   DATABASE_URL: z.string().min(1).optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
@@ -18,7 +20,8 @@ export const env = baseEnvSchema.parse({
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
   PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
 });
 
@@ -40,6 +43,8 @@ export function validateProductionEnv(options?: { billing?: boolean }) {
     .map(([key]) => key);
 
   if (missing.length > 0) {
-    throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
+    throw new Error(
+      `Missing required production environment variables: ${missing.join(", ")}`,
+    );
   }
 }
