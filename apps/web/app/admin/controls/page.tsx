@@ -15,8 +15,9 @@ export default async function ControlsPage() {
           <p className="kicker">SECURITY / CONTROLS</p>
           <h1>Privileged controls.</h1>
           <p>
-            High-impact controls are documented here before implementation is
-            connected to live infrastructure.
+            This read-only surface records the security boundaries enforced by
+            the current platform. High-impact mutations remain behind reviewed
+            server-side workflows.
           </p>
         </div>
       </div>
@@ -26,7 +27,7 @@ export default async function ControlsPage() {
           <h2>Role boundary</h2>
           <p>
             Administrative access is resolved server-side through the Tinlance
-            authorization context.
+            authorization context before privileged data is queried.
           </p>
           <code>super-admin | admin</code>
         </article>
@@ -34,17 +35,17 @@ export default async function ControlsPage() {
           <LockKeyhole size={20} aria-hidden="true" />
           <h2>Audit trail</h2>
           <p>
-            Privileged mutations should emit immutable audit events with actor,
-            target, action, and correlation ID.
+            Persisted lead, booking, billing webhook, and other material
+            operations emit correlation-aware audit events in PostgreSQL.
           </p>
-          <code>actor + action + target + time</code>
+          <code>actor + action + target + request ID</code>
         </article>
         <article className="admin-control">
           <KeyRound size={20} aria-hidden="true" />
           <h2>Secrets</h2>
           <p>
-            Payment, CRM, identity, and infrastructure credentials never belong
-            in browser state or rendered HTML.
+            Payment, identity, database, rate-limit, and FDE credentials remain
+            server-side and production configuration is validated explicitly.
           </p>
           <code>server-only secret boundary</code>
         </article>
@@ -52,10 +53,10 @@ export default async function ControlsPage() {
           <ScrollText size={20} aria-hidden="true" />
           <h2>Change management</h2>
           <p>
-            Production-impacting operations should remain reviewable and
-            independently traceable.
+            Production code changes pass the repository's required security,
+            dependency, test, build, container, SBOM, and enterprise gates.
           </p>
-          <code>request → authorize → mutate → audit</code>
+          <code>change → validate → audit → deploy</code>
         </article>
       </div>
     </AdminShell>

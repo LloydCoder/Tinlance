@@ -1,7 +1,21 @@
 import { ArrowUpRight, MessageSquare } from "lucide-react";
 import { PortalShell } from "../../../components/portal-shell";
+import { requireOrganization } from "../../../lib/tenant";
+import { auth } from "@clerk/nextjs/server";
+import { db } from "../../../lib/db";
 
-export default function MessagesPage() {
+export default async function MessagesPage() {
+  const { userId, orgId } = await auth();
+  if (!userId) return null;
+  const organization = await requireOrganization(orgId);
+  const messages = organization
+    ? await db.message.findMany({
+        where: { organizationId: organization.id },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      })
+    : [];
+
   return (
     <PortalShell active="messages">
       <div className="portal-page-head">
@@ -18,19 +32,44 @@ export default function MessagesPage() {
         <div className="portal-message-icon">
           <MessageSquare size={20} aria-hidden="true" />
         </div>
-        <div>
+        <div className="w-full">
           <span className="portal-project-status">
             <span aria-hidden="true" />
-            No urgent messages
+            {messages.length === 0
+              ? "No messages yet"
+              : `${messages.length} messages`}
           </span>
-          <h2>Communication center ready.</h2>
-          <p>
-            Live project threads will appear here once your workspace is
-            connected to Tinlance delivery operations.
-          </p>
-          <button type="button" className="button button-dark">
-            Start a conversation <ArrowUpRight size={16} aria-hidden="true" />
-          </button>
+          <h2>
+            {messages.length === 0
+              ? "Communication center ready."
+              : "Latest project communication."}
+          </h2>
+          {messages.length === 0 ? (
+            <p>
+              Messages will appear here when a Tinlance delivery team member
+              posts an update for this organization.
+            </p>
+          ) : (
+            <div className="mt-6 grid gap-4">
+              {messages.map((message) => (
+                <article
+                  key={message.id}
+                  className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5"
+                >
+                  <p className="text-sm text-neutral-500">
+                    {message.createdAt.toLocaleString()}
+                  </p>
+                  <p className="mt-2 whitespace-pre-wrap text-neutral-800">
+                    {message.body}
+                  </p>
+                </article>
+              ))}
+            </div>
+          )}
+          <span className="mt-6 inline-flex items-center gap-2 text-sm text-neutral-500">
+            Tenant-scoped workspace{" "}
+            <ArrowUpRight size={16} aria-hidden="true" />
+          </span>
         </div>
       </section>
     </PortalShell>

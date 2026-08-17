@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { ArrowUpRight, CheckCircle2, CircleDashed } from "lucide-react";
+import { CheckCircle2, CircleDashed } from "lucide-react";
 import { PortalShell } from "../../../components/portal-shell";
 import { requireOrganization } from "../../../lib/tenant";
 import { db } from "../../../lib/db";
@@ -70,9 +70,7 @@ export default async function ProjectsPage() {
                   )}{" "}
                   Delivery milestone tracked
                 </span>
-                <span className="text-link" aria-hidden="true">
-                  Open project <ArrowUpRight size={16} aria-hidden="true" />
-                </span>
+                <span className="text-link">Current project record</span>
               </div>
             </article>
           ))

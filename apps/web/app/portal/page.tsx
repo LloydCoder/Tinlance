@@ -21,7 +21,7 @@ export default async function PortalPage() {
     user?.firstName ?? user?.emailAddresses[0]?.emailAddress ?? "Client";
   const organization = orgId ? await ensureOrganization(orgId) : null;
 
-  const [projects, unreadMessages, openInvoices] = organization
+  const [projects, messageCount, openInvoices] = organization
     ? await Promise.all([
         db.project.findMany({
           where: { organizationId: organization.id },
@@ -69,7 +69,7 @@ export default async function PortalPage() {
         </article>
         <article className="portal-stat-card">
           <MessageSquare size={20} aria-hidden="true" />
-          <strong>{unreadMessages}</strong>
+          <strong>{messageCount}</strong>
           <span>Messages</span>
         </article>
         <article className="portal-stat-card">

@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { leadSchema } from "@/lib/operations/contracts";
 import { getRequestId } from "@/lib/security/request-id";
@@ -7,9 +8,21 @@ import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 import { validateProductionEnv } from "@/lib/security/env";
 
 const MAX_BODY_BYTES = 16_384;
+const MAX_IDEMPOTENCY_KEY_LENGTH = 128;
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
+  const idempotencyKey = request.headers.get("idempotency-key")?.trim() || null;
+
+  if (idempotencyKey && idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+    return NextResponse.json(
+      { error: "invalid_idempotency_key", requestId },
+      {
+        status: 400,
+        headers: { "cache-control": "no-store", "x-request-id": requestId },
+      },
+    );
+  }
 
   try {
     validateProductionEnv();
@@ -79,36 +92,69 @@ export async function POST(request: Request) {
       );
     }
 
-    const lead = await db.lead.create({
-      data: {
-        organizationName: parsed.data.organizationName,
-        contactName: parsed.data.contactName,
-        email: parsed.data.email,
-        country: parsed.data.country,
-        service: parsed.data.service,
-        notes: parsed.data.notes,
-        status: parsed.data.status,
-        source: "website",
-      },
-      select: { id: true },
-    });
+    let result: { id: string; duplicate: boolean };
 
-    await db.auditEvent.create({
-      data: {
-        action: "lead.created",
-        resourceType: "lead",
-        resourceId: lead.id,
-        requestId,
-        metadata: { source: "website" },
-      },
-    });
+    try {
+      result = await db.$transaction(async (tx) => {
+        if (idempotencyKey) {
+          const existing = await tx.lead.findUnique({
+            where: { idempotencyKey },
+            select: { id: true },
+          });
+          if (existing) return { id: existing.id, duplicate: true };
+        }
+
+        const created = await tx.lead.create({
+          data: {
+            organizationName: parsed.data.organizationName,
+            contactName: parsed.data.contactName,
+            email: parsed.data.email,
+            country: parsed.data.country,
+            service: parsed.data.service,
+            notes: parsed.data.notes,
+            status: "new",
+            source: "website",
+            idempotencyKey,
+          },
+          select: { id: true },
+        });
+
+        await tx.auditEvent.create({
+          data: {
+            action: "lead.created",
+            resourceType: "lead",
+            resourceId: created.id,
+            requestId,
+            metadata: { source: "website" },
+          },
+        });
+
+        return { id: created.id, duplicate: false };
+      });
+    } catch (error) {
+      if (
+        idempotencyKey &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const existing = await db.lead.findUnique({
+          where: { idempotencyKey },
+          select: { id: true },
+        });
+        if (!existing) throw error;
+        result = { id: existing.id, duplicate: true };
+      } else {
+        throw error;
+      }
+    }
 
     return NextResponse.json(
       {
         status: "accepted",
         requestId,
-        leadId: lead.id,
+        leadId: result.id,
         nextStep: "lead_review",
+        duplicate: result.duplicate,
       },
       {
         status: 202,

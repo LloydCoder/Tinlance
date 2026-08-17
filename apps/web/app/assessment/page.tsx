@@ -7,28 +7,46 @@ export default function AssessmentPage() {
   const [status, setStatus] = useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("submitting");
     const form = new FormData(event.currentTarget);
     const startsAt = String(form.get("startsAt") ?? "");
+    const key = idempotencyKey ?? crypto.randomUUID();
+    if (!idempotencyKey) setIdempotencyKey(key);
 
     try {
+      const parsedStart = new Date(startsAt);
+      if (
+        !Number.isFinite(parsedStart.getTime()) ||
+        parsedStart.getTime() <= Date.now()
+      ) {
+        setStatus("error");
+        return;
+      }
+
       const response = await fetch("/api/v1/operations/booking", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": key,
+        },
         body: JSON.stringify({
           organizationName: form.get("organizationName"),
           contactName: form.get("contactName"),
           email: form.get("email"),
-          startsAt: new Date(startsAt).toISOString(),
+          startsAt: parsedStart.toISOString(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           notes: form.get("notes"),
         }),
       });
       setStatus(response.ok ? "success" : "error");
-      if (response.ok) event.currentTarget.reset();
+      if (response.ok) {
+        event.currentTarget.reset();
+        setIdempotencyKey(null);
+      }
     } catch {
       setStatus("error");
     }

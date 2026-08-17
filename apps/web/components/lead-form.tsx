@@ -15,20 +15,29 @@ export function LeadForm() {
   const [status, setStatus] = useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("submitting");
     const form = new FormData(event.currentTarget);
+    const key = idempotencyKey ?? crypto.randomUUID();
+    if (!idempotencyKey) setIdempotencyKey(key);
 
     try {
       const response = await fetch("/api/v1/operations/lead", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": key,
+        },
         body: JSON.stringify(Object.fromEntries(form.entries())),
       });
       setStatus(response.ok ? "success" : "error");
-      if (response.ok) event.currentTarget.reset();
+      if (response.ok) {
+        event.currentTarget.reset();
+        setIdempotencyKey(null);
+      }
     } catch {
       setStatus("error");
     }

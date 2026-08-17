@@ -7,7 +7,7 @@ export async function ensureOrganization(
   return db.organization.upsert({
     where: { clerkOrgId },
     create: { clerkOrgId, name },
-    update: { name },
+    update: {},
   });
 }
 
