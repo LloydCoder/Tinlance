@@ -20,7 +20,10 @@ export default function middleware(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
   if (!sessionCookie) {
     const signInUrl = new URL("/sign-in", request.url);
-    signInUrl.searchParams.set("callbackURL", `${request.nextUrl.pathname}${request.nextUrl.search}`);
+    signInUrl.searchParams.set(
+      "callbackURL",
+      `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    );
     return NextResponse.redirect(signInUrl);
   }
 
