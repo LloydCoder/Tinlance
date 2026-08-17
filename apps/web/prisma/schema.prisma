@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id          String              @id @default(cuid())
+  clerkOrgId  String              @unique
+  name        String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  members     OrganizationMember[]
+  leads       Lead[]
+  bookings    Booking[]
+  projects    Project[]
+  documents   Document[]
+  messages    Message[]
+  invoices    Invoice[]
+}
+
+model OrganizationMember {
+  id             String       @id @default(cuid())
+  organizationId String
+  clerkUserId    String
+  role           String
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, clerkUserId])
+  @@index([clerkUserId])
+}
+
+model Lead {
+  id               String        @id @default(cuid())
+  organizationId   String?
+  organizationName String
+  contactName      String
+  email            String
+  country          String
+  service          String
+  notes            String?
+  status           String        @default("new")
+  source           String        @default("website")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model Booking {
+  id               String        @id @default(cuid())
+  organizationId   String?
+  organizationName String
+  contactName      String
+  email            String
+  startsAt         DateTime
+  timezone         String
+  notes            String?
+  status           String        @default("requested")
+  source           String        @default("website")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([startsAt])
+  @@index([email])
+}
+
+model Project {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  type           String?
+  status         String       @default("active")
+  progress       Int          @default(0)
+  nextDecision   String?
+  dueAt          DateTime?
+  description    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+}
+
+model Document {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  storageKey     String
+  contentType    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  organizationId String
+  authorUserId   String
+  body           String
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+}
+
+model Invoice {
+  id             String       @id @default(cuid())
+  organizationId String
+  currency       String
+  amountMinor    Int
+  description    String
+  status         String       @default("draft")
+  externalId     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+}
+
+model AuditEvent {
+  id             String   @id @default(cuid())
+  organizationId String?
+  actorUserId    String?
+  action         String
+  resourceType   String
+  resourceId     String?
+  requestId      String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([resourceType, resourceId])
+}

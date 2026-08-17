@@ -1,33 +1,26 @@
+import { redirect } from "next/navigation";
 import { AdminResourcePage } from "../../../components/admin-resource-page";
+import { getAuthorizationContext } from "../../../lib/auth/authorization";
+import { db } from "../../../lib/db";
 
-const rows = [
-  {
-    name: "Acme Systems",
-    detail: "AI Operations Platform",
-    status: "Active",
-    meta: "Enterprise",
-  },
-  {
-    name: "Northstar Security",
-    detail: "Security Engineering",
-    status: "Active",
-    meta: "Retainer",
-  },
-  {
-    name: "Vertex Labs",
-    detail: "FDE engagement",
-    status: "Onboarding",
-    meta: "Pro",
-  },
-  {
-    name: "Meridian Health",
-    detail: "Automation discovery",
-    status: "Review",
-    meta: "Assessment",
-  },
-];
+export default async function ClientsPage() {
+  const context = await getAuthorizationContext();
+  if (!context.isAuthenticated) redirect("/sign-in");
+  if (!context.isPrivileged) redirect("/portal");
 
-export default function ClientsPage() {
+  const clients = await db.organization.findMany({
+    include: { projects: { orderBy: { updatedAt: "desc" }, take: 1 } },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  const rows = clients.map((client) => ({
+    name: client.name,
+    detail: client.projects[0]?.name ?? "No active engagement",
+    status: "Active",
+    meta: client.projects[0]?.status ?? "Onboarding",
+  }));
+
   return (
     <AdminResourcePage
       active="clients"

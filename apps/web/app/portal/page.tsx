@@ -9,21 +9,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { PortalShell } from "../../components/portal-shell";
-
-const projects = [
-  {
-    name: "AI Operations Platform",
-    status: "In delivery",
-    progress: 68,
-    updated: "Updated 2h ago",
-  },
-  {
-    name: "Security Assessment",
-    status: "Review",
-    progress: 92,
-    updated: "Updated yesterday",
-  },
-];
+import { ensureOrganization } from "../../lib/tenant";
+import { db } from "../../lib/db";
 
 export default async function PortalPage() {
   const { userId, orgId } = await auth();
@@ -32,6 +19,24 @@ export default async function PortalPage() {
   const user = await currentUser();
   const name =
     user?.firstName ?? user?.emailAddresses[0]?.emailAddress ?? "Client";
+  const organization = orgId ? await ensureOrganization(orgId) : null;
+
+  const [projects, unreadMessages, openInvoices] = organization
+    ? await Promise.all([
+        db.project.findMany({
+          where: { organizationId: organization.id },
+          orderBy: { updatedAt: "desc" },
+          take: 5,
+        }),
+        db.message.count({ where: { organizationId: organization.id } }),
+        db.invoice.count({
+          where: {
+            organizationId: organization.id,
+            status: { in: ["draft", "sent", "overdue"] },
+          },
+        }),
+      ])
+    : [[], 0, 0];
 
   return (
     <PortalShell active="overview">
@@ -54,18 +59,18 @@ export default async function PortalPage() {
       <div className="portal-stat-grid" aria-label="Workspace summary">
         <article className="portal-stat-card">
           <FolderKanban size={20} aria-hidden="true" />
-          <strong>2</strong>
+          <strong>{projects.length}</strong>
           <span>Active projects</span>
         </article>
         <article className="portal-stat-card">
           <Clock3 size={20} aria-hidden="true" />
-          <strong>1</strong>
-          <span>Decision awaiting you</span>
+          <strong>{openInvoices}</strong>
+          <span>Open billing items</span>
         </article>
         <article className="portal-stat-card">
           <MessageSquare size={20} aria-hidden="true" />
-          <strong>4</strong>
-          <span>Unread messages</span>
+          <strong>{unreadMessages}</strong>
+          <span>Messages</span>
         </article>
         <article className="portal-stat-card">
           <ShieldCheck size={20} aria-hidden="true" />
@@ -85,26 +90,37 @@ export default async function PortalPage() {
           </Link>
         </div>
         <div className="portal-project-list">
-          {projects.map((project) => (
-            <article className="portal-project" key={project.name}>
-              <div className="portal-project-copy">
-                <span className="portal-project-status">
-                  <span aria-hidden="true" />
-                  {project.status}
-                </span>
-                <h3>{project.name}</h3>
-                <p>{project.updated}</p>
-              </div>
-              <div
-                className="portal-progress"
-                aria-label={`${project.progress}% complete`}
-              >
-                <div style={{ width: `${project.progress}%` }} />
-              </div>
-              <strong>{project.progress}%</strong>
-              <ArrowUpRight size={18} aria-hidden="true" />
-            </article>
-          ))}
+          {projects.length === 0 ? (
+            <div className="portal-panel">
+              <p className="kicker">NO ACTIVE PROJECTS</p>
+              <h2>Your delivery workspace is ready.</h2>
+              <p>
+                Projects will appear here as soon as they are assigned to this
+                organization.
+              </p>
+            </div>
+          ) : (
+            projects.map((project) => (
+              <article className="portal-project" key={project.id}>
+                <div className="portal-project-copy">
+                  <span className="portal-project-status">
+                    <span aria-hidden="true" />
+                    {project.status}
+                  </span>
+                  <h3>{project.name}</h3>
+                  <p>{project.updatedAt.toLocaleDateString()}</p>
+                </div>
+                <div
+                  className="portal-progress"
+                  aria-label={`${project.progress}% complete`}
+                >
+                  <div style={{ width: `${project.progress}%` }} />
+                </div>
+                <strong>{project.progress}%</strong>
+                <ArrowUpRight size={18} aria-hidden="true" />
+              </article>
+            ))
+          )}
         </div>
       </section>
 
@@ -128,8 +144,8 @@ export default async function PortalPage() {
           <p className="kicker kicker-dark">SECURITY</p>
           <h2>Built for sensitive work.</h2>
           <p>
-            Access is scoped to your authenticated workspace. Operational
-            controls and audit history will attach to the same tenant boundary.
+            Access is scoped to your authenticated organization. Server-side
+            queries enforce the same tenant boundary.
           </p>
           <Link className="text-link" href="/portal/settings">
             Workspace settings <ArrowUpRight size={16} aria-hidden="true" />

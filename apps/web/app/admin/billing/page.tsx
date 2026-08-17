@@ -1,34 +1,33 @@
+import { redirect } from "next/navigation";
 import { AdminResourcePage } from "../../../components/admin-resource-page";
+import { getAuthorizationContext } from "../../../lib/auth/authorization";
+import { db } from "../../../lib/db";
 
-const rows = [
-  {
-    name: "INV-1048 · Acme Systems",
-    detail: "$18,500",
-    status: "Due soon",
-    meta: "Aug 19",
-  },
-  {
-    name: "INV-1047 · Northstar Security",
-    detail: "$9,800",
-    status: "Open",
-    meta: "Aug 25",
-  },
-  {
-    name: "INV-1042 · Vertex Labs",
-    detail: "$6,400",
-    status: "Paid",
-    meta: "Aug 12",
-  },
-];
+export default async function BillingPage() {
+  const context = await getAuthorizationContext();
+  if (!context.isAuthenticated) redirect("/sign-in");
+  if (!context.isPrivileged) redirect("/portal");
 
-export default function BillingPage() {
+  const invoices = await db.invoice.findMany({
+    include: { organization: true },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  const rows = invoices.map((invoice) => ({
+    name: `${invoice.id} · ${invoice.organization.name}`,
+    detail: `${invoice.currency} ${(invoice.amountMinor / 100).toFixed(2)}`,
+    status: invoice.status,
+    meta: invoice.createdAt.toLocaleDateString(),
+  }));
+
   return (
     <AdminResourcePage
       active="billing"
       kicker="FINANCE / BILLING"
       title="Billing operations."
       description="Keep invoices, collection state, and client payment context visible without putting payment secrets in the frontend."
-      columns={["Invoice", "Amount", "State", "Due"]}
+      columns={["Invoice", "Amount", "State", "Created"]}
       rows={rows}
     />
   );

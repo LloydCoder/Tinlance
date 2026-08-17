@@ -1,0 +1,27 @@
+[project]
+name = "tinlance-fde-api"
+version = "0.1.0"
+description = "Authenticated FastAPI gateway for Tinlance FDE execution services"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "httpx>=0.28,<1.0",
+  "pydantic>=2.10,<3.0",
+  "uvicorn[standard]>=0.34,<1.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.3,<9.0",
+  "pytest-asyncio>=0.25,<1.0",
+  "httpx>=0.28,<1.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

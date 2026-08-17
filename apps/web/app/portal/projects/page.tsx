@@ -1,26 +1,21 @@
+import { auth } from "@clerk/nextjs/server";
 import { ArrowUpRight, CheckCircle2, CircleDashed } from "lucide-react";
 import { PortalShell } from "../../../components/portal-shell";
+import { requireOrganization } from "../../../lib/tenant";
+import { db } from "../../../lib/db";
 
-const projects = [
-  {
-    name: "AI Operations Platform",
-    type: "AI Engineering / FDE",
-    status: "In delivery",
-    progress: 68,
-    next: "Integration review",
-    due: "Aug 21",
-  },
-  {
-    name: "Security Assessment",
-    type: "Cybersecurity Engineering",
-    status: "Review",
-    progress: 92,
-    next: "Approve findings",
-    due: "Aug 18",
-  },
-];
+export default async function ProjectsPage() {
+  const { userId, orgId } = await auth();
+  if (!userId) return null;
 
-export default function ProjectsPage() {
+  const organization = await requireOrganization(orgId);
+  const projects = organization
+    ? await db.project.findMany({
+        where: { organizationId: organization.id },
+        orderBy: { updatedAt: "desc" },
+      })
+    : [];
+
   return (
     <PortalShell active="projects">
       <div className="portal-page-head">
@@ -31,45 +26,57 @@ export default function ProjectsPage() {
         </div>
       </div>
       <div className="portal-project-list portal-project-list-large">
-        {projects.map((project) => (
-          <article className="portal-project-detail" key={project.name}>
-            <div className="portal-project-copy">
-              <span className="portal-project-status">
-                <span aria-hidden="true" />
-                {project.status}
-              </span>
-              <h2>{project.name}</h2>
-              <p>{project.type}</p>
-            </div>
-            <div className="portal-detail-metrics">
-              <span>
-                Progress<strong>{project.progress}%</strong>
-              </span>
-              <span>
-                Next<strong>{project.next}</strong>
-              </span>
-              <span>
-                Target<strong>{project.due}</strong>
-              </span>
-            </div>
-            <div className="portal-progress">
-              <div style={{ width: `${project.progress}%` }} />
-            </div>
-            <div className="portal-project-footer">
-              <span>
-                {project.progress === 100 ? (
-                  <CheckCircle2 size={16} aria-hidden="true" />
-                ) : (
-                  <CircleDashed size={16} aria-hidden="true" />
-                )}{" "}
-                Delivery milestone tracked
-              </span>
-              <button type="button" className="text-link">
-                Open project <ArrowUpRight size={16} aria-hidden="true" />
-              </button>
-            </div>
-          </article>
-        ))}
+        {projects.length === 0 ? (
+          <section className="portal-panel">
+            <p className="kicker">NO PROJECTS</p>
+            <h2>No delivery records yet.</h2>
+            <p>Projects assigned to this organization will appear here.</p>
+          </section>
+        ) : (
+          projects.map((project) => (
+            <article className="portal-project-detail" key={project.id}>
+              <div className="portal-project-copy">
+                <span className="portal-project-status">
+                  <span aria-hidden="true" />
+                  {project.status}
+                </span>
+                <h2>{project.name}</h2>
+                <p>{project.type ?? "Tinlance engineering engagement"}</p>
+              </div>
+              <div className="portal-detail-metrics">
+                <span>
+                  Progress<strong>{project.progress}%</strong>
+                </span>
+                <span>
+                  Next<strong>{project.nextDecision ?? "—"}</strong>
+                </span>
+                <span>
+                  Target
+                  <strong>{project.dueAt?.toLocaleDateString() ?? "—"}</strong>
+                </span>
+              </div>
+              <div
+                className="portal-progress"
+                aria-label={`${project.progress}% complete`}
+              >
+                <div style={{ width: `${project.progress}%` }} />
+              </div>
+              <div className="portal-project-footer">
+                <span>
+                  {project.progress === 100 ? (
+                    <CheckCircle2 size={16} aria-hidden="true" />
+                  ) : (
+                    <CircleDashed size={16} aria-hidden="true" />
+                  )}{" "}
+                  Delivery milestone tracked
+                </span>
+                <span className="text-link" aria-hidden="true">
+                  Open project <ArrowUpRight size={16} aria-hidden="true" />
+                </span>
+              </div>
+            </article>
+          ))
+        )}
       </div>
     </PortalShell>
   );

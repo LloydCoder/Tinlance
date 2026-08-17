@@ -10,18 +10,50 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AdminShell } from "../../components/admin-shell";
 import { getAuthorizationContext } from "../../lib/auth/authorization";
-
-const metrics = [
-  ["Open leads", "18", "5 new this week", Users],
-  ["Active clients", "7", "2 in onboarding", BriefcaseBusiness],
-  ["Projects in delivery", "11", "3 need attention", ShieldCheck],
-  ["Outstanding invoices", "$42.8k", "6 invoices open", CreditCard],
-] as const;
+import { db } from "../../lib/db";
 
 export default async function AdminPage() {
   const context = await getAuthorizationContext();
   if (!context.isAuthenticated) redirect("/sign-in");
   if (!context.isPrivileged) redirect("/portal");
+
+  const [
+    openLeads,
+    activeClients,
+    activeProjects,
+    outstandingInvoices,
+    recentLeads,
+  ] = await Promise.all([
+    db.lead.count({ where: { status: { not: "lost" } } }),
+    db.organization.count(),
+    db.project.count({ where: { status: { not: "completed" } } }),
+    db.invoice.count({
+      where: { status: { in: ["draft", "sent", "overdue"] } },
+    }),
+    db.lead.findMany({ orderBy: { createdAt: "desc" }, take: 3 }),
+  ]);
+
+  const metrics = [
+    ["Open leads", String(openLeads), "Persisted website leads", Users],
+    [
+      "Active clients",
+      String(activeClients),
+      "Organizations in the platform",
+      BriefcaseBusiness,
+    ],
+    [
+      "Projects in delivery",
+      String(activeProjects),
+      "Database-backed delivery records",
+      ShieldCheck,
+    ],
+    [
+      "Open invoices",
+      String(outstandingInvoices),
+      "Billing records requiring action",
+      CreditCard,
+    ],
+  ] as const;
 
   return (
     <AdminShell active="overview">
@@ -56,44 +88,44 @@ export default async function AdminPage() {
       <section className="admin-section">
         <div className="admin-section-head">
           <div>
-            <p className="kicker">ATTENTION</p>
-            <h2>What needs action</h2>
+            <p className="kicker">RECENT ACTIVITY</p>
+            <h2>Latest leads</h2>
           </div>
+          <Link href="/admin/leads" className="text-link">
+            Open leads <ArrowUpRight size={16} aria-hidden="true" />
+          </Link>
         </div>
         <div className="admin-action-list">
-          <article>
-            <span className="admin-dot admin-dot-accent" />
-            <div>
-              <strong>New enterprise assessment</strong>
-              <p>Fintech infrastructure team · submitted 42 minutes ago</p>
-            </div>
-            <Link
-              href="/admin/leads"
-              aria-label="Review new enterprise assessment"
-            >
-              <ArrowUpRight size={17} />
-            </Link>
-          </article>
-          <article>
-            <span className="admin-dot" />
-            <div>
-              <strong>Security findings awaiting approval</strong>
-              <p>Security Assessment · client decision required</p>
-            </div>
-            <Link href="/admin/projects" aria-label="Review security findings">
-              <ArrowUpRight size={17} />
-            </Link>
-          </article>
-          <article>
-            <span className="admin-dot" />
-            <div>
-              <strong>Invoice approaching due date</strong>
-              <p>AI Operations Platform · due in 3 days</p>
-            </div>
-            <Link href="/admin/billing" aria-label="Review outstanding invoice">
-              <ArrowUpRight size={17} />
-            </Link>
-          </article>
+          {recentLeads.length === 0 ? (
+            <article>
+              <div>
+                <strong>No leads captured yet.</strong>
+                <p>
+                  New website submissions will appear here after persistence is
+                  configured.
+                </p>
+              </div>
+            </article>
+          ) : (
+            recentLeads.map((lead) => (
+              <article key={lead.id}>
+                <span className="admin-dot admin-dot-accent" />
+                <div>
+                  <strong>{lead.organizationName}</strong>
+                  <p>
+                    {lead.service} · {lead.status} ·{" "}
+                    {lead.createdAt.toLocaleString()}
+                  </p>
+                </div>
+                <Link
+                  href="/admin/leads"
+                  aria-label={`Review lead from ${lead.organizationName}`}
+                >
+                  <ArrowUpRight size={17} />
+                </Link>
+              </article>
+            ))
+          )}
         </div>
       </section>
 
