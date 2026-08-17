@@ -1,7 +1,7 @@
-import { AdminResourcePage } from "../../../components/admin-resource-page";
-import { db } from "../../../lib/db";
-import { getAuthorizationContext } from "../../../lib/auth/authorization";
 import { redirect } from "next/navigation";
+import { AdminResourcePage } from "../../../components/admin-resource-page";
+import { getAuthorizationContext } from "../../../lib/auth/authorization";
+import { db } from "../../../lib/db";
 
 export default async function BillingPage() {
   const context = await getAuthorizationContext();
@@ -14,12 +14,12 @@ export default async function BillingPage() {
     take: 50,
   });
 
-  const rows = invoices.map((invoice) => [
-    `${invoice.id} · ${invoice.organization.name}`,
-    `${invoice.currency} ${(invoice.amountMinor / 100).toFixed(2)}`,
-    invoice.status,
-    invoice.createdAt.toLocaleDateString(),
-  ]);
+  const rows = invoices.map((invoice) => ({
+    name: `${invoice.id} · ${invoice.organization.name}`,
+    detail: `${invoice.currency} ${(invoice.amountMinor / 100).toFixed(2)}`,
+    status: invoice.status,
+    meta: invoice.createdAt.toLocaleDateString(),
+  }));
 
   return (
     <AdminResourcePage
