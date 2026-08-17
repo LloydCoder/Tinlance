@@ -34,6 +34,16 @@ jobs:
       - run: pnpm lint
       - run: pnpm --filter @tinlance/web test -- --passWithNoTests
         working-directory: .
+      - name: Temporary formatter diagnostics
+        run: |
+          for file in apps/web/app/portal/documents/page.tsx apps/web/app/portal/messages/page.tsx apps/web/app/portal/projects/page.tsx apps/web/lib/auth.ts apps/web/lib/auth/authorization.ts; do
+            formatted="/tmp/$(basename "$file")"
+            pnpm exec prettier "$file" > "$formatted"
+            if ! diff -u "$file" "$formatted"; then
+              true
+            fi
+          done
+        working-directory: .
       - name: Check formatting for changed source and documentation files
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
