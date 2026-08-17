@@ -37,7 +37,9 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     setPending(false);
 
     if (result.error) {
-      setError(result.error.message || "Authentication failed. Please try again.");
+      setError(
+        result.error.message || "Authentication failed. Please try again.",
+      );
       return;
     }
 
@@ -46,9 +48,14 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   }
 
   return (
-    <form onSubmit={submit} className="w-full max-w-md space-y-5 rounded-2xl border border-black/10 bg-white p-8 shadow-sm">
+    <form
+      onSubmit={submit}
+      className="w-full max-w-md space-y-5 rounded-2xl border border-black/10 bg-white p-8 shadow-sm"
+    >
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/50">Tinlance</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/50">
+          Tinlance
+        </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">
           {isSignUp ? "Create your account" : "Welcome back"}
         </h1>
@@ -95,7 +102,10 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       </label>
 
       {error && (
-        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
           {error}
         </p>
       )}
