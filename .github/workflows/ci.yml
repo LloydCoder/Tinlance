@@ -218,22 +218,23 @@ jobs:
     name: Dependency review (advisory when GitHub graph is unavailable)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v6
       - name: Review pull request dependencies
+        id: dependency-review
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+      - name: Dependency review fallback
+        if: steps.dependency-review.outcome == 'failure'
+        run: echo "GitHub Dependency Review is advisory because repository dependency graph support is unavailable; pnpm audit and pip-audit remain blocking security gates."
       - name: Dependency review not applicable to push
         if: github.event_name != 'pull_request'
         run: echo "Dependency review is PR-only; package audits run in the application gates."
-      - name: Explain advisory fallback
-        if: failure()
-        run: echo "GitHub Dependency Review is advisory because repository dependency graph support is unavailable; pnpm audit and pip-audit remain blocking security gates."
 
   enterprise-gate:
     name: Enterprise CI gate

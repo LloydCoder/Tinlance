@@ -1,4 +1,3 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -8,18 +7,22 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { PortalShell } from "../../components/portal-shell";
 import { ensureOrganization } from "../../lib/tenant";
 import { db } from "../../lib/db";
+import { auth } from "../../lib/auth";
 
 export default async function PortalPage() {
-  const { userId, orgId } = await auth();
-  if (!userId) return null;
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/sign-in?callbackURL=/portal");
 
-  const user = await currentUser();
-  const name =
-    user?.firstName ?? user?.emailAddresses[0]?.emailAddress ?? "Client";
-  const organization = orgId ? await ensureOrganization(orgId) : null;
+  const organizationId = session.session.activeOrganizationId;
+  const organization = organizationId
+    ? await ensureOrganization(organizationId)
+    : null;
+  const name = session.user.name || session.user.email || "Client";
 
   const [projects, messageCount, openInvoices] = organization
     ? await Promise.all([
@@ -43,7 +46,7 @@ export default async function PortalPage() {
       <div className="portal-page-head">
         <div>
           <p className="kicker">
-            CLIENT WORKSPACE / {orgId ? "ORGANIZATION" : "PERSONAL"}
+            CLIENT WORKSPACE / {organization ? "ORGANIZATION" : "PERSONAL"}
           </p>
           <h1>Good to see you, {name}.</h1>
           <p>

@@ -1,23 +1,35 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { getSessionCookie } from "better-auth/cookies";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-const isProtectedRoute = createRouteMatcher(["/portal(.*)", "/admin(.*)"]);
+const protectedPrefixes = ["/portal", "/admin"] as const;
 
-export default clerkMiddleware(
-  async (auth, request) => {
-    if (isProtectedRoute(request)) {
-      await auth.protect();
-    }
-  },
-  () => ({
-    authorizedParties: [process.env.NEXT_PUBLIC_APP_URL].filter(
-      (value): value is string => Boolean(value),
-    ),
-  }),
-);
+function isProtectedPath(pathname: string) {
+  return protectedPrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+export default function middleware(request: NextRequest) {
+  if (!isProtectedPath(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
+  // This is an optimistic redirect only. Every protected page/API handler
+  // performs a server-side Better Auth session and authorization check.
+  const sessionCookie = getSessionCookie(request);
+  if (!sessionCookie) {
+    const signInUrl = new URL("/sign-in", request.url);
+    signInUrl.searchParams.set(
+      "callbackURL",
+      `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    );
+    return NextResponse.redirect(signInUrl);
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
-  matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|png|gif|svg|ico|webp|txt|xml|woff2?|ttf|map)).*)",
-    "/(api|trpc)(.*)",
-  ],
+  matcher: ["/portal/:path*", "/admin/:path*"],
 };

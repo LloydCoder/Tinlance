@@ -6,12 +6,12 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://*.clerk.com https://*.clerk.accounts.dev https://va.vercel-scripts.com",
+  "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://vitals.vercel-insights.com",
-  "frame-src 'self' https://*.clerk.com https://*.clerk.accounts.dev",
+  "connect-src 'self' https://vitals.vercel-insights.com",
+  "frame-src 'self'",
   "worker-src 'self' blob:",
   "upgrade-insecure-requests",
 ].join("; ");
@@ -27,7 +27,10 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",

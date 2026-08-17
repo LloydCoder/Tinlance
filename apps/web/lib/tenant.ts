@@ -1,19 +1,23 @@
 import { db } from "@/lib/db";
 
 export async function ensureOrganization(
-  clerkOrgId: string,
+  organizationId: string,
   name = "Tinlance Client",
 ) {
   return db.organization.upsert({
-    where: { clerkOrgId },
-    create: { clerkOrgId, name },
+    where: { id: organizationId },
+    create: {
+      id: organizationId,
+      name,
+      slug: organizationId,
+    },
     update: {},
   });
 }
 
 export async function requireOrganization(
-  clerkOrgId: string | null | undefined,
+  organizationId: string | null | undefined,
 ) {
-  if (!clerkOrgId) return null;
-  return db.organization.findUnique({ where: { clerkOrgId } });
+  if (!organizationId) return null;
+  return db.organization.findUnique({ where: { id: organizationId } });
 }

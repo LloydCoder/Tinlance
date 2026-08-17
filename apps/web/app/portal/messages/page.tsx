@@ -1,13 +1,18 @@
 import { ArrowUpRight, MessageSquare } from "lucide-react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { PortalShell } from "../../../components/portal-shell";
 import { requireOrganization } from "../../../lib/tenant";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "../../../lib/auth";
 import { db } from "../../../lib/db";
 
 export default async function MessagesPage() {
-  const { userId, orgId } = await auth();
-  if (!userId) return null;
-  const organization = await requireOrganization(orgId);
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/sign-in?callbackURL=/portal/messages");
+
+  const organization = await requireOrganization(
+    session.session.activeOrganizationId,
+  );
   const messages = organization
     ? await db.message.findMany({
         where: { organizationId: organization.id },

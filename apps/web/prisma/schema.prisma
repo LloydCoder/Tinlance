@@ -7,19 +7,122 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id            String       @id @default(cuid())
+  name          String
+  email         String       @unique
+  emailVerified Boolean      @default(false)
+  image         String?
+  role          String       @default("viewer")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  members       Member[]
+  invitations   Invitation[] @relation("InvitationInviter")
+  messages      Message[]
+  auditEvents   AuditEvent[]
+
+  @@index([role])
+}
+
+model Session {
+  id                   String   @id @default(cuid())
+  expiresAt            DateTime
+  token                String   @unique
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  ipAddress             String?
+  userAgent             String?
+  userId               String
+  activeOrganizationId String?
+  activeTeamId         String?
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@index([expiresAt])
+}
+
 model Organization {
-  id          String              @id @default(cuid())
-  clerkOrgId  String              @unique
-  name        String
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  members     OrganizationMember[]
-  leads       Lead[]
-  bookings    Booking[]
-  projects    Project[]
-  documents   Document[]
-  messages    Message[]
-  invoices    Invoice[]
+  id            String               @id @default(cuid())
+  clerkOrgId    String?              @unique
+  name          String
+  slug          String               @unique @default(cuid())
+  logo          String?
+  metadata      String?              @db.Text
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  members       Member[]
+  invitations   Invitation[]
+  legacyMembers OrganizationMember[] @relation("LegacyOrganizationMembers")
+  leads         Lead[]
+  bookings      Booking[]
+  projects     Project[]
+  documents    Document[]
+  messages     Message[]
+  invoices     Invoice[]
+}
+
+model Member {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model Invitation {
+  id             String       @id @default(cuid())
+  email          String
+  inviterId      String
+  organizationId String
+  role           String?
+  status         String
+  createdAt      DateTime     @default(now())
+  expiresAt      DateTime
+  inviter        User         @relation("InvitationInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([organizationId, status])
+  @@index([expiresAt])
 }
 
 model OrganizationMember {
@@ -28,7 +131,7 @@ model OrganizationMember {
   clerkUserId    String
   role           String
   createdAt      DateTime     @default(now())
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation("LegacyOrganizationMembers", fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, clerkUserId])
   @@index([clerkUserId])
@@ -113,6 +216,7 @@ model Message {
   body           String
   createdAt      DateTime     @default(now())
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author         User         @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, createdAt])
 }
@@ -153,6 +257,7 @@ model AuditEvent {
   requestId      String?
   metadata       Json?
   createdAt      DateTime @default(now())
+  actor          User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, createdAt])
   @@index([actorUserId, createdAt])

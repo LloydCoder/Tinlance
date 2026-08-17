@@ -1,12 +1,16 @@
 import { Building2, KeyRound, ShieldCheck } from "lucide-react";
-import { auth } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { PortalShell } from "../../../components/portal-shell";
 import { requireOrganization } from "../../../lib/tenant";
+import { auth } from "../../../lib/auth";
 
 export default async function SettingsPage() {
-  const { userId, orgId } = await auth();
-  if (!userId) return null;
-  const organization = await requireOrganization(orgId);
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/sign-in?callbackURL=/portal/settings");
+  const organization = await requireOrganization(
+    session.session.activeOrganizationId,
+  );
 
   return (
     <PortalShell active="settings">
@@ -26,9 +30,9 @@ export default async function SettingsPage() {
           <p className="kicker">ORGANIZATION</p>
           <h2>{organization?.name ?? "Personal workspace"}</h2>
           <p>
-            Organization membership and role management are handled through the
-            authenticated identity layer. Server-side data access is scoped to
-            the active organization.
+            Organization membership and role management are handled through
+            Better Auth. Server-side data access is scoped to the active
+            organization.
           </p>
         </section>
         <section className="portal-panel">
@@ -36,8 +40,8 @@ export default async function SettingsPage() {
           <p className="kicker">IDENTITY</p>
           <h2>Authentication</h2>
           <p>
-            Sign-in, session management, MFA, and enterprise identity
-            connections are handled by the configured Clerk production instance.
+            Sign-in and session management are handled by Better Auth with
+            database-backed sessions in Neon Postgres.
           </p>
         </section>
         <section className="portal-panel portal-panel-dark">

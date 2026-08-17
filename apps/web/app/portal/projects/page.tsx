@@ -1,14 +1,18 @@
-import { auth } from "@clerk/nextjs/server";
 import { CheckCircle2, CircleDashed } from "lucide-react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { PortalShell } from "../../../components/portal-shell";
 import { requireOrganization } from "../../../lib/tenant";
 import { db } from "../../../lib/db";
+import { auth } from "../../../lib/auth";
 
 export default async function ProjectsPage() {
-  const { userId, orgId } = await auth();
-  if (!userId) return null;
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/sign-in?callbackURL=/portal/projects");
 
-  const organization = await requireOrganization(orgId);
+  const organization = await requireOrganization(
+    session.session.activeOrganizationId,
+  );
   const projects = organization
     ? await db.project.findMany({
         where: { organizationId: organization.id },
@@ -22,7 +26,9 @@ export default async function ProjectsPage() {
         <div>
           <p className="kicker">DELIVERY / PROJECTS</p>
           <h1>Your projects.</h1>
-          <p>Milestones, current state, and the next decision in one place.</p>
+          <p>
+            Milestones, current state, and the next decision in one place.
+          </p>
         </div>
       </div>
       <div className="portal-project-list portal-project-list-large">
@@ -67,7 +73,7 @@ export default async function ProjectsPage() {
                     <CheckCircle2 size={16} aria-hidden="true" />
                   ) : (
                     <CircleDashed size={16} aria-hidden="true" />
-                  )}{" "}
+                  )}
                   Delivery milestone tracked
                 </span>
                 <span className="text-link">Current project record</span>

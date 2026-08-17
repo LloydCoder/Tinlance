@@ -1,13 +1,18 @@
 import { FileText, LockKeyhole } from "lucide-react";
-import { auth } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { PortalShell } from "../../../components/portal-shell";
 import { requireOrganization } from "../../../lib/tenant";
 import { db } from "../../../lib/db";
+import { auth } from "../../../lib/auth";
 
 export default async function DocumentsPage() {
-  const { userId, orgId } = await auth();
-  if (!userId) return null;
-  const organization = await requireOrganization(orgId);
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/sign-in?callbackURL=/portal/documents");
+
+  const organization = await requireOrganization(
+    session.session.activeOrganizationId,
+  );
   const documents = organization
     ? await db.document.findMany({
         where: { organizationId: organization.id },
@@ -31,8 +36,7 @@ export default async function DocumentsPage() {
       <section className="portal-docs">
         <div className="portal-docs-head">
           <span>
-            <LockKeyhole size={16} aria-hidden="true" />
-            Tenant-scoped
+            <LockKeyhole size={16} aria-hidden="true" /> Tenant-scoped
           </span>
           <span>{documents.length} documents</span>
         </div>
@@ -54,8 +58,7 @@ export default async function DocumentsPage() {
               <div>
                 <h2>{document.name}</h2>
                 <p>
-                  {document.contentType} ·{" "}
-                  {document.createdAt.toLocaleDateString()}
+                  {document.contentType} · {document.createdAt.toLocaleDateString()}
                 </p>
               </div>
               <span className="portal-doc-state">Available</span>
