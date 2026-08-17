@@ -17,7 +17,7 @@ model Organization {
   leads       Lead[]
   bookings    Booking[]
   projects    Project[]
-  documents  Document[]
+  documents   Document[]
   messages    Message[]
   invoices    Invoice[]
 }
