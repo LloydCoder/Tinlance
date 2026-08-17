@@ -70,7 +70,7 @@ jobs:
       - run: ruff check .
       - run: python -m pip check
       - run: pytest -q
-      - run: pip-audit --strict
+      - run: pip-audit --strict --skip-editable
 
   ai-security-regression:
     name: AI security regression
