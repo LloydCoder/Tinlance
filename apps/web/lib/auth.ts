@@ -6,12 +6,18 @@ import { db } from "@/lib/db";
 const baseURL = process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const bootstrapAdminEmail = process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
 
+// Temporary cutover bridge: the existing high-entropy Clerk secret can sign
+// Better Auth sessions until BETTER_AUTH_SECRET is provisioned. No Clerk SDK
+// or Clerk identity APIs are used. Remove the fallback after provisioning the
+// dedicated Better Auth secret in every deployment environment.
+const authSecret = process.env.BETTER_AUTH_SECRET ?? process.env.CLERK_SECRET_KEY;
+
 export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
   experimental: { joins: true },
   baseURL,
   trustedOrigins: [baseURL],
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret: authSecret,
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 12,
@@ -45,10 +51,7 @@ export const auth = betterAuth({
       create: {
         after: async (user) => {
           if (bootstrapAdminEmail && user.email.toLowerCase() === bootstrapAdminEmail) {
-            await db.user.update({
-              where: { id: user.id },
-              data: { role: "super-admin" },
-            });
+            await db.user.update({ where: { id: user.id }, data: { role: "super-admin" } });
           }
         },
       },
