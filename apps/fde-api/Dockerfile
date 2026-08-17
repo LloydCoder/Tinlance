@@ -10,9 +10,10 @@ RUN apt-get update \
     && useradd --system --uid 10001 --gid 10001 app
 COPY apps/fde-api/pyproject.toml ./
 COPY apps/fde-api/app ./app
-RUN pip install --upgrade pip \
+RUN rm -rf /usr/local/lib/python3.12/site-packages/setuptools* \
+           /usr/local/lib/python3.12/site-packages/msgpack* \
+    && pip install --upgrade pip \
     && pip install . \
-    && pip uninstall -y setuptools msgpack \
     && pip install --no-cache-dir --force-reinstall "setuptools>=78.1.1" "msgpack>=1.2.1" \
     && python -m pip check \
     && rm -rf /root/.cache/pip
