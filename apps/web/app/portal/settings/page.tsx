@@ -1,7 +1,13 @@
 import { Building2, KeyRound, ShieldCheck } from "lucide-react";
+import { auth } from "@clerk/nextjs/server";
 import { PortalShell } from "../../../components/portal-shell";
+import { requireOrganization } from "../../../lib/tenant";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const { userId, orgId } = await auth();
+  if (!userId) return null;
+  const organization = await requireOrganization(orgId);
+
   return (
     <PortalShell active="settings">
       <div className="portal-page-head">
@@ -9,8 +15,8 @@ export default function SettingsPage() {
           <p className="kicker">WORKSPACE / SETTINGS</p>
           <h1>Workspace controls.</h1>
           <p>
-            Identity, organization, and security controls belong at the tenant
-            boundary.
+            Identity, organization, and security controls are enforced at the
+            authenticated tenant boundary.
           </p>
         </div>
       </div>
@@ -18,10 +24,11 @@ export default function SettingsPage() {
         <section className="portal-panel">
           <Building2 size={21} aria-hidden="true" />
           <p className="kicker">ORGANIZATION</p>
-          <h2>Team access</h2>
+          <h2>{organization?.name ?? "Personal workspace"}</h2>
           <p>
             Organization membership and role management are handled through the
-            authenticated identity layer.
+            authenticated identity layer. Server-side data access is scoped to
+            the active organization.
           </p>
         </section>
         <section className="portal-panel">
@@ -30,7 +37,8 @@ export default function SettingsPage() {
           <h2>Authentication</h2>
           <p>
             Sign-in, session management, MFA, and enterprise identity
-            connections are delegated to Clerk.
+            connections are handled by the configured Clerk production
+            instance.
           </p>
         </section>
         <section className="portal-panel portal-panel-dark">
@@ -38,8 +46,9 @@ export default function SettingsPage() {
           <p className="kicker kicker-dark">SECURITY</p>
           <h2>Tenant isolation</h2>
           <p>
-            Future operational records will be resolved from the active
-            organization context before authorization or data access.
+            Protected portal queries resolve the active organization from the
+            authenticated session before accessing projects, messages,
+            documents, or billing records.
           </p>
         </section>
       </div>
