@@ -1,33 +1,26 @@
 import { AdminResourcePage } from "../../../components/admin-resource-page";
+import { db } from "../../../lib/db";
+import { getAuthorizationContext } from "../../../lib/auth/authorization";
+import { redirect } from "next/navigation";
 
-const rows = [
-  {
-    name: "AI Operations Platform",
-    detail: "FDE delivery",
-    status: "On track",
-    meta: "68%",
-  },
-  {
-    name: "Security Assessment",
-    detail: "Cybersecurity",
-    status: "Review",
-    meta: "92%",
-  },
-  {
-    name: "Agent Reliability Program",
-    detail: "AI infrastructure",
-    status: "Attention",
-    meta: "41%",
-  },
-  {
-    name: "Cloud Migration",
-    detail: "Platform engineering",
-    status: "Planning",
-    meta: "Kickoff",
-  },
-];
+export default async function ProjectsPage() {
+  const context = await getAuthorizationContext();
+  if (!context.isAuthenticated) redirect("/sign-in");
+  if (!context.isPrivileged) redirect("/portal");
 
-export default function ProjectsPage() {
+  const projects = await db.project.findMany({
+    include: { organization: true },
+    orderBy: { updatedAt: "desc" },
+    take: 50,
+  });
+
+  const rows = projects.map((project) => [
+    project.name,
+    project.type ?? "Engineering",
+    project.status,
+    `${project.progress}%`,
+  ]);
+
   return (
     <AdminResourcePage
       active="projects"
