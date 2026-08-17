@@ -19,7 +19,10 @@ export default function AssessmentPage() {
 
     try {
       const parsedStart = new Date(startsAt);
-      if (!Number.isFinite(parsedStart.getTime()) || parsedStart.getTime() <= Date.now()) {
+      if (
+        !Number.isFinite(parsedStart.getTime()) ||
+        parsedStart.getTime() <= Date.now()
+      ) {
         setStatus("error");
         return;
       }
