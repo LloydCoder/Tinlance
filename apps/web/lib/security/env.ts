@@ -25,11 +25,16 @@ export const env = baseEnvSchema.parse({
   PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
 });
 
+function isProductionClerkKey(value: string | undefined, prefix: "pk_live_" | "sk_live_") {
+  return typeof value === "string" && value.startsWith(prefix);
+}
+
 export function validateProductionEnv(options?: { billing?: boolean }) {
   if (env.NODE_ENV !== "production") return;
 
   const required: Record<string, string | undefined> = {
     DATABASE_URL: env.DATABASE_URL,
+    NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
     UPSTASH_REDIS_REST_URL: env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: env.UPSTASH_REDIS_REST_TOKEN,
     CLERK_SECRET_KEY: env.CLERK_SECRET_KEY,
@@ -46,5 +51,13 @@ export function validateProductionEnv(options?: { billing?: boolean }) {
     throw new Error(
       `Missing required production environment variables: ${missing.join(", ")}`,
     );
+  }
+
+  if (!isProductionClerkKey(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, "pk_live_")) {
+    throw new Error("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be a production pk_live_ key");
+  }
+
+  if (!isProductionClerkKey(env.CLERK_SECRET_KEY, "sk_live_")) {
+    throw new Error("CLERK_SECRET_KEY must be a production sk_live_ key");
   }
 }
