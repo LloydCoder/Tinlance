@@ -15,6 +15,7 @@ export const leadSchema = z.object({
   email: z.string().email().max(254),
   country: z.string().trim().min(2).max(80),
   service: z.string().trim().min(2).max(120),
+  notes: z.string().trim().max(4000).optional(),
   status: leadStatusSchema.default("new"),
 });
 
