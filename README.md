@@ -2,7 +2,7 @@
 
 > Production-grade AI engineering and Forward Deployed Engineering for enterprise automation, AI infrastructure, security, and intelligent systems.
 
-Tinlance is being rebuilt from the ground up as a public engineering platform. The repository is intentionally designed to demonstrate production engineering discipline: typed application code, secure boundaries, automated validation, reproducible deployment, and a separate AI/FDE execution layer.
+Tinlance is a production-oriented public engineering platform. The repository is designed to demonstrate disciplined application engineering: typed code, explicit trust boundaries, tenant-aware authorization, persistent data, authenticated service-to-service execution, automated security validation, reproducible deployment, and a separate AI/FDE execution layer.
 
 ## Architecture
 
@@ -13,22 +13,33 @@ Client
 Next.js / Vercel
   ├── Marketing
   ├── Client Portal
-  ├── Admin
+  ├── Admin / Operations
   └── API
        │
+       ├── Better Auth
+       │     ├── Sessions
+       │     ├── Organizations
+       │     ├── Memberships
+       │     └── RBAC
+       │
        ├── Security boundary / rate limiting
-       ├── PostgreSQL / Prisma
-       ├── Auth / RBAC / tenant scoping
-       ├── Billing
-       ├── Communications
-       └── FDE Mastery gateway
+       ├── PostgreSQL / Prisma / Neon
+       ├── Billing / Paystack webhooks
+       ├── Audit events / request correlation
+       └── FDE API
               │
               ▼
          FastAPI / Python
               ├── authenticated service boundary
-              ├── execution contract
-              ├── upstream FDE routing
+              ├── tenant validation
+              ├── domain validation
+              ├── OAuth 2.0 upstream authentication
+              ├── request correlation
               └── health / readiness / telemetry hooks
+                       │
+                       ▼
+                  fde-mastery
+                       └── AgentRouter / domain agents
 ```
 
 ## Repository layout
@@ -38,70 +49,142 @@ Next.js / Vercel
 - `apps/fde-api` — authenticated Python FastAPI gateway for FDE execution.
 - `packages` — shared contracts, UI, and configuration.
 - `content` — case studies, research, insights, services, and industry content.
-- `docs` — architecture, security, design, and architecture decision records.
+- `docs` — architecture, security, design, operational documentation, and ADRs.
 - `tests` — cross-application end-to-end and integration tests.
 
-## Engineering standards
+## Authentication and authorization
+
+Tinlance uses **Better Auth + Neon PostgreSQL** as its authentication authority and persistent identity store. Clerk is no longer part of the active authentication path.
+
+The authorization model is deliberately layered:
+
+```text
+Authentication
+      ↓
+Session
+      ↓
+User
+      ↓
+Organization
+      ↓
+Membership
+      ↓
+Role
+      ↓
+Permission
+      ↓
+Resource
+```
+
+Supported operational roles include Owner, Admin, Security Admin, Billing Admin, Operator, and Viewer. Authorization is enforced server-side; hiding a UI element is never considered an authorization boundary.
+
+See [`docs/AUTHENTICATION.md`](./docs/AUTHENTICATION.md) for the full model and migration notes.
+
+## FDE execution architecture
+
+`apps/fde-api` is the service boundary between Tinlance and the separate `fde-mastery` execution platform.
+
+The execution contract is versioned conceptually as:
+
+```http
+POST /v1/{domain}/execute
+```
+
+with a tenant-aware payload. Supported domains are:
+
+- `cybersecurity`
+- `finance`
+- `healthtech`
+- `logistics`
+- `legal`
+- `revops`
+
+Tinlance authenticates to the FDE API through its internal service boundary. The FDE API separately authenticates upstream to `fde-mastery` using OAuth 2.0 client credentials when configured. Tenant identity, organization context, metadata, and request IDs are propagated explicitly.
+
+See [`docs/FDE-INTEGRATION.md`](./docs/FDE-INTEGRATION.md).
+
+## Billing and webhook reliability
+
+Paystack webhooks are treated as an authenticated, replayable event stream rather than a trusted callback.
+
+Controls include:
+
+- request-size limit of 65,536 bytes;
+- signature verification before processing;
+- JSON and event-shape validation;
+- event/reference extraction for idempotency;
+- unique `(provider, eventId)` persistence through `WebhookEvent`;
+- transactional invoice state transitions;
+- audit-event creation;
+- correlation/request IDs;
+- safe duplicate handling; and
+- safe failure responses.
+
+See [`docs/BILLING-WEBHOOKS.md`](./docs/BILLING-WEBHOOKS.md).
+
+## Engineering and security standards
 
 - TypeScript strict mode and Python 3.12 typing.
-- Automated linting, type checking, tests, formatting, dependency auditing, and production builds.
+- Automated linting, type checking, tests, formatting, dependency auditing, security scanning, SBOM validation, container validation, and production builds.
 - Secure-by-default HTTP headers including CSP and HSTS.
 - Distributed public API rate limiting with Upstash Redis.
 - Typed environment boundaries with explicit production secret validation.
 - Request correlation IDs across application boundaries.
 - PostgreSQL persistence through Prisma with versioned migrations.
-- Server-side tenant scoping using Clerk organization identity; client-side filtering is never an authorization boundary.
+- Server-side tenant scoping; client-side filtering is never an authorization boundary.
 - Authenticated FastAPI service-to-service execution boundary.
+- OAuth 2.0 upstream authentication with cached access tokens and expiry-aware refresh.
 - Health and readiness endpoints for deployment/platform checks.
-- Dependency and supply-chain security are part of CI.
-- Material architecture decisions are documented.
-- Public code is treated as inspectable by prospective CTOs and security teams.
+- Dependency and software-supply-chain security as blocking CI controls.
+- AI security regression and domain-agent validation in CI.
+- Material architecture decisions documented in ADRs.
 
-## Product rebuild status
+The security verification baseline is OWASP ASVS 5.0, with stronger controls applied to authentication, authorization, payment/webhook processing, tenant boundaries, and AI execution paths.
 
-The original engineering foundation (Phases 0–9) is complete. The customer-facing product redesign is tracked separately as an 8-milestone frontend/product workstream:
+## Delivery status
 
-1. **Design System** — brand, typography, color, spacing, motion, and reusable UI primitives. **Complete.**
-2. **Marketing Homepage** — premium enterprise AI/FDE positioning and conversion experience. **Complete.**
-3. **Core Marketing Pages** — FDE, AI engineering, cybersecurity, industries, services, and company pages. **Complete.**
-4. **Proof & Content** — case studies, projects, OSS work, research, and blog/insights. **Complete.**
-5. **Conversion System** — assessment, contact, booking, lead capture, and CTA flows. **Complete.**
-6. **Client Portal** — authenticated client workspace, projects, communications, and documents. **Complete.**
-7. **Admin Portal** — operational administration, leads, clients, projects, content, billing, and controls. **Complete.**
-8. **Production Integration, Polish & Launch** — persistence, tenant isolation, API protection, security headers, environment validation, FastAPI integration, accessibility, responsive QA, SEO, performance, E2E, Vercel deployment, and final production verification. **Active.**
+The original website/product build phases are complete. The current platform hardening work has completed the major persistence, authentication, authorization, billing, FDE gateway, supply-chain, and CI improvements described in the architecture documentation.
 
-### Current milestone
+The current release gate is **enterprise production verification**. A release is not considered complete merely because a build succeeds: production configuration, database migrations, authenticated portal/admin behavior, payment webhooks, and the Tinlance → FDE API → `fde-mastery` execution path must be verified end-to-end.
 
-**Phase 8 — Production Integration, Polish & Launch** is the active gated milestone.
+### Current verified implementation areas
 
-Phase 8 has now addressed the previously identified architecture gaps in code:
+- Better Auth + Neon migration: implemented.
+- Clerk authentication path removal: implemented.
+- Database-backed sessions, accounts, verification, organizations, memberships, and invitations: implemented.
+- Server-side RBAC and tenant-aware authorization: implemented.
+- FDE tenant/domain routing: implemented.
+- OAuth 2.0 upstream client-credentials flow with token caching: implemented.
+- Paystack signature validation, payload limits, idempotency, invoice state handling, and auditing: implemented.
+- Prisma `WebhookEvent` persistence and migration: implemented.
+- Request correlation across service boundaries: implemented.
+- FDE health/readiness checks: implemented.
+- Enterprise CI controls including security regression, SBOM, container validation, and dependency auditing: implemented.
+- Vercel/pnpm deployment configuration fixes: implemented.
 
-- Lead and assessment booking submissions persist to PostgreSQL instead of returning an acknowledgement without storage.
-- Public lead and booking endpoints use distributed rate limiting and request-size limits.
-- CSP and HSTS are enforced alongside the existing security headers.
-- Production infrastructure and authentication secrets are explicitly validated at runtime.
-- Client portal project and summary data are queried through the authenticated Clerk organization boundary.
-- Admin lead, client, project, billing, and dashboard surfaces use persisted records instead of placeholder operational rows where the corresponding database models exist.
-- `apps/fde-api` contains an authenticated FastAPI gateway with request contracts, health/readiness endpoints, upstream routing, timeout handling, and tests.
-- Prisma schema and an initial PostgreSQL migration establish the persistence boundary.
-- CI now validates both the Next.js application and the FastAPI service.
+### Production verification still required
 
-### Phase 8 production gates
+These are deployment/runtime acceptance tests, not claims that can be inferred from source code alone:
 
-The final launch gate remains strict:
+1. Production Better Auth login/session flows.
+2. Authenticated `/portal` end-to-end verification.
+3. Authenticated `/admin` end-to-end verification and role enforcement.
+4. Production Prisma/Neon transaction and migration verification.
+5. Live Paystack signature/idempotency/invoice verification.
+6. Live Tinlance → FDE API → `fde-mastery` execution verification.
+7. Production failure-path and timeout verification.
+8. Final Vercel/FastAPI smoke test and monitoring verification.
 
-1. Build and integration implementation.
-2. Deep security and architecture audit.
-3. Fix all findings without weakening CI.
-4. README updated to the current verified state.
-5. Web and FastAPI CI green.
-6. E2E and tenant-isolation verification green.
-7. Production environment and database migration verification.
-8. Vercel/FastAPI deployment verification.
-9. Final production smoke test.
-10. Merge only after all required checks are green.
+## Documentation
 
-The FastAPI gateway is a real service boundary, but the external FDE Mastery upstream must be configured through `FDE_MASTER_UPSTREAM_URL` and its service credential before upstream execution is considered production-live. The repository does not claim that external execution is live merely because the gateway exists.
+- [`docs/AUTHENTICATION.md`](./docs/AUTHENTICATION.md) — Better Auth, sessions, organizations, RBAC, tenant isolation, and migration notes.
+- [`docs/FDE-INTEGRATION.md`](./docs/FDE-INTEGRATION.md) — FDE API contract, domain routing, OAuth upstream authentication, tenancy, correlation, and readiness.
+- [`docs/BILLING-WEBHOOKS.md`](./docs/BILLING-WEBHOOKS.md) — Paystack security, idempotency, invoice state transitions, and audit behavior.
+- [`docs/ENTERPRISE-CI-GATES.md`](./docs/ENTERPRISE-CI-GATES.md) — blocking CI/security controls.
+- [`docs/SECURITY-RELEASE-GATE.md`](./docs/SECURITY-RELEASE-GATE.md) — release verification requirements.
+- [`docs/PHASES.md`](./docs/PHASES.md) — delivery history and current release gate.
+- [`docs/DESIGN-SYSTEM.md`](./docs/DESIGN-SYSTEM.md) — visual system and UI standards.
+- [`docs/decisions/`](./docs/decisions/) — architecture decision records.
 
 ## License
 
