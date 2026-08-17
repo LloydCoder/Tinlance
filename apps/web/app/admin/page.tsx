@@ -113,7 +113,7 @@ export default async function AdminPage() {
                 <div>
                   <strong>{lead.organizationName}</strong>
                   <p>
-                    {lead.service} · {lead.status} · {" "}
+                    {lead.service} · {lead.status} ·{" "}
                     {lead.createdAt.toLocaleString()}
                   </p>
                 </div>
