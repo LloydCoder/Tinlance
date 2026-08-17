@@ -8,7 +8,10 @@ export default async function LeadsPage() {
   if (!context.isAuthenticated) redirect("/sign-in");
   if (!context.isPrivileged) redirect("/portal");
 
-  const leads = await db.lead.findMany({ orderBy: { createdAt: "desc" }, take: 50 });
+  const leads = await db.lead.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
   const rows = leads.map((lead) => ({
     name: lead.organizationName,
     detail: lead.service,
