@@ -34,15 +34,22 @@ class ExecutionResponse(BaseModel):
     result: dict | None = None
 
 
-def require_service_token(authorization: Annotated[str | None, Header()] = None) -> None:
+def require_service_token(
+    authorization: Annotated[str | None, Header()] = None,
+) -> None:
     expected = os.getenv("FDE_SERVICE_TOKEN")
     if not expected:
-        raise HTTPException(status_code=503, detail="FDE service authentication is not configured")
+        raise HTTPException(
+            status_code=503,
+            detail="FDE service authentication is not configured",
+        )
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
     provided = authorization.removeprefix("Bearer ").strip()
-    if not hmac.compare_digest(hashlib.sha256(provided.encode()).digest(), hashlib.sha256(expected.encode()).digest()):
+    expected_digest = hashlib.sha256(expected.encode()).digest()
+    provided_digest = hashlib.sha256(provided.encode()).digest()
+    if not hmac.compare_digest(provided_digest, expected_digest):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
 
@@ -58,7 +65,11 @@ async def ready() -> dict[str, str]:
     return {"status": "ready"}
 
 
-@app.post("/v1/execute", response_model=ExecutionResponse, dependencies=[Depends(require_service_token)])
+@app.post(
+    "/v1/execute",
+    response_model=ExecutionResponse,
+    dependencies=[Depends(require_service_token)],
+)
 async def execute(payload: ExecutionRequest, request: Request) -> ExecutionResponse:
     request_id = request.headers.get("x-request-id") or str(uuid4())
     upstream = os.getenv("FDE_MASTER_UPSTREAM_URL")
