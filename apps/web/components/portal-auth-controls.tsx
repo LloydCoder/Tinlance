@@ -19,7 +19,11 @@ export function PortalAuthControls() {
   }
 
   if (!session) {
-    return <Link href="/sign-in" className="portal-auth-fallback">Sign in</Link>;
+    return (
+      <Link href="/sign-in" className="portal-auth-fallback">
+        Sign in
+      </Link>
+    );
   }
 
   return (
@@ -27,7 +31,11 @@ export function PortalAuthControls() {
       <span className="portal-auth-fallback" title={session.user.email}>
         {session.user.name}
       </span>
-      <button type="button" onClick={handleSignOut} className="portal-auth-fallback">
+      <button
+        type="button"
+        onClick={handleSignOut}
+        className="portal-auth-fallback"
+      >
         Sign out
       </button>
     </div>
