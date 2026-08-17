@@ -44,8 +44,9 @@ jobs:
           if [ -z "$changed" ]; then
             echo "No supported changed files."
           else
+            cd ../..
             printf '%s\n' "$changed" | xargs pnpm exec prettier --write
-            git diff -- "$changed"
+            git diff -- $changed
           fi
       - run: pnpm audit --audit-level=high
         working-directory: .
