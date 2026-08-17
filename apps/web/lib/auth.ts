@@ -4,6 +4,7 @@ import { organization } from "better-auth/plugins";
 import { db } from "@/lib/db";
 
 const baseURL = process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const bootstrapAdminEmail = process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
 
 export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
@@ -37,6 +38,20 @@ export const auth = betterAuth({
   },
   account: {
     encryptOAuthTokens: true,
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          if (bootstrapAdminEmail && user.email.toLowerCase() === bootstrapAdminEmail) {
+            await db.user.update({
+              where: { id: user.id },
+              data: { role: "super-admin" },
+            });
+          }
+        },
+      },
+    },
   },
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production",
