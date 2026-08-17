@@ -1,36 +1,26 @@
 import { z } from "zod";
 
 const baseEnvSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .default("development"),
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  BETTER_AUTH_URL: z.string().url().optional(),
+  BETTER_AUTH_SECRET: z.string().min(32).optional(),
   DATABASE_URL: z.string().min(1).optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
-  CLERK_SECRET_KEY: z.string().min(1).optional(),
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1).optional(),
   PAYSTACK_SECRET_KEY: z.string().min(1).optional(),
 });
 
 export const env = baseEnvSchema.parse({
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+  BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
   DATABASE_URL: process.env.DATABASE_URL,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
-  CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
-    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
   PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
 });
-
-function isProductionClerkKey(
-  value: string | undefined,
-  prefix: "pk_live_" | "sk_live_",
-) {
-  return typeof value === "string" && value.startsWith(prefix);
-}
 
 export function validateProductionEnv(options?: { billing?: boolean }) {
   if (env.NODE_ENV !== "production") return;
@@ -38,35 +28,27 @@ export function validateProductionEnv(options?: { billing?: boolean }) {
   const required: Record<string, string | undefined> = {
     DATABASE_URL: env.DATABASE_URL,
     NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
+    BETTER_AUTH_URL: env.BETTER_AUTH_URL,
+    BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
     UPSTASH_REDIS_REST_URL: env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: env.UPSTASH_REDIS_REST_TOKEN,
-    CLERK_SECRET_KEY: env.CLERK_SECRET_KEY,
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
   };
 
-  if (options?.billing) {
-    required.PAYSTACK_SECRET_KEY = env.PAYSTACK_SECRET_KEY;
-  }
+  if (options?.billing) required.PAYSTACK_SECRET_KEY = env.PAYSTACK_SECRET_KEY;
 
   const missing = Object.entries(required)
     .filter(([, value]) => !value)
     .map(([key]) => key);
 
   if (missing.length > 0) {
-    throw new Error(
-      `Missing required production environment variables: ${missing.join(", ")}`,
-    );
+    throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
   }
 
-  if (
-    !isProductionClerkKey(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, "pk_live_")
-  ) {
-    throw new Error(
-      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be a production pk_live_ key",
-    );
+  if ((env.BETTER_AUTH_SECRET?.length ?? 0) < 32) {
+    throw new Error("BETTER_AUTH_SECRET must contain at least 32 characters");
   }
 
-  if (!isProductionClerkKey(env.CLERK_SECRET_KEY, "sk_live_")) {
-    throw new Error("CLERK_SECRET_KEY must be a production sk_live_ key");
+  if (env.BETTER_AUTH_URL !== env.NEXT_PUBLIC_APP_URL) {
+    throw new Error("BETTER_AUTH_URL and NEXT_PUBLIC_APP_URL must match in production");
   }
 }
