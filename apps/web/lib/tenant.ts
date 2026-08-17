@@ -1,6 +1,9 @@
 import { db } from "@/lib/db";
 
-export async function ensureOrganization(clerkOrgId: string, name = "Tinlance Client") {
+export async function ensureOrganization(
+  clerkOrgId: string,
+  name = "Tinlance Client",
+) {
   return db.organization.upsert({
     where: { clerkOrgId },
     create: { clerkOrgId, name },
