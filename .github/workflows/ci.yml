@@ -28,7 +28,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - run: pnpm install --frozen-lockfile=false
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile=true
         working-directory: .
       - run: pnpm typecheck
       - run: pnpm lint
