@@ -19,6 +19,7 @@
     }
   },
   "devDependencies": {
+    "eslint-config-next": "16.1.6",
     "prettier": "3.9.6",
     "turbo": "^2.10.10",
     "typescript": "^5.9.3"
