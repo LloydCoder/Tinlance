@@ -229,7 +229,7 @@ jobs:
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/src" \
             semgrep/semgrep:1.172.0 \
-            scan \
+            semgrep \
             --config=p/owasp-top-ten \
             --config=p/javascript \
             --config=p/python \
