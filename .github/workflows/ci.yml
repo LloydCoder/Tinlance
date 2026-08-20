@@ -5,11 +5,13 @@ on:
     branches: [main, 'feat/**', 'fix/**', 'chore/**']
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened]
+  merge_group:
   workflow_dispatch:
 
+# Least-privilege default token. No job in this workflow needs repository writes.
 permissions:
   contents: read
-  security-events: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -17,6 +19,7 @@ concurrency:
 
 jobs:
   web:
+    name: Web application
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -56,31 +59,27 @@ jobs:
       - run: pnpm lint
       - run: pnpm --filter @tinlance/web test -- --passWithNoTests
         working-directory: .
-      - name: Check formatting for changed source and documentation files
+      - name: Check formatting for changed files
         run: |
+          set -euo pipefail
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base="${{ github.event.pull_request.base.sha }}"
             head="${{ github.event.pull_request.head.sha }}"
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             base="$(git rev-parse HEAD^ 2>/dev/null || git rev-parse HEAD)"
             head="${{ github.sha }}"
+          elif [ "${{ github.event_name }}" = "merge_group" ]; then
+            base="${{ github.event.merge_group.base_sha }}"
+            head="${{ github.sha }}"
           else
             base="${{ github.event.before }}"
             head="${{ github.sha }}"
           fi
-
           mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "$base" "$head" | grep -E '\\.(js|jsx|ts|tsx|json|css|md|mjs|cjs)$' || true)
-          if [ "${#changed[@]}" -eq 0 ]; then
-            echo "No supported changed files to format-check."
-            exit 0
-          fi
-
+          if [ "${#changed[@]}" -eq 0 ]; then exit 0; fi
           failed=0
           for file in "${changed[@]}"; do
-            if ! pnpm exec prettier --check --ignore-unknown "$file"; then
-              echo "::error file=$file::Prettier check failed"
-              failed=1
-            fi
+            pnpm exec prettier --check --ignore-unknown "$file" || failed=1
           done
           exit "$failed"
         working-directory: .
@@ -89,6 +88,7 @@ jobs:
       - run: pnpm build
 
   fde-api:
+    name: FDE API
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -197,14 +197,12 @@ jobs:
           file: apps/fde-api/Dockerfile
           tags: tinlance-fde-api:sbom
           load: true
-      - name: Generate web CycloneDX SBOM
-        uses: anchore/sbom-action@v0.20.0
+      - uses: anchore/sbom-action@v0.20.0
         with:
           image: tinlance-web:sbom
           format: cyclonedx-json
           output-file: tinlance-web.sbom.json
-      - name: Generate FDE API CycloneDX SBOM
-        uses: anchore/sbom-action@v0.20.0
+      - uses: anchore/sbom-action@v0.20.0
         with:
           image: tinlance-fde-api:sbom
           format: cyclonedx-json
@@ -213,12 +211,12 @@ jobs:
         run: |
           python - <<'PY'
           import json
-          for name in ("tinlance-web.sbom.json", "tinlance-fde-api.sbom.json"):
-              with open(name, encoding="utf-8") as fh:
+          for name in ('tinlance-web.sbom.json', 'tinlance-fde-api.sbom.json'):
+              with open(name, encoding='utf-8') as fh:
                   data = json.load(fh)
-              assert data.get("bomFormat") == "CycloneDX", name
-              assert data.get("specVersion"), name
-              assert data.get("components"), name
+              assert data.get('bomFormat') == 'CycloneDX', name
+              assert data.get('specVersion'), name
+              assert data.get('components'), name
           PY
       - uses: actions/upload-artifact@v4
         with:
@@ -244,23 +242,6 @@ jobs:
             --error \
             /src/apps
 
-  dependency-review:
-    name: Dependency review
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v6
-      - name: Review pull request dependencies
-        if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-      - name: Dependency review not applicable to push
-        if: github.event_name != 'pull_request'
-        run: echo "Dependency review is PR-only; package audits run in the application gates."
-
   enterprise-gate:
     name: Enterprise CI gate
     if: always()
@@ -272,7 +253,6 @@ jobs:
       - container-validation
       - sbom
       - security-static
-      - dependency-review
     steps:
       - name: Require every blocking gate to pass
         env:
@@ -280,11 +260,10 @@ jobs:
         run: |
           python - <<'PY'
           import json, os, sys
-          needs = json.loads(os.environ["RESULTS"])
-          blocking = {name: value.get("result") for name, value in needs.items()}
-          failed = {name: result for name, result in blocking.items() if result != "success"}
+          needs = json.loads(os.environ['RESULTS'])
+          failed = {name: value.get('result') for name, value in needs.items() if value.get('result') != 'success'}
           if failed:
-              print("Failed or skipped blocking gates:", failed)
+              print('Failed or skipped blocking gates:', failed)
               sys.exit(1)
-          print("All blocking enterprise CI gates passed:", ", ".join(sorted(blocking)))
+          print('All blocking enterprise CI gates passed:', ', '.join(sorted(needs)))
           PY
