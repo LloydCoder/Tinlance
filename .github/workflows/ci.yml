@@ -61,7 +61,7 @@ jobs:
             head="${{ github.sha }}"
           fi
 
-          mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "$base" "$head" | grep -E '\.(js|jsx|ts|tsx|json|css|md|mjs|cjs)$' || true)
+          mapfile -t changed < <(git diff --name-only --diff-filter=ACMR "$base" "$head" | grep -E '\\.(js|jsx|ts|tsx|json|css|md|mjs|cjs)$' || true)
           if [ "${#changed[@]}" -eq 0 ]; then
             echo "No supported changed files to format-check."
             exit 0
@@ -237,7 +237,7 @@ jobs:
             /src/apps
 
   dependency-review:
-    name: Dependency review (advisory when GitHub graph is unavailable)
+    name: Dependency review
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -245,15 +245,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Review pull request dependencies
-        id: dependency-review
         if: github.event_name == 'pull_request'
-        continue-on-error: true
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
-      - name: Dependency review fallback
-        if: steps.dependency-review.outcome == 'failure'
-        run: echo "GitHub Dependency Review is advisory because repository dependency graph support is unavailable; pnpm audit and pip-audit remain blocking security gates."
       - name: Dependency review not applicable to push
         if: github.event_name != 'pull_request'
         run: echo "Dependency review is PR-only; package audits run in the application gates."
@@ -278,7 +273,7 @@ jobs:
           python - <<'PY'
           import json, os, sys
           needs = json.loads(os.environ["RESULTS"])
-          blocking = {name: value.get("result") for name, value in needs.items() if name != "dependency-review"}
+          blocking = {name: value.get("result") for name, value in needs.items()}
           failed = {name: result for name, result in blocking.items() if result != "success"}
           if failed:
               print("Failed or skipped blocking gates:", failed)
