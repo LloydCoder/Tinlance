@@ -32,11 +32,5 @@ jobs:
           test -f apps/fde-api/pyproject.toml
       - name: Validate workflow YAML
         run: |
-          python - <<'PY'
-          import pathlib
-          import yaml
-          for path in pathlib.Path('.github/workflows').glob('*.yml'):
-              with path.open(encoding='utf-8') as fh:
-                  yaml.safe_load(fh)
-              print(f'validated {path}')
-          PY
+          set -euo pipefail
+          ruby -e 'require "yaml"; Dir[".github/workflows/*.yml"].each { |path| YAML.load_file(path); puts "validated #{path}" }'
