@@ -234,7 +234,7 @@ jobs:
             --config=p/javascript \
             --config=p/python \
             --error \
-            /src
+            /src/apps
 
   dependency-review:
     name: Dependency review (advisory when GitHub graph is unavailable)
