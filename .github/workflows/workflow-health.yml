@@ -1,0 +1,42 @@
+name: Workflow Health
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workflow-health-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workflow-health:
+    name: Workflow health
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - name: Verify required repository contracts
+        run: |
+          set -euo pipefail
+          test -f .github/workflows/ci.yml
+          test -f pnpm-lock.yaml
+          test -f package.json
+          test -f apps/web/package.json
+          test -f apps/fde-api/pyproject.toml
+      - name: Validate workflow YAML
+        run: |
+          python - <<'PY'
+          import pathlib
+          import yaml
+          for path in pathlib.Path('.github/workflows').glob('*.yml'):
+              with path.open(encoding='utf-8') as fh:
+                  yaml.safe_load(fh)
+              print(f'validated {path}')
+          PY
