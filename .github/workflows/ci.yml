@@ -17,6 +17,22 @@ jobs:
     defaults:
       run:
         working-directory: apps/web
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tinlance_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tinlance_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_ci?schema=public
     steps:
       - uses: actions/checkout@v6
         with:
@@ -208,12 +224,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
-      - uses: semgrep/semgrep-action@v1
-        with:
-          config: >-
-            p/owasp-top-ten
-            p/javascript
-            p/python
+      - name: Run Semgrep
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/src" \
+            semgrep/semgrep:1.172.0 \
+            semgrep \
+            --config=p/owasp-top-ten \
+            --config=p/javascript \
+            --config=p/python \
+            --error \
+            /src/apps
 
   dependency-review:
     name: Dependency review (advisory when GitHub graph is unavailable)
