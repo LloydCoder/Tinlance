@@ -20,7 +20,11 @@ const trustedOrigins = [baseURL, vercelOrigin].filter(
 
 export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
-  experimental: { joins: true },
+  advanced: {
+    database: { joins: true },
+    useSecureCookies: process.env.NODE_ENV === "production",
+    cookiePrefix: "tinlance",
+  },
   baseURL,
   trustedOrigins,
   secret: authSecret,
@@ -68,10 +72,6 @@ export const auth = betterAuth({
         },
       },
     },
-  },
-  advanced: {
-    useSecureCookies: process.env.NODE_ENV === "production",
-    cookiePrefix: "tinlance",
   },
   plugins: [
     organization({
