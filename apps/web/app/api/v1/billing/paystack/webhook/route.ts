@@ -25,6 +25,16 @@ type PaystackPayload = {
   };
 };
 
+function canTransition(current: string, next: string) {
+  if (current === next) return true;
+  if (current === "refunded") return false;
+  if (current === "paid") return next === "refunded";
+  if (next === "refunded") return current === "paid";
+  if (next === "paid") return ["draft", "sent", "overdue", "failed"].includes(current);
+  if (next === "failed") return ["draft", "sent", "overdue", "failed"].includes(current);
+  return false;
+}
+
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
   const jsonHeaders = {
@@ -74,9 +84,9 @@ export async function POST(request: Request) {
   }
 
   const eventType = body.event;
-  const eventId = String(body.data.id ?? body.data.reference ?? "");
-  const reference =
-    typeof body.data.reference === "string" ? body.data.reference : null;
+  const data = body.data;
+  const eventId = String(data.id ?? "");
+  const reference = typeof data.reference === "string" ? data.reference : null;
 
   if (!eventId) {
     return NextResponse.json(
@@ -106,26 +116,90 @@ export async function POST(request: Request) {
         return;
       }
 
-      const invoice = await tx.invoice.findFirst({
+      const invoices = await tx.invoice.findMany({
         where: { externalId: reference },
+        take: 2,
+        select: {
+          id: true,
+          organizationId: true,
+          status: true,
+          amountMinor: true,
+          currency: true,
+        },
       });
-      if (!invoice) {
+
+      if (invoices.length !== 1) {
         await tx.auditEvent.create({
           data: {
             action: `paystack.${eventType}.unmatched`,
             resourceType: "webhook",
             resourceId: eventId,
             requestId,
-            metadata: { reference, eventType },
+            metadata: {
+              reference,
+              eventType,
+              matchCount: invoices.length,
+            },
           },
         });
         return;
       }
 
-      await tx.invoice.update({
-        where: { id: invoice.id },
-        data: { status: nextStatus },
-      });
+      const invoice = invoices[0];
+      if (
+        typeof data.amount !== "number" ||
+        typeof data.currency !== "string" ||
+        data.amount !== invoice.amountMinor ||
+        data.currency.toUpperCase() !== invoice.currency.toUpperCase()
+      ) {
+        await tx.auditEvent.create({
+          data: {
+            organizationId: invoice.organizationId,
+            action: `paystack.${eventType}.amount_mismatch`,
+            resourceType: "invoice",
+            resourceId: invoice.id,
+            requestId,
+            metadata: {
+              eventId,
+              reference,
+              eventType,
+              expectedAmount: invoice.amountMinor,
+              receivedAmount: data.amount,
+              expectedCurrency: invoice.currency,
+              receivedCurrency: data.currency,
+            },
+          },
+        });
+        return;
+      }
+
+      if (!canTransition(invoice.status, nextStatus)) {
+        await tx.auditEvent.create({
+          data: {
+            organizationId: invoice.organizationId,
+            action: `paystack.${eventType}.invalid_transition`,
+            resourceType: "invoice",
+            resourceId: invoice.id,
+            requestId,
+            metadata: {
+              eventId,
+              reference,
+              eventType,
+              previousStatus: invoice.status,
+              nextStatus,
+            },
+          },
+        });
+        return;
+      }
+
+      if (invoice.status !== nextStatus) {
+        await tx.invoice.update({
+          where: { id: invoice.id },
+          data: { status: nextStatus },
+        });
+      }
+
       await tx.auditEvent.create({
         data: {
           organizationId: invoice.organizationId,
