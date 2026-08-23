@@ -12,6 +12,7 @@ export default async function ProjectsPage() {
 
   const organization = await requireOrganization(
     session.session.activeOrganizationId,
+    session.user.id,
   );
   const projects = organization
     ? await db.project.findMany({
