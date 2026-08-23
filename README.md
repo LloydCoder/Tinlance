@@ -1,8 +1,8 @@
 # Tinlance
 
-> Production-grade AI engineering and Forward Deployed Engineering for enterprise automation, AI infrastructure, security, and intelligent systems.
+> Production-oriented AI engineering and Forward Deployed Engineering for enterprise automation, AI infrastructure, security, and intelligent systems.
 
-Tinlance is a production-oriented public engineering platform. The repository is designed to demonstrate disciplined application engineering: typed code, explicit trust boundaries, tenant-aware authorization, persistent data, authenticated service-to-service execution, automated security validation, reproducible deployment, and a separate AI/FDE execution layer.
+Tinlance is being developed as a production-oriented engineering platform with explicit trust boundaries, tenant-aware authorization, persistent data, authenticated service-to-service execution, automated security validation, reproducible builds, and a separate AI/FDE execution layer.
 
 ## Architecture
 
@@ -16,7 +16,7 @@ Next.js / Vercel
   ├── Admin / Operations
   └── API
        │
-       ├── Better Auth
+       ├── Better Auth 1.7.x
        │     ├── Sessions
        │     ├── Organizations
        │     ├── Memberships
@@ -29,17 +29,15 @@ Next.js / Vercel
        └── FDE API
               │
               ▼
-         FastAPI / Python
+         FastAPI / Python 3.12
               ├── authenticated service boundary
-              ├── tenant validation
-              ├── domain validation
+              ├── trusted-host policy
+              ├── tenant/domain context propagation
               ├── OAuth 2.0 upstream authentication
-              ├── request correlation
-              └── health / readiness / telemetry hooks
+              └── request correlation
                        │
                        ▼
                   fde-mastery
-                       └── AgentRouter / domain agents
 ```
 
 ## Repository layout
@@ -54,7 +52,7 @@ Next.js / Vercel
 
 ## Authentication and authorization
 
-Tinlance uses **Better Auth + Neon PostgreSQL** as its authentication authority and persistent identity store. Clerk is no longer part of the active authentication path.
+Tinlance uses **Better Auth + Neon PostgreSQL** as its authentication authority and persistent identity store. Clerk is not part of the active authentication path.
 
 The authorization model is deliberately layered:
 
@@ -76,21 +74,21 @@ Permission
 Resource
 ```
 
-Supported operational roles include Owner, Admin, Security Admin, Billing Admin, Operator, and Viewer. Authorization is enforced server-side; hiding a UI element is never considered an authorization boundary.
+The application uses a user-level privileged role boundary for administrative access and Better Auth organization membership roles for tenant membership. Authorization is enforced server-side; hiding a UI element is never considered an authorization boundary.
 
-See [`docs/AUTHENTICATION.md`](./docs/AUTHENTICATION.md) for the full model and migration notes.
+See [`docs/AUTHENTICATION.md`](./docs/AUTHENTICATION.md).
 
 ## FDE execution architecture
 
 `apps/fde-api` is the service boundary between Tinlance and the separate `fde-mastery` execution platform.
 
-The execution contract is versioned conceptually as:
+Current gateway contract:
 
 ```http
-POST /v1/{domain}/execute
+POST /v1/execute
 ```
 
-with a tenant-aware payload. Supported domains are:
+Supported domains are:
 
 - `cybersecurity`
 - `finance`
@@ -99,26 +97,25 @@ with a tenant-aware payload. Supported domains are:
 - `legal`
 - `revops`
 
-Tinlance authenticates to the FDE API through its internal service boundary. The FDE API separately authenticates upstream to `fde-mastery` using OAuth 2.0 client credentials when configured. Tenant identity, organization context, metadata, and request IDs are propagated explicitly.
+The Tinlance application authenticates the user and must establish organization membership before invoking the gateway. The FDE API separately authenticates upstream to `fde-mastery` using OAuth 2.0 client credentials when configured. Organization context, metadata, and validated request IDs are propagated explicitly.
 
-See [`docs/FDE-INTEGRATION.md`](./docs/FDE-INTEGRATION.md).
+See [`docs/FDE-INTEGRATION.md`](./docs/FDE-INTEGRATION.md) and [`apps/fde-api/README.md`](./apps/fde-api/README.md).
 
 ## Billing and webhook reliability
 
-Paystack webhooks are treated as an authenticated, replayable event stream rather than a trusted callback.
+Paystack webhooks are treated as authenticated, replayable events rather than trusted callbacks.
 
 Controls include:
 
 - request-size limit of 65,536 bytes;
-- signature verification before processing;
+- HMAC SHA-512 signature verification before processing;
 - JSON and event-shape validation;
-- event/reference extraction for idempotency;
-- unique `(provider, eventId)` persistence through `WebhookEvent`;
-- transactional invoice state transitions;
-- audit-event creation;
-- correlation/request IDs;
-- safe duplicate handling; and
-- safe failure responses.
+- provider event identity persistence through `WebhookEvent`;
+- duplicate-event handling;
+- invoice amount/currency matching before state changes;
+- monotonic invoice state-transition rules;
+- transactional invoice updates and audit events; and
+- request correlation with safe failure responses.
 
 See [`docs/BILLING-WEBHOOKS.md`](./docs/BILLING-WEBHOOKS.md).
 
@@ -134,6 +131,7 @@ See [`docs/BILLING-WEBHOOKS.md`](./docs/BILLING-WEBHOOKS.md).
 - Server-side tenant scoping; client-side filtering is never an authorization boundary.
 - Authenticated FastAPI service-to-service execution boundary.
 - OAuth 2.0 upstream authentication with cached access tokens and expiry-aware refresh.
+- Trusted-host enforcement for the FDE API.
 - Health and readiness endpoints for deployment/platform checks.
 - Dependency and software-supply-chain security as blocking CI controls.
 - AI security regression and domain-agent validation in CI.
@@ -141,39 +139,33 @@ See [`docs/BILLING-WEBHOOKS.md`](./docs/BILLING-WEBHOOKS.md).
 
 The security verification baseline is OWASP ASVS 5.0, with stronger controls applied to authentication, authorization, payment/webhook processing, tenant boundaries, and AI execution paths.
 
-## Delivery status
+## Current release gate
 
-The original website/product build phases are complete. The current platform hardening work has completed the major persistence, authentication, authorization, billing, FDE gateway, supply-chain, and CI improvements described in the architecture documentation.
+The repository has substantial application and security hardening in place, but **production readiness is not inferred from source code alone**. The remaining acceptance boundary is deployment/runtime verification.
 
-The current release gate is **enterprise production verification**. A release is not considered complete merely because a build succeeds: production configuration, database migrations, authenticated portal/admin behavior, payment webhooks, and the Tinlance → FDE API → `fde-mastery` execution path must be verified end-to-end.
+Current source-level areas addressed by the audit include:
 
-### Current verified implementation areas
-
-- Better Auth + Neon migration: implemented.
-- Clerk authentication path removal: implemented.
-- Database-backed sessions, accounts, verification, organizations, memberships, and invitations: implemented.
-- Server-side RBAC and tenant-aware authorization: implemented.
-- FDE tenant/domain routing: implemented.
-- OAuth 2.0 upstream client-credentials flow with token caching: implemented.
-- Paystack signature validation, payload limits, idempotency, invoice state handling, and auditing: implemented.
-- Prisma `WebhookEvent` persistence and migration: implemented.
-- Request correlation across service boundaries: implemented.
-- FDE health/readiness checks: implemented.
-- Enterprise CI controls including security regression, SBOM, container validation, and dependency auditing: implemented.
-- Vercel/pnpm deployment configuration fixes: implemented.
+- Better Auth 1.7.x configuration aligned with the current stable database-joins API.
+- Removal of the legacy Clerk secret fallback from production environment validation.
+- Explicit organization-membership checks before portal tenant access.
+- Paystack event identity, amount/currency verification, duplicate handling, and invoice transition hardening.
+- Deterministic container dependency installation with the committed pnpm lockfile.
+- Pinned GitHub Actions for the CI supply chain.
+- FDE API trusted-host validation and strict request-correlation handling.
+- Reconciled FDE gateway documentation and environment contract.
 
 ### Production verification still required
-
-These are deployment/runtime acceptance tests, not claims that can be inferred from source code alone:
 
 1. Production Better Auth login/session flows.
 2. Authenticated `/portal` end-to-end verification.
 3. Authenticated `/admin` end-to-end verification and role enforcement.
-4. Production Prisma/Neon transaction and migration verification.
-5. Live Paystack signature/idempotency/invoice verification.
+4. Production Prisma/Neon migration and transaction verification.
+5. Live Paystack signature, amount/currency, idempotency, and invoice-state verification.
 6. Live Tinlance → FDE API → `fde-mastery` execution verification.
-7. Production failure-path and timeout verification.
-8. Final Vercel/FastAPI smoke test and monitoring verification.
+7. Production timeout, retry, failure, and observability verification.
+8. Final Vercel/FDE deployment smoke tests.
+
+Do not label the platform enterprise-certified or fully production-verified until these runtime checks have current evidence.
 
 ## Documentation
 
@@ -184,6 +176,7 @@ These are deployment/runtime acceptance tests, not claims that can be inferred f
 - [`docs/SECURITY-RELEASE-GATE.md`](./docs/SECURITY-RELEASE-GATE.md) — release verification requirements.
 - [`docs/PHASES.md`](./docs/PHASES.md) — delivery history and current release gate.
 - [`docs/DESIGN-SYSTEM.md`](./docs/DESIGN-SYSTEM.md) — visual system and UI standards.
+- [`docs/DEEP-AUDIT-2026-08.md`](./docs/DEEP-AUDIT-2026-08.md) — current repository audit and remediation record.
 - [`docs/decisions/`](./docs/decisions/) — architecture decision records.
 
 ## License
