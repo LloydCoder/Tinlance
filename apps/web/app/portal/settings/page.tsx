@@ -10,6 +10,7 @@ export default async function SettingsPage() {
   if (!session) redirect("/sign-in?callbackURL=/portal/settings");
   const organization = await requireOrganization(
     session.session.activeOrganizationId,
+    session.user.id,
   );
 
   return (
