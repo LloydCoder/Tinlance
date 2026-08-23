@@ -5,9 +5,9 @@ RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
 
 FROM base AS deps
 WORKDIR /app
-COPY package.json pnpm-workspace.yaml turbo.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
 COPY apps/web/package.json apps/web/package.json
-RUN pnpm install --lockfile=false
+RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
@@ -16,8 +16,7 @@ COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 # Container image construction must remain database-independent. Production
-# deployments apply Prisma migrations separately; the package build script
-# intentionally includes migrate deploy for the Vercel deployment path.
+# deployments apply Prisma migrations separately from the application build.
 RUN pnpm --filter @tinlance/web exec prisma generate && pnpm --filter @tinlance/web exec next build
 
 FROM node:22-alpine AS runner
