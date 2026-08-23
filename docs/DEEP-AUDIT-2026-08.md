@@ -44,19 +44,25 @@ FastAPI/Starlette's `TrustedHostMiddleware` is used to reject unexpected Host he
 
 **Fixed:** `requireOrganization` and `ensureOrganization` now require the authenticated user ID and resolve the organization through the `(organizationId, userId)` membership relation. Portal overview, projects, documents, messages, and settings now use that membership-bound lookup.
 
-### 2. Legacy Clerk secret fallback remained in environment validation
+### 2. Privileged-role checks could rely on cached session user data
+
+**Risk:** A privileged role is a security-sensitive revocation boundary. Authorizing from a cached session user object can allow a recently revoked administrator to retain access until the session cache refreshes.
+
+**Fixed:** `getAuthorizationContext()` now reads the current user role directly from PostgreSQL while separately resolving organization membership. Privileged operations therefore use the database as the authoritative role-revocation boundary rather than the potentially cached session representation.
+
+### 3. Legacy Clerk secret fallback remained in environment validation
 
 **Risk:** Keeping a legacy authentication secret as a fallback obscures the active security authority and can create configuration ambiguity during migration.
 
 **Fixed:** Production validation now requires Better Auth configuration and no longer falls back to a Clerk secret.
 
-### 3. Better Auth package manifest lagged behind the locked dependency
+### 4. Better Auth package manifest lagged behind the locked dependency
 
 **Risk:** The lockfile was resolving Better Auth 1.7.1 while the application manifest declared the older 1.6 range. This creates dependency-contract ambiguity and blocks clean reproducibility when the lockfile is regenerated.
 
 **Fixed:** `better-auth` and `@better-auth/prisma-adapter` now declare the 1.7.1 line already represented in the lockfile, and the current `advanced.database.joins` configuration is used.
 
-### 4. Paystack webhook event identity and state transitions were too permissive
+### 5. Paystack webhook event identity and state transitions were too permissive
 
 **Risk:** Falling back to a payment reference when an event ID is absent weakens event identity. Payment state changes also need financial integrity checks and must not regress terminal states.
 
@@ -71,37 +77,37 @@ FastAPI/Starlette's `TrustedHostMiddleware` is used to reject unexpected Host he
 
 **Database follow-up:** A unique constraint/index on non-null invoice provider references should be added after production data is inspected for duplicates. The connected Neon search did not expose the Tinlance project, so no production database mutation was attempted from this audit.
 
-### 5. Web container dependency installation was not fully deterministic
+### 6. Web container dependency installation was not fully deterministic
 
 **Risk:** A container build using a non-frozen install can resolve a different dependency graph from CI or production.
 
 **Fixed:** The web Dockerfile now copies the committed pnpm lockfile and uses `pnpm install --frozen-lockfile`.
 
-### 6. FDE API lacked an explicit Host-header trust boundary
+### 7. FDE API lacked an explicit Host-header trust boundary
 
 **Risk:** APIs exposed behind proxies should not accept arbitrary Host headers.
 
 **Fixed:** `TrustedHostMiddleware` is enabled. Production deployments must explicitly configure `FDE_ALLOWED_HOSTS`.
 
-### 7. FDE request correlation accepted arbitrary strings
+### 8. FDE request correlation accepted arbitrary strings
 
 **Risk:** Arbitrary correlation IDs can pollute logs, tracing, and cross-service telemetry.
 
 **Fixed:** Incoming `x-request-id` values are accepted only when they parse as UUIDs; otherwise a fresh UUID is generated.
 
-### 8. CI action references were mutable tags
+### 9. CI action references were mutable tags
 
 **Risk:** A tag can move independently of the reviewed source commit, weakening the CI supply-chain boundary.
 
 **Fixed:** Checkout, package setup, Node/Python setup, Docker actions, Trivy, SBOM generation, and artifact upload are pinned to reviewed commit SHAs.
 
-### 9. Documentation drift existed at the FDE boundary
+### 10. Documentation drift existed at the FDE boundary
 
 **Risk:** The FDE README described planned `/v1/jobs` endpoints while the actual implementation exposes `/v1/execute`.
 
 **Fixed:** FDE documentation now reflects the current contract, security controls, environment requirements, and production caveats.
 
-### 10. Production claims needed stronger separation from source-level evidence
+### 11. Production claims needed stronger separation from source-level evidence
 
 **Risk:** A green source/CI pipeline does not prove production configuration, payment integration, identity behavior, or upstream FDE connectivity.
 
