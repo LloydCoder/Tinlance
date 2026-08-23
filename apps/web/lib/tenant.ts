@@ -1,23 +1,39 @@
 import { db } from "@/lib/db";
 
 export async function ensureOrganization(
-  organizationId: string,
-  name = "Tinlance Client",
+  organizationId: string | null | undefined,
+  userId: string,
 ) {
-  return db.organization.upsert({
-    where: { id: organizationId },
-    create: {
-      id: organizationId,
-      name,
-      slug: organizationId,
+  if (!organizationId) return null;
+
+  const membership = await db.member.findUnique({
+    where: {
+      organizationId_userId: {
+        organizationId,
+        userId,
+      },
     },
-    update: {},
+    select: { organization: true },
   });
+
+  return membership?.organization ?? null;
 }
 
 export async function requireOrganization(
   organizationId: string | null | undefined,
+  userId: string,
 ) {
   if (!organizationId) return null;
-  return db.organization.findUnique({ where: { id: organizationId } });
+
+  const membership = await db.member.findUnique({
+    where: {
+      organizationId_userId: {
+        organizationId,
+        userId,
+      },
+    },
+    select: { organization: true },
+  });
+
+  return membership?.organization ?? null;
 }
