@@ -30,7 +30,7 @@ app = FastAPI(
 
 allowed_hosts = [
     host.strip()
-    for host in os.getenv("FDE_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for host in os.getenv("FDE_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
     if host.strip()
 ]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
