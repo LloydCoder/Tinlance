@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { PortalShell } from "../../components/portal-shell";
 import { ensureOrganization } from "../../lib/tenant";
 import { db } from "../../lib/db";
 import { auth } from "../../lib/auth";
