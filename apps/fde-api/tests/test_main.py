@@ -7,66 +7,80 @@ from httpx import Response
 from app.main import app
 
 client = TestClient(app)
+AUTH_HEADERS = {
+    "Authorization": "Bearer secret",
+    "Idempotency-Key": "test-idempotency-key",
+}
 
 
 def test_health_is_public(monkeypatch):
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {"status": "ok", "api_version": "0.3.0"}
 
 
 def test_execute_requires_authentication(monkeypatch):
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
     response = client.post(
         "/v1/execute",
-        json={"task": "test", "domain": "cybersecurity"},
+        headers={"Idempotency-Key": "test-idempotency-key"},
+        json={"task": "test", "domain": "cybersecurity", "organization_id": "org123"},
     )
     assert response.status_code == 401
 
 
-def test_execute_requires_upstream(monkeypatch):
+def test_execute_requires_idempotency_key(monkeypatch):
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
-    monkeypatch.setenv("FDE_TENANT_ID", "tinlance")
-    monkeypatch.delenv("FDE_MASTER_UPSTREAM_URL", raising=False)
     response = client.post(
         "/v1/execute",
         headers={"Authorization": "Bearer secret"},
-        json={"task": "test", "domain": "cybersecurity"},
+        json={"task": "test", "domain": "cybersecurity", "organization_id": "org123"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Idempotency-Key is required"
+
+
+def test_execute_requires_upstream(monkeypatch):
+    monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
+    monkeypatch.delenv("FDE_MASTER_UPSTREAM_URL", raising=False)
+    response = client.post(
+        "/v1/execute",
+        headers=AUTH_HEADERS,
+        json={"task": "test", "domain": "cybersecurity", "organization_id": "org123"},
     )
     assert response.status_code == 503
 
 
 def test_execute_rejects_unknown_domain(monkeypatch):
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
-    monkeypatch.setenv("FDE_TENANT_ID", "tinlance")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_URL", "https://fde-mastery.internal")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_TOKEN", "static-token")
     response = client.post(
         "/v1/execute",
-        headers={"Authorization": "Bearer secret"},
-        json={"task": "test", "domain": "not-a-real-domain"},
+        headers=AUTH_HEADERS,
+        json={"task": "test", "domain": "not-a-real-domain", "organization_id": "org123"},
     )
     assert response.status_code == 422
 
 
 @respx.mock
-def test_execute_calls_correct_upstream_route_and_shape(monkeypatch):
+def test_execute_calls_canonical_v1_upstream_route_and_shape(monkeypatch):
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
-    monkeypatch.setenv("FDE_TENANT_ID", "tinlance")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_URL", "https://fde-mastery.internal")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_TOKEN", "static-token")
 
-    route = respx.post("https://fde-mastery.internal/v1/cybersecurity/execute").mock(
+    route = respx.post("https://fde-mastery.internal/v1/triage/org123/cybersecurity").mock(
         return_value=Response(200, json={"triaged": True})
     )
 
+    request_id = "12345678-1234-4234-8234-123456789012"
     response = client.post(
         "/v1/execute",
-        headers={"Authorization": "Bearer secret"},
+        headers={**AUTH_HEADERS, "X-Request-ID": request_id},
         json={
             "task": "triage this alert",
             "domain": "cybersecurity",
-            "organization_id": "org_123",
+            "organization_id": "org123",
             "metadata": {"source": "test"},
         },
     )
@@ -74,17 +88,31 @@ def test_execute_calls_correct_upstream_route_and_shape(monkeypatch):
     assert response.status_code == 200
     assert route.called
     parsed = json.loads(route.calls.last.request.content)
-    assert parsed["tenant_id"] == "tinlance"
-    assert parsed["payload"]["task"] == "triage this alert"
-    assert parsed["payload"]["organization_id"] == "org_123"
-    assert parsed["payload"]["metadata"] == {"source": "test"}
+    assert parsed["task"] == "triage this alert"
+    assert parsed["metadata"] == {"source": "test"}
+    assert parsed["source"] == "tinlance"
     assert route.calls.last.request.headers["authorization"] == "Bearer static-token"
+    assert route.calls.last.request.headers["idempotency-key"] == "test-idempotency-key"
+    assert route.calls.last.request.headers["x-request-id"] == request_id
+    assert response.json()["request_id"] == request_id
+
+
+@respx.mock
+def test_execute_rejects_invalid_organization_id(monkeypatch):
+    monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
+    monkeypatch.setenv("FDE_MASTER_UPSTREAM_URL", "https://fde-mastery.internal")
+    monkeypatch.setenv("FDE_MASTER_UPSTREAM_TOKEN", "static-token")
+    response = client.post(
+        "/v1/execute",
+        headers=AUTH_HEADERS,
+        json={"task": "test", "domain": "cybersecurity", "organization_id": "ORG_BAD"},
+    )
+    assert response.status_code == 422
 
 
 @respx.mock
 def test_execute_caches_oauth_token_across_requests(monkeypatch):
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
-    monkeypatch.setenv("FDE_TENANT_ID", "tinlance")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_URL", "https://fde-mastery.internal")
     monkeypatch.delenv("FDE_MASTER_UPSTREAM_TOKEN", raising=False)
     monkeypatch.setenv("FDE_OAUTH_TOKEN_URL", "https://idp.internal/oauth/token")
@@ -99,15 +127,18 @@ def test_execute_caches_oauth_token_across_requests(monkeypatch):
     token_route = respx.post("https://idp.internal/oauth/token").mock(
         return_value=Response(200, json={"access_token": "minted-token", "expires_in": 300})
     )
-    upstream_route = respx.post("https://fde-mastery.internal/v1/finance/execute").mock(
+    upstream_route = respx.post("https://fde-mastery.internal/v1/triage/org123/finance").mock(
         return_value=Response(200, json={"ok": True})
     )
 
-    for _ in range(2):
+    for index in range(2):
         response = client.post(
             "/v1/execute",
-            headers={"Authorization": "Bearer secret"},
-            json={"task": "check", "domain": "finance"},
+            headers={
+                "Authorization": "Bearer secret",
+                "Idempotency-Key": f"oauth-test-{index}",
+            },
+            json={"task": "check", "domain": "finance", "organization_id": "org123"},
         )
         assert response.status_code == 200
 
