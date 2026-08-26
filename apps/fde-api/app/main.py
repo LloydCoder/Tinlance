@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import os
 import time
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 import httpx
@@ -41,9 +41,9 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 class ExecutionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    task: str = Field(min_length=1, max_length=20_000)
     domain: str = Field(min_length=1, max_length=100)
     organization_id: str = Field(min_length=3, max_length=100, pattern=r"^[a-z0-9-]+$")
+    payload: dict[str, Any] = Field(min_length=1)
     metadata: dict[str, str] = Field(default_factory=dict)
 
 
@@ -187,11 +187,7 @@ async def execute(
         "Idempotency-Key": idempotency_key,
         "authorization": f"Bearer {token}",
     }
-    upstream_body = {
-        "task": payload.task,
-        "metadata": payload.metadata,
-        "source": "tinlance",
-    }
+    upstream_body = {**payload.payload, "_platform": {"metadata": payload.metadata, "source": "tinlance"}}
 
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
