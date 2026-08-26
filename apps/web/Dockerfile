@@ -23,11 +23,15 @@ FROM node:22-alpine AS runner
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
-# The runtime only needs Node.js. Removing npm/yarn/corepack from the final image
-# reduces the supply-chain attack surface and avoids shipping unused package managers.
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v1.22.22 \
+# Refresh the Alpine security repository before the final image is assembled.
+# This prevents a freshly published base image from retaining a vulnerable
+# OpenSSL package when Alpine has already shipped a fixed revision.
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v1.22.22 \
     && addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
+# The runtime only needs Node.js. Removing npm/yarn/corepack from the final image
+# reduces the supply-chain attack surface and avoids shipping unused package managers.
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 USER nextjs
