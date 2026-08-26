@@ -11,6 +11,7 @@ AUTH_HEADERS = {
     "Authorization": "Bearer secret",
     "Idempotency-Key": "test-idempotency-key",
 }
+BASE_PAYLOAD = {"synthetic": True, "case_id": "TEST-CASE"}
 
 
 def test_health_is_public(monkeypatch):
@@ -24,7 +25,7 @@ def test_execute_requires_authentication(monkeypatch):
     response = client.post(
         "/v1/execute",
         headers={"Idempotency-Key": "test-idempotency-key"},
-        json={"task": "test", "domain": "cybersecurity", "organization_id": "org123"},
+        json={"domain": "cybersecurity", "organization_id": "org123", "payload": BASE_PAYLOAD},
     )
     assert response.status_code == 401
 
@@ -34,7 +35,7 @@ def test_execute_requires_idempotency_key(monkeypatch):
     response = client.post(
         "/v1/execute",
         headers={"Authorization": "Bearer secret"},
-        json={"task": "test", "domain": "cybersecurity", "organization_id": "org123"},
+        json={"domain": "cybersecurity", "organization_id": "org123", "payload": BASE_PAYLOAD},
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Idempotency-Key is required"
@@ -46,7 +47,7 @@ def test_execute_requires_upstream(monkeypatch):
     response = client.post(
         "/v1/execute",
         headers=AUTH_HEADERS,
-        json={"task": "test", "domain": "cybersecurity", "organization_id": "org123"},
+        json={"domain": "cybersecurity", "organization_id": "org123", "payload": BASE_PAYLOAD},
     )
     assert response.status_code == 503
 
@@ -58,7 +59,7 @@ def test_execute_rejects_unknown_domain(monkeypatch):
     response = client.post(
         "/v1/execute",
         headers=AUTH_HEADERS,
-        json={"task": "test", "domain": "not-a-real-domain", "organization_id": "org123"},
+        json={"domain": "not-a-real-domain", "organization_id": "org123", "payload": BASE_PAYLOAD},
     )
     assert response.status_code == 422
 
@@ -78,9 +79,9 @@ def test_execute_calls_canonical_v1_upstream_route_and_shape(monkeypatch):
         "/v1/execute",
         headers={**AUTH_HEADERS, "X-Request-ID": request_id},
         json={
-            "task": "triage this alert",
             "domain": "cybersecurity",
             "organization_id": "org123",
+            "payload": {"case_id": "E2E-cybersecurity", "alert": "triage this alert"},
             "metadata": {"source": "test"},
         },
     )
@@ -88,9 +89,8 @@ def test_execute_calls_canonical_v1_upstream_route_and_shape(monkeypatch):
     assert response.status_code == 200
     assert route.called
     parsed = json.loads(route.calls.last.request.content)
-    assert parsed["task"] == "triage this alert"
-    assert parsed["metadata"] == {"source": "test"}
-    assert parsed["source"] == "tinlance"
+    assert parsed["case_id"] == "E2E-cybersecurity"
+    assert parsed["alert"] == "triage this alert"
     assert route.calls.last.request.headers["authorization"] == "Bearer static-token"
     assert route.calls.last.request.headers["idempotency-key"] == "test-idempotency-key"
     assert route.calls.last.request.headers["x-request-id"] == request_id
@@ -105,7 +105,11 @@ def test_execute_rejects_invalid_organization_id(monkeypatch):
     response = client.post(
         "/v1/execute",
         headers=AUTH_HEADERS,
-        json={"task": "test", "domain": "cybersecurity", "organization_id": "ORG_BAD"},
+        json={
+            "domain": "cybersecurity",
+            "organization_id": "ORG_BAD",
+            "payload": BASE_PAYLOAD,
+        },
     )
     assert response.status_code == 422
 
@@ -138,7 +142,11 @@ def test_execute_caches_oauth_token_across_requests(monkeypatch):
                 "Authorization": "Bearer secret",
                 "Idempotency-Key": f"oauth-test-{index}",
             },
-            json={"task": "check", "domain": "finance", "organization_id": "org123"},
+            json={
+                "domain": "finance",
+                "organization_id": "org123",
+                "payload": {"case_id": f"OAUTH-{index}", "synthetic": True},
+            },
         )
         assert response.status_code == 200
 
