@@ -19,11 +19,13 @@ VALID_DOMAINS = {
     "logistics",
     "legal",
     "revops",
+    "procurement",
+    "custom",
 }
 
 app = FastAPI(
     title="Tinlance FDE API",
-    version="0.2.0",
+    version="0.3.0",
     docs_url="/docs" if os.getenv("FDE_ENABLE_DOCS", "false").lower() == "true" else None,
     redoc_url=None,
 )
@@ -41,7 +43,7 @@ class ExecutionRequest(BaseModel):
 
     task: str = Field(min_length=1, max_length=20_000)
     domain: str = Field(min_length=1, max_length=100)
-    organization_id: str | None = Field(default=None, max_length=128)
+    organization_id: str = Field(min_length=3, max_length=100, pattern=r"^[a-z0-9-]+$")
     metadata: dict[str, str] = Field(default_factory=dict)
 
 
@@ -77,7 +79,7 @@ _cached_token_expires_at: float = 0.0
 
 
 async def get_upstream_token() -> str | None:
-    """Resolve the bearer token used to call fde-mastery."""
+    """Resolve the bearer token used to call FDE Mastery."""
     global _cached_token, _cached_token_expires_at
 
     token_url = os.getenv("FDE_OAUTH_TOKEN_URL")
@@ -128,7 +130,7 @@ async def get_upstream_token() -> str | None:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "api_version": "0.3.0"}
 
 
 @app.get("/ready")
@@ -151,12 +153,22 @@ async def ready() -> dict[str, str]:
     response_model=ExecutionResponse,
     dependencies=[Depends(require_service_token)],
 )
-async def execute(payload: ExecutionRequest, request: Request) -> ExecutionResponse:
+async def execute(
+    payload: ExecutionRequest,
+    request: Request,
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+) -> ExecutionResponse:
     raw_request_id = request.headers.get("x-request-id")
     try:
         request_id = str(UUID(raw_request_id)) if raw_request_id else str(uuid4())
     except (ValueError, AttributeError):
         request_id = str(uuid4())
+
+    if not idempotency_key or not idempotency_key.strip():
+        raise HTTPException(status_code=400, detail="Idempotency-Key is required")
+    idempotency_key = idempotency_key.strip()
+    if len(idempotency_key) > 255:
+        raise HTTPException(status_code=400, detail="Idempotency-Key is too long")
 
     domain = payload.domain.strip().lower()
     if domain not in VALID_DOMAINS:
@@ -166,28 +178,25 @@ async def execute(payload: ExecutionRequest, request: Request) -> ExecutionRespo
     if not upstream:
         raise HTTPException(status_code=503, detail="FDE upstream is not configured")
 
-    tenant_id = os.getenv("FDE_TENANT_ID")
-    if not tenant_id:
-        raise HTTPException(status_code=503, detail="FDE_TENANT_ID is not configured")
-
     token = await get_upstream_token()
-    headers = {"x-request-id": request_id}
-    if token:
-        headers["authorization"] = f"Bearer {token}"
+    if not token:
+        raise HTTPException(status_code=503, detail="No upstream credential source configured")
 
+    headers = {
+        "x-request-id": request_id,
+        "Idempotency-Key": idempotency_key,
+        "authorization": f"Bearer {token}",
+    }
     upstream_body = {
-        "tenant_id": tenant_id,
-        "payload": {
-            "task": payload.task,
-            "organization_id": payload.organization_id,
-            "metadata": payload.metadata,
-        },
+        "task": payload.task,
+        "metadata": payload.metadata,
+        "source": "tinlance",
     }
 
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
             response = await client.post(
-                upstream.rstrip("/") + f"/v1/{domain}/execute",
+                upstream.rstrip("/") + f"/v1/triage/{payload.organization_id}/{domain}",
                 json=upstream_body,
                 headers=headers,
             )
@@ -197,7 +206,14 @@ async def execute(payload: ExecutionRequest, request: Request) -> ExecutionRespo
     if response.status_code >= 500:
         raise HTTPException(status_code=503, detail="FDE upstream unavailable")
     if response.status_code >= 400:
-        raise HTTPException(status_code=502, detail="FDE upstream rejected the request")
+        try:
+            upstream_error = response.json()
+        except ValueError:
+            upstream_error = None
+        detail = "FDE upstream rejected the request"
+        if isinstance(upstream_error, dict):
+            detail = str(upstream_error.get("detail") or upstream_error.get("title") or detail)
+        raise HTTPException(status_code=502, detail=detail)
 
     try:
         result = response.json()
