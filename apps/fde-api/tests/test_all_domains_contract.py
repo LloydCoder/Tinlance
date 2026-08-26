@@ -1,3 +1,5 @@
+import json
+
 import respx
 from fastapi.testclient import TestClient
 from httpx import Response
@@ -52,8 +54,9 @@ def test_gateway_forwards_every_first_class_domain(monkeypatch):
         )
         assert response.status_code == 200, f"{domain}: {response.text}"
         assert routes[domain].called
-        forwarded = routes[domain].calls.last.request.content
-        assert f'"case_id": "E2E-{domain}"'.encode() in forwarded
+        forwarded = json.loads(routes[domain].calls.last.request.content)
+        assert forwarded["case_id"] == f"E2E-{domain}"
+        assert forwarded["domain"] == domain
         assert response.json()["result"]["domain"] == domain
 
 
