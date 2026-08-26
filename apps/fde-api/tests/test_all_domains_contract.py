@@ -16,6 +16,8 @@ DOMAINS = (
     "custom",
 )
 
+PAYLOADS = {domain: {"synthetic": True, "domain": domain, "case_id": f"E2E-{domain}"} for domain in DOMAINS}
+
 
 @respx.mock
 def test_gateway_forwards_every_first_class_domain(monkeypatch):
@@ -40,14 +42,17 @@ def test_gateway_forwards_every_first_class_domain(monkeypatch):
                 "X-Request-ID": f"12345678-1234-4234-8234-{index:012d}",
             },
             json={
-                "task": f"execute {domain} test",
                 "domain": domain,
                 "organization_id": "org123",
+                "payload": PAYLOADS[domain],
                 "metadata": {"source": "contract-test"},
             },
         )
         assert response.status_code == 200, f"{domain}: {response.text}"
         assert routes[domain].called
+        assert routes[domain].calls.last.request.content
+        forwarded = routes[domain].calls.last.request.content
+        assert f'"case_id": "E2E-{domain}"'.encode() in forwarded
         assert response.json()["result"]["domain"] == domain
 
 
@@ -56,6 +61,10 @@ def test_unknown_domain_fails_closed(monkeypatch):
     response = TestClient(app).post(
         "/v1/execute",
         headers={"Authorization": "Bearer secret", "Idempotency-Key": "unknown-domain"},
-        json={"task": "reject this", "domain": "unknown", "organization_id": "org123"},
+        json={
+            "domain": "unknown",
+            "organization_id": "org123",
+            "payload": {"synthetic": True},
+        },
     )
     assert response.status_code == 422
