@@ -73,9 +73,10 @@ def test_execute_calls_canonical_v1_upstream_route_and_shape(monkeypatch):
         return_value=Response(200, json={"triaged": True})
     )
 
+    request_id = "12345678-1234-4234-8234-123456789012"
     response = client.post(
         "/v1/execute",
-        headers={**AUTH_HEADERS, "X-Request-ID": "12345678-1234-4234-8234-123456789012"},
+        headers={**AUTH_HEADERS, "X-Request-ID": request_id},
         json={
             "task": "triage this alert",
             "domain": "cybersecurity",
@@ -92,8 +93,8 @@ def test_execute_calls_canonical_v1_upstream_route_and_shape(monkeypatch):
     assert parsed["source"] == "tinlance"
     assert route.calls.last.request.headers["authorization"] == "Bearer static-token"
     assert route.calls.last.request.headers["idempotency-key"] == "test-idempotency-key"
-    assert route.calls.last.request.headers["x-request-id"] == "12345678-1234-4234-8234-123456789012"
-    assert response.json()["request_id"] == "12345678-1234-4234-8234-123456789012"
+    assert route.calls.last.request.headers["x-request-id"] == request_id
+    assert response.json()["request_id"] == request_id
 
 
 @respx.mock
