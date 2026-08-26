@@ -3,7 +3,11 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export type TinlanceRole =
-  "super-admin" | "admin" | "client-admin" | "member" | "viewer";
+  | "super-admin"
+  | "admin"
+  | "client-admin"
+  | "member"
+  | "viewer";
 
 const privilegedRoles = new Set<TinlanceRole>(["super-admin", "admin"]);
 const allowedRoles = new Set<TinlanceRole>([
@@ -28,25 +32,33 @@ export async function getAuthorizationContext() {
     } as const;
   }
 
-  const rawRole = (session.user as typeof session.user & { role?: unknown })
-    .role;
+  // Do not authorize privileged operations from a potentially cached session
+  // user object. The database role is the authoritative revocation boundary.
+  const [user, membership] = await Promise.all([
+    db.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    }),
+    session.session.activeOrganizationId
+      ? db.member.findUnique({
+          where: {
+            organizationId_userId: {
+              organizationId: session.session.activeOrganizationId,
+              userId: session.user.id,
+            },
+          },
+          select: { role: true },
+        })
+      : null,
+  ]);
+
+  const rawRole = user?.role;
   const role: TinlanceRole | null =
     typeof rawRole === "string" && allowedRoles.has(rawRole as TinlanceRole)
       ? (rawRole as TinlanceRole)
       : null;
 
   const activeOrganizationId = session.session.activeOrganizationId ?? null;
-  const membership = activeOrganizationId
-    ? await db.member.findUnique({
-        where: {
-          organizationId_userId: {
-            organizationId: activeOrganizationId,
-            userId: session.user.id,
-          },
-        },
-        select: { role: true },
-      })
-    : null;
 
   return {
     userId: session.user.id,

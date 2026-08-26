@@ -5,10 +5,11 @@ import hmac
 import os
 import time
 from typing import Annotated
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
 VALID_DOMAINS = {
@@ -26,6 +27,13 @@ app = FastAPI(
     docs_url="/docs" if os.getenv("FDE_ENABLE_DOCS", "false").lower() == "true" else None,
     redoc_url=None,
 )
+
+allowed_hosts = [
+    host.strip()
+    for host in os.getenv("FDE_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
+    if host.strip()
+]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 
 class ExecutionRequest(BaseModel):
@@ -69,14 +77,7 @@ _cached_token_expires_at: float = 0.0
 
 
 async def get_upstream_token() -> str | None:
-    """Resolve the bearer token used to call fde-mastery.
-
-    Enterprise path: OAuth 2.0 client-credentials grant against a real
-    authorization server. Tokens are cached until shortly before expiry.
-
-    Dev/fallback path: a static FDE_MASTER_UPSTREAM_TOKEN may be supplied for
-    local development or while an authorization server is not provisioned.
-    """
+    """Resolve the bearer token used to call fde-mastery."""
     global _cached_token, _cached_token_expires_at
 
     token_url = os.getenv("FDE_OAUTH_TOKEN_URL")
@@ -151,7 +152,11 @@ async def ready() -> dict[str, str]:
     dependencies=[Depends(require_service_token)],
 )
 async def execute(payload: ExecutionRequest, request: Request) -> ExecutionResponse:
-    request_id = request.headers.get("x-request-id") or str(uuid4())
+    raw_request_id = request.headers.get("x-request-id")
+    try:
+        request_id = str(UUID(raw_request_id)) if raw_request_id else str(uuid4())
+    except (ValueError, AttributeError):
+        request_id = str(uuid4())
 
     domain = payload.domain.strip().lower()
     if domain not in VALID_DOMAINS:

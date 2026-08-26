@@ -5,9 +5,9 @@ RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
 
 FROM base AS deps
 WORKDIR /app
-COPY package.json pnpm-workspace.yaml turbo.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
 COPY apps/web/package.json apps/web/package.json
-RUN pnpm install --lockfile=false
+RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
@@ -16,19 +16,22 @@ COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 # Container image construction must remain database-independent. Production
-# deployments apply Prisma migrations separately; the package build script
-# intentionally includes migrate deploy for the Vercel deployment path.
+# deployments apply Prisma migrations separately from the application build.
 RUN pnpm --filter @tinlance/web exec prisma generate && pnpm --filter @tinlance/web exec next build
 
 FROM node:22-alpine AS runner
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
-# The runtime only needs Node.js. Removing npm/yarn/corepack from the final image
-# reduces the supply-chain attack surface and avoids shipping unused package managers.
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v1.22.22 \
+# Refresh the Alpine security repository before the final image is assembled.
+# This prevents a freshly published base image from retaining a vulnerable
+# OpenSSL package when Alpine has already shipped a fixed revision.
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v1.22.22 \
     && addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
+# The runtime only needs Node.js. Removing npm/yarn/corepack from the final image
+# reduces the supply-chain attack surface and avoids shipping unused package managers.
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 USER nextjs

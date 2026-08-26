@@ -7,7 +7,7 @@ const baseEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   BETTER_AUTH_URL: z.string().url().optional(),
   BETTER_AUTH_SECRET: z.string().min(32).optional(),
-  CLERK_SECRET_KEY: z.string().min(1).optional(),
+  BETTER_AUTH_API_KEY: z.string().min(1).optional(),
   TINLANCE_BOOTSTRAP_ADMIN_EMAIL: z.string().email().optional(),
   DATABASE_URL: z.string().min(1).optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
@@ -20,7 +20,7 @@ export const env = baseEnvSchema.parse({
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-  CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+  BETTER_AUTH_API_KEY: process.env.BETTER_AUTH_API_KEY,
   TINLANCE_BOOTSTRAP_ADMIN_EMAIL: process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL,
   DATABASE_URL: process.env.DATABASE_URL,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
@@ -31,12 +31,11 @@ export const env = baseEnvSchema.parse({
 export function validateProductionEnv(options?: { billing?: boolean }) {
   if (env.NODE_ENV !== "production") return;
 
-  const authSecret = env.BETTER_AUTH_SECRET ?? env.CLERK_SECRET_KEY;
   const required: Record<string, string | undefined> = {
     DATABASE_URL: env.DATABASE_URL,
     NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
     BETTER_AUTH_URL: env.BETTER_AUTH_URL,
-    AUTH_SECRET: authSecret,
+    BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
     UPSTASH_REDIS_REST_URL: env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: env.UPSTASH_REDIS_REST_TOKEN,
   };
@@ -55,10 +54,8 @@ export function validateProductionEnv(options?: { billing?: boolean }) {
     );
   }
 
-  if ((authSecret?.length ?? 0) < 32) {
-    throw new Error(
-      "Better Auth signing secret must contain at least 32 characters",
-    );
+  if ((env.BETTER_AUTH_SECRET?.length ?? 0) < 32) {
+    throw new Error("Better Auth signing secret must contain at least 32 characters");
   }
 
   if (env.BETTER_AUTH_URL !== env.NEXT_PUBLIC_APP_URL) {

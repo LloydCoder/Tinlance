@@ -12,6 +12,7 @@ export default async function DocumentsPage() {
 
   const organization = await requireOrganization(
     session.session.activeOrganizationId,
+    session.user.id,
   );
   const documents = organization
     ? await db.document.findMany({

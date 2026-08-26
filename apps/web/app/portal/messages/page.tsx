@@ -12,6 +12,7 @@ export default async function MessagesPage() {
 
   const organization = await requireOrganization(
     session.session.activeOrganizationId,
+    session.user.id,
   );
   const messages = organization
     ? await db.message.findMany({

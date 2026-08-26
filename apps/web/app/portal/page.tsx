@@ -19,9 +19,7 @@ export default async function PortalPage() {
   if (!session) redirect("/sign-in?callbackURL=/portal");
 
   const organizationId = session.session.activeOrganizationId;
-  const organization = organizationId
-    ? await ensureOrganization(organizationId)
-    : null;
+  const organization = await ensureOrganization(organizationId, session.user.id);
   const name = session.user.name || session.user.email || "Client";
 
   const [projects, messageCount, openInvoices] = organization
