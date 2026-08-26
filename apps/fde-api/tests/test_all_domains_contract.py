@@ -4,7 +4,6 @@ from httpx import Response
 
 from app.main import app
 
-
 DOMAINS = (
     "cybersecurity",
     "finance",
@@ -16,7 +15,10 @@ DOMAINS = (
     "custom",
 )
 
-PAYLOADS = {domain: {"synthetic": True, "domain": domain, "case_id": f"E2E-{domain}"} for domain in DOMAINS}
+PAYLOADS = {
+    domain: {"synthetic": True, "domain": domain, "case_id": f"E2E-{domain}"}
+    for domain in DOMAINS
+}
 
 
 @respx.mock
@@ -50,7 +52,6 @@ def test_gateway_forwards_every_first_class_domain(monkeypatch):
         )
         assert response.status_code == 200, f"{domain}: {response.text}"
         assert routes[domain].called
-        assert routes[domain].calls.last.request.content
         forwarded = routes[domain].calls.last.request.content
         assert f'"case_id": "E2E-{domain}"'.encode() in forwarded
         assert response.json()["result"]["domain"] == domain
