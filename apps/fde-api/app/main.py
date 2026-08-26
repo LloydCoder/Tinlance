@@ -103,16 +103,16 @@ async def get_upstream_token() -> str | None:
             try:
                 response = await client.post(token_url, data=form)
                 response.raise_for_status()
-                payload = response.json()
+                token_payload = response.json()
             except (httpx.HTTPError, ValueError) as exc:
                 raise HTTPException(
                     status_code=503,
                     detail="Unable to obtain upstream credentials",
                 ) from exc
 
-        access_token = payload.get("access_token")
+        access_token = token_payload.get("access_token")
         try:
-            expires_in = int(payload.get("expires_in", 60))
+            expires_in = int(token_payload.get("expires_in", 60))
         except (TypeError, ValueError) as exc:
             raise HTTPException(
                 status_code=503,
@@ -187,13 +187,12 @@ async def execute(
         "Idempotency-Key": idempotency_key,
         "authorization": f"Bearer {token}",
     }
-    upstream_body = {**payload.payload, "_platform": {"metadata": payload.metadata, "source": "tinlance"}}
 
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
             response = await client.post(
                 upstream.rstrip("/") + f"/v1/triage/{payload.organization_id}/{domain}",
-                json=upstream_body,
+                json=payload.payload,
                 headers=headers,
             )
     except httpx.HTTPError as exc:
