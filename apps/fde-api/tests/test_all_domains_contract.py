@@ -49,3 +49,13 @@ def test_gateway_forwards_every_first_class_domain(monkeypatch):
         assert response.status_code == 200, f"{domain}: {response.text}"
         assert routes[domain].called
         assert response.json()["result"]["domain"] == domain
+
+
+def test_unknown_domain_fails_closed(monkeypatch):
+    monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
+    response = TestClient(app).post(
+        "/v1/execute",
+        headers={"Authorization": "Bearer secret", "Idempotency-Key": "unknown-domain"},
+        json={"task": "reject this", "domain": "unknown", "organization_id": "org123"},
+    )
+    assert response.status_code == 422
