@@ -1,6 +1,6 @@
-import respx
 from fastapi.testclient import TestClient
 from httpx import Response
+import respx
 
 from app.main import app
 
