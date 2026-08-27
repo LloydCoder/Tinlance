@@ -33,7 +33,7 @@ model Session {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   ipAddress             String?
-  userAgent             String?
+  userAgent            String?
   userId               String
   activeOrganizationId String?
   activeTeamId         String?
@@ -72,7 +72,6 @@ model Verification {
   updatedAt  DateTime @updatedAt
 
   @@index([identifier])
-  @@index([expiresAt])
 }
 
 model Organization {
@@ -89,7 +88,7 @@ model Organization {
   legacyMembers OrganizationMember[] @relation("LegacyOrganizationMembers")
   leads         Lead[]
   bookings      Booking[]
-  projects     Project[]
+  projects      Project[]
   documents    Document[]
   messages     Message[]
   invoices     Invoice[]
@@ -262,4 +261,28 @@ model AuditEvent {
   @@index([organizationId, createdAt])
   @@index([actorUserId, createdAt])
   @@index([resourceType, resourceId])
+}
+
+model GrowthEvent {
+  id             String   @id @default(cuid())
+  eventId        String   @unique
+  eventName      String
+  schemaVersion  Int      @default(1)
+  occurredAt     DateTime @default(now())
+  anonymousId    String?
+  userId         String?
+  organizationId String?
+  source         String
+  path           String?
+  referrer       String?
+  campaign       Json?
+  entityId       String?
+  privacyClass   String
+  properties     Json?
+  createdAt      DateTime @default(now())
+
+  @@index([eventName, occurredAt])
+  @@index([source, occurredAt])
+  @@index([organizationId, occurredAt])
+  @@index([userId, occurredAt])
 }
