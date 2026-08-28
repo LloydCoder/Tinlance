@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getClientIp } from "@/lib/security/client-ip";
 import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 import { validateProductionEnv } from "@/lib/security/env";
+import { recordGrowthEvent } from "@/lib/growth/events";
 
 const MAX_BODY_BYTES = 16_384;
 const MAX_IDEMPOTENCY_KEY_LENGTH = 128;
@@ -17,10 +18,7 @@ export async function POST(request: Request) {
   if (idempotencyKey && idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
     return NextResponse.json(
       { error: "invalid_idempotency_key", requestId },
-      {
-        status: 400,
-        headers: { "cache-control": "no-store", "x-request-id": requestId },
-      },
+      { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } },
     );
   }
 
@@ -46,38 +44,25 @@ export async function POST(request: Request) {
     if (new TextEncoder().encode(bodyText).byteLength > MAX_BODY_BYTES) {
       return NextResponse.json(
         { error: "payload_too_large", requestId },
-        {
-          status: 413,
-          headers: { "cache-control": "no-store", "x-request-id": requestId },
-        },
+        { status: 413, headers: { "cache-control": "no-store", "x-request-id": requestId } },
       );
     }
 
     const body = (() => {
-      try {
-        return JSON.parse(bodyText) as Record<string, unknown>;
-      } catch {
-        return null;
-      }
+      try { return JSON.parse(bodyText) as Record<string, unknown>; } catch { return null; }
     })();
 
     if (!body) {
       return NextResponse.json(
         { error: "invalid_json", requestId },
-        {
-          status: 400,
-          headers: { "cache-control": "no-store", "x-request-id": requestId },
-        },
+        { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } },
       );
     }
 
     if (typeof body.website === "string" && body.website.trim().length > 0) {
       return NextResponse.json(
         { status: "accepted", requestId },
-        {
-          status: 202,
-          headers: { "cache-control": "no-store", "x-request-id": requestId },
-        },
+        { status: 202, headers: { "cache-control": "no-store", "x-request-id": requestId } },
       );
     }
 
@@ -85,10 +70,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: "invalid_request", requestId },
-        {
-          status: 400,
-          headers: { "cache-control": "no-store", "x-request-id": requestId },
-        },
+        { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } },
       );
     }
 
@@ -97,10 +79,7 @@ export async function POST(request: Request) {
     try {
       result = await db.$transaction(async (tx) => {
         if (idempotencyKey) {
-          const existing = await tx.lead.findUnique({
-            where: { idempotencyKey },
-            select: { id: true },
-          });
+          const existing = await tx.lead.findUnique({ where: { idempotencyKey }, select: { id: true } });
           if (existing) return { id: existing.id, duplicate: true };
         }
 
@@ -132,15 +111,8 @@ export async function POST(request: Request) {
         return { id: created.id, duplicate: false };
       });
     } catch (error) {
-      if (
-        idempotencyKey &&
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        const existing = await db.lead.findUnique({
-          where: { idempotencyKey },
-          select: { id: true },
-        });
+      if (idempotencyKey && error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        const existing = await db.lead.findUnique({ where: { idempotencyKey }, select: { id: true } });
         if (!existing) throw error;
         result = { id: existing.id, duplicate: true };
       } else {
@@ -148,14 +120,23 @@ export async function POST(request: Request) {
       }
     }
 
+    if (!result.duplicate) {
+      try {
+        await recordGrowthEvent({
+          eventName: "lead_captured",
+          source: "website",
+          path: new URL(request.url).pathname,
+          entityId: result.id,
+          privacyClass: "PERSONAL",
+          properties: { service: parsed.data.service },
+        });
+      } catch (error) {
+        console.error("growth_event_record_failed", { requestId, eventName: "lead_captured", error });
+      }
+    }
+
     return NextResponse.json(
-      {
-        status: "accepted",
-        requestId,
-        leadId: result.id,
-        nextStep: "lead_review",
-        duplicate: result.duplicate,
-      },
+      { status: "accepted", requestId, leadId: result.id, nextStep: "lead_review", duplicate: result.duplicate },
       {
         status: 202,
         headers: {
@@ -169,10 +150,7 @@ export async function POST(request: Request) {
     console.error("lead_submission_failed", { requestId, error });
     return NextResponse.json(
       { error: "service_unavailable", requestId },
-      {
-        status: 503,
-        headers: { "cache-control": "no-store", "x-request-id": requestId },
-      },
+      { status: 503, headers: { "cache-control": "no-store", "x-request-id": requestId } },
     );
   }
 }
