@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { growthEventSchema } from "@/lib/growth/event-contract";
+import { growthEventSchema } from "./event-contract";
 
 describe("growth event contract", () => {
   it("accepts a canonical lead event", () => {
@@ -16,10 +16,23 @@ describe("growth event contract", () => {
   });
 
   it("rejects non-canonical event names", () => {
-    expect(() => growthEventSchema.parse({ eventName: "made_up_event", source: "website", privacyClass: "PUBLIC" })).toThrow();
+    expect(() =>
+      growthEventSchema.parse({
+        eventName: "made_up_event",
+        source: "website",
+        privacyClass: "PUBLIC",
+      }),
+    ).toThrow();
   });
 
   it("rejects oversized paths", () => {
-    expect(() => growthEventSchema.parse({ eventName: "page_view", source: "website", privacyClass: "PUBLIC", path: "/".repeat(2050) })).toThrow();
+    expect(() =>
+      growthEventSchema.parse({
+        eventName: "page_view",
+        source: "website",
+        privacyClass: "PUBLIC",
+        path: "/".repeat(2050),
+      }),
+    ).toThrow();
   });
 });
