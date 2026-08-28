@@ -1,6 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { growthEventSchema, type GrowthEventInput } from "@/lib/growth/event-contract";
 
@@ -22,7 +23,7 @@ export async function recordGrowthEvent(input: GrowthEventInput): Promise<void> 
       campaign: event.campaign,
       entityId: event.entityId,
       privacyClass: event.privacyClass,
-      properties: event.properties,
+      properties: event.properties as Prisma.InputJsonValue | undefined,
     },
   });
 }
