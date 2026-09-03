@@ -14,16 +14,16 @@ const staticRoutes = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticEntries = staticRoutes.map((route) => ({
+  const staticEntries: MetadataRoute.Sitemap = staticRoutes.map((route) => ({
     url: `https://tinlance.com${route}`,
     changeFrequency: route === "/" ? "weekly" : "monthly",
     priority: route === "/" ? 1 : route.startsWith("/services/") ? 0.8 : 0.7,
   }));
 
-  const insightEntries = insights.map((insight) => ({
+  const insightEntries: MetadataRoute.Sitemap = insights.map((insight) => ({
     url: `https://tinlance.com/insights/${insight.slug}`,
     lastModified: insight.publishedAt,
-    changeFrequency: "monthly" as const,
+    changeFrequency: "monthly",
     priority: 0.6,
   }));
 
