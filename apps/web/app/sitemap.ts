@@ -6,6 +6,8 @@ const staticRoutes = [
   "/services",
   ...services.map((service) => `/services/${service.slug}`),
   "/work",
+  "/threatfade",
+  "/research/threatfade-quic-c2-detection",
   "/assessment",
   "/insights",
   "/resources",
@@ -17,7 +19,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticEntries: MetadataRoute.Sitemap = staticRoutes.map((route) => ({
     url: `https://tinlance.com${route}`,
     changeFrequency: route === "/" ? "weekly" : "monthly",
-    priority: route === "/" ? 1 : route.startsWith("/services/") ? 0.8 : 0.7,
+    priority:
+      route === "/"
+        ? 1
+        : route.startsWith("/services/")
+          ? 0.8
+          : route.startsWith("/research/")
+            ? 0.75
+            : 0.7,
   }));
 
   const insightEntries: MetadataRoute.Sitemap = insights.map((insight) => ({
