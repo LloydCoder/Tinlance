@@ -19,11 +19,13 @@ VALID_DOMAINS = {
     "logistics",
     "legal",
     "revops",
+    "procurement",
+    "custom",
 }
 
 app = FastAPI(
     title="Tinlance FDE API",
-    version="0.4.0",
+    version="0.5.0",
     docs_url=(
         "/docs"
         if os.getenv("FDE_ENABLE_DOCS", "false").lower() == "true"
@@ -44,6 +46,8 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 
 class ExecutionRequest(BaseModel):
+    """Tinlance-side request envelope; upstream receives only payload."""
+
     model_config = ConfigDict(extra="forbid")
 
     tenant_id: str = Field(
@@ -158,7 +162,7 @@ async def get_upstream_token() -> str | None:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok", "api_version": "0.4.0"}
+    return {"status": "ok", "api_version": "0.5.0"}
 
 
 @app.get("/ready")
@@ -208,10 +212,7 @@ async def execute(
         )
     idempotency_key = idempotency_key.strip()
     if len(idempotency_key) > 255:
-        raise HTTPException(
-            status_code=400,
-            detail="Idempotency-Key is too long",
-        )
+        raise HTTPException(status_code=400, detail="Idempotency-Key is too long")
 
     normalized_domain = domain.strip().lower()
     if normalized_domain not in VALID_DOMAINS:
@@ -219,10 +220,7 @@ async def execute(
 
     upstream = os.getenv("FDE_MASTER_UPSTREAM_URL")
     if not upstream:
-        raise HTTPException(
-            status_code=503,
-            detail="FDE upstream is not configured",
-        )
+        raise HTTPException(status_code=503, detail="FDE upstream is not configured")
 
     token = await get_upstream_token()
     if not token:
@@ -236,37 +234,26 @@ async def execute(
         "Idempotency-Key": idempotency_key,
         "authorization": f"Bearer {token}",
     }
-
-    upstream_payload = {
-        "tenant_id": payload.tenant_id,
-        "payload": payload.payload,
-    }
+    upstream_payload = payload.payload
+    client_id = payload.tenant_id
 
     try:
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(30.0, connect=5.0)
         ) as client:
             response = await client.post(
-                upstream.rstrip("/") + f"/v1/{normalized_domain}/execute",
+                upstream.rstrip("/")
+                + f"/v1/triage/{client_id}/{normalized_domain}",
                 json=upstream_payload,
                 headers=headers,
             )
     except httpx.HTTPError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail="FDE upstream unavailable",
-        ) from exc
+        raise HTTPException(status_code=503, detail="FDE upstream unavailable") from exc
 
     if response.status_code >= 500:
-        raise HTTPException(
-            status_code=503,
-            detail="FDE upstream unavailable",
-        )
+        raise HTTPException(status_code=503, detail="FDE upstream unavailable")
     if response.status_code >= 400:
-        raise HTTPException(
-            status_code=502,
-            detail="FDE upstream rejected the request",
-        )
+        raise HTTPException(status_code=502, detail="FDE upstream rejected the request")
 
     try:
         result = response.json()
