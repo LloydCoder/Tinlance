@@ -1,25 +1,21 @@
-name: M0 Lockfile Refresh
+name: M0 Lock Refresh
 
 on:
   push:
-    branches: [fix/m0-lockfile-security]
-    paths:
-      - apps/web/package.json
-      - pnpm-lock.yaml
-      - .github/workflows/m0-lock-refresh.yml
+    branches:
+      - fix/m0-lockfile-security
 
 permissions:
   contents: write
 
 jobs:
   refresh:
-    if: github.event.head_commit.message != 'chore(ci): remove M0 lock refresh'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           ref: fix/m0-lockfile-security
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.14.0
@@ -27,9 +23,11 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --lockfile-only
-      - run: pnpm list next --filter @tinlance/web --depth 0
-      - name: Commit refreshed lockfile
+      - name: Refresh lockfile
+        run: pnpm install --lockfile-only
+      - name: Verify Next.js resolution
+        run: pnpm list next --filter @tinlance/web --depth 0
+      - name: Commit lockfile
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
