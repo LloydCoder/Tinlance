@@ -1,16 +1,15 @@
 name: P0 Lockfile Refresh
 
 on:
-  push:
-    branches:
-      - fix/p0-production-integrity
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   refresh:
-    if: github.event.head_commit.message != 'chore(ci): remove temporary lock refresh workflow'
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/p0-production-integrity'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -27,17 +26,17 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - name: Refresh web lockfile
+      - name: Refresh Next.js lockfile
         run: pnpm update --lockfile-only --filter @tinlance/web next@15.5.24
 
-      - name: Commit refreshed lockfile
+      - name: Commit lockfile if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add pnpm-lock.yaml
           if git diff --cached --quiet; then
-            echo "No lockfile changes required."
+            echo "Lockfile already current."
             exit 0
           fi
           git commit -m "chore(deps): refresh Next.js security lockfile"
-          git push origin fix/p0-production-integrity
+          git push origin HEAD:fix/p0-production-integrity
