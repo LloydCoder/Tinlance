@@ -1,27 +1,31 @@
 import type { MetadataRoute } from "next";
-import { insights } from "../lib/content";
+import { insights, services } from "../lib/content";
+
+const staticRoutes = [
+  "/",
+  "/services",
+  ...services.map((service) => `/services/${service.slug}`),
+  "/work",
+  "/assessment",
+  "/insights",
+  "/resources",
+  "/about",
+  "/contact",
+];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const routes = [
-    "/",
-    "/services",
-    "/services/autonomous-ai",
-    "/services/ai-infrastructure",
-    "/services/ai-security",
-    "/services/automation",
-    "/services/fde",
-    "/work",
-    "/insights",
-    ...insights.map((insight) => `/insights/${insight.slug}`),
-    "/resources",
-    "/about",
-    "/contact",
-  ];
-
-  return routes.map((route) => ({
+  const staticEntries: MetadataRoute.Sitemap = staticRoutes.map((route) => ({
     url: `https://tinlance.com${route}`,
-    lastModified: new Date(),
     changeFrequency: route === "/" ? "weekly" : "monthly",
-    priority: route === "/" ? 1 : route.startsWith("/insights/") ? 0.6 : 0.7,
+    priority: route === "/" ? 1 : route.startsWith("/services/") ? 0.8 : 0.7,
   }));
+
+  const insightEntries: MetadataRoute.Sitemap = insights.map((insight) => ({
+    url: `https://tinlance.com/insights/${insight.slug}`,
+    lastModified: insight.publishedAt,
+    changeFrequency: "monthly",
+    priority: 0.6,
+  }));
+
+  return [...staticEntries, ...insightEntries];
 }

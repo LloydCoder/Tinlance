@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { verifyPaystackSignature } from "@/lib/operations/paystack";
+import { paystackEventId, verifyPaystackSignature } from "@/lib/operations/paystack";
 import { getRequestId } from "@/lib/security/request-id";
 import { validateProductionEnv } from "@/lib/security/env";
 
@@ -85,16 +85,8 @@ export async function POST(request: Request) {
 
   const eventType = body.event;
   const data = body.data;
-  const eventId = String(data.id ?? "");
   const reference = typeof data.reference === "string" ? data.reference : null;
-
-  if (!eventId) {
-    return NextResponse.json(
-      { error: "missing_event_id", requestId },
-      { status: 400, headers: jsonHeaders },
-    );
-  }
-
+  const eventId = paystackEventId(eventType, data.id, reference, payload);
   const nextStatus = STATUS_BY_EVENT[eventType];
 
   try {
