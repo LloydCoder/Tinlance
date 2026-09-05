@@ -22,6 +22,30 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   async redirects() {
     return [
+      {
+        source: "/blog.php",
+        has: [
+          {
+            type: "query",
+            key: "slug",
+            value: "threatfade-quic-c2-detection",
+          },
+        ],
+        destination: "/research/threatfade-quic-c2-detection",
+        permanent: true,
+      },
+      {
+        source: "/blog",
+        has: [
+          {
+            type: "query",
+            key: "slug",
+            value: "threatfade-quic-c2-detection",
+          },
+        ],
+        destination: "/research/threatfade-quic-c2-detection",
+        permanent: true,
+      },
       { source: "/services.php", destination: "/services", permanent: true },
       { source: "/work.php", destination: "/work", permanent: true },
       { source: "/about.php", destination: "/about", permanent: true },
@@ -44,18 +68,6 @@ const nextConfig: NextConfig = {
       {
         source: "/unsubscribe.php",
         destination: "/contact",
-        permanent: true,
-      },
-      {
-        source: "/blog",
-        has: [
-          {
-            type: "query",
-            key: "slug",
-            value: "threatfade-quic-c2-detection",
-          },
-        ],
-        destination: "/research/threatfade-quic-c2-detection",
         permanent: true,
       },
     ];
