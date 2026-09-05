@@ -13,6 +13,8 @@ DOMAINS = (
     "logistics",
     "legal",
     "revops",
+    "procurement",
+    "custom",
 )
 
 PAYLOADS = {
@@ -30,8 +32,21 @@ def test_gateway_forwards_every_supported_domain(monkeypatch):
 
     routes = {
         domain: respx.post(
-            f"https://fde-mastery.internal/v1/{domain}/execute"
-        ).mock(return_value=Response(200, json={"domain": domain, "ok": True}))
+            f"https://fde-mastery.internal/v1/triage/org123/{domain}"
+        ).mock(
+            return_value=Response(
+                200,
+                json={
+                    "request_id": f"upstream-{domain}",
+                    "client_id": "org123",
+                    "domain": domain,
+                    "result": {"domain": domain},
+                    "confidence": 0.9,
+                    "processing_time_ms": 1.2,
+                    "audit_log_id": f"AUDIT-{domain}",
+                },
+            )
+        )
         for domain in DOMAINS
     }
 
@@ -52,9 +67,7 @@ def test_gateway_forwards_every_supported_domain(monkeypatch):
         assert response.status_code == 200, f"{domain}: {response.text}"
         assert routes[domain].called
         forwarded = json.loads(routes[domain].calls.last.request.content)
-        assert forwarded["tenant_id"] == "org123"
-        assert forwarded["payload"]["case_id"] == f"E2E-{domain}"
-        assert forwarded["payload"]["domain"] == domain
+        assert forwarded == PAYLOADS[domain]
         assert response.json()["result"]["domain"] == domain
 
 

@@ -10,9 +10,9 @@ Tinlance Next.js
       ▼
 Tinlance FDE API
       │
-      │ OAuth 2.0 client credentials
+      │ OAuth 2.0 client credentials / API key compatibility
       ▼
-fde-mastery
+fde-mastery v1 gateway
       │
       ▼
 AgentRouter / domain agents
@@ -20,7 +20,7 @@ AgentRouter / domain agents
 
 ## Execution contract
 
-The gateway exposes the same versioned route shape expected by the current `fde-mastery` integration contract:
+Tinlance exposes a stable internal execution route and translates it to the canonical `fde-mastery` v1 triage route:
 
 ```http
 POST /v1/{domain}/execute
@@ -34,25 +34,24 @@ x-request-id: <UUID, optional>
 }
 ```
 
-The gateway forwards the upstream envelope unchanged in meaning:
+The gateway calls the canonical `fde-mastery` route:
 
 ```http
-POST {FDE_MASTER_UPSTREAM_URL}/v1/{domain}/execute
-Authorization: Bearer <OAuth access token>
+POST {FDE_MASTER_UPSTREAM_URL}/v1/triage/{client_id}/{domain}
+Authorization: Bearer <OAuth access token or configured API key>
 x-request-id: <correlation id>
 Idempotency-Key: <operation key>
 
-{
-  "tenant_id": "org-slug-or-id",
-  "payload": { ... }
-}
+{ ...payload }
 ```
 
-The tenant identifier is trusted only across the authenticated server-to-server boundary. Browser clients must never receive `FDE_SERVICE_TOKEN` or call the gateway directly.
+`tenant_id` is mapped to the upstream `client_id` path segment. The inner `payload` object is forwarded as the upstream request body. This translation is intentional and keeps the Tinlance boundary stable while matching the authoritative `fde-mastery` contract.
+
+The `fde-mastery` v1 response is returned inside the Tinlance gateway's `result` field together with the gateway request ID and upstream status.
 
 ## Supported domains
 
-The gateway explicitly accepts:
+The gateway explicitly accepts the canonical eight domains:
 
 - `cybersecurity`
 - `finance`
@@ -60,8 +59,10 @@ The gateway explicitly accepts:
 - `logistics`
 - `legal`
 - `revops`
+- `procurement`
+- `custom`
 
-Unknown domains are rejected at the gateway instead of being passed blindly to the upstream service.
+Unknown domains are rejected at the Tinlance gateway instead of being passed blindly upstream.
 
 ## Authentication boundaries
 
@@ -73,13 +74,15 @@ This is the internal service boundary. The gateway rejects unauthenticated reque
 
 ### FDE API → fde-mastery
 
-Production uses OAuth 2.0 client credentials. The access token is cached and refreshed before expiry. A static upstream token is accepted only when `FDE_ENV=development` or `FDE_ENV=test`; it is not a production authentication mechanism.
+Production uses OAuth 2.0 client credentials when the upstream OIDC issuer/audience is configured. The access token is cached and refreshed before expiry. A static upstream token is accepted only when `FDE_ENV=development` or `FDE_ENV=test`; it is not a production authentication mechanism.
+
+`fde-mastery` itself supports either its configured API-key trust boundary or OIDC bearer validation, depending on its production configuration.
 
 ## Tenant propagation
 
 The gateway requires explicit tenant context and validates its syntax before forwarding execution. The authoritative tenant identity must originate from the authenticated Tinlance server-side organization context. The gateway does not accept tenant identity from browser code.
 
-The current `fde-mastery` service independently enforces tenant authorization from the authenticated upstream principal and the forwarded `tenant_id`.
+The upstream `fde-mastery` triage endpoint binds the tenant/client identity to the authenticated principal when OIDC is enabled and independently checks that the client exists and has the requested domain enabled.
 
 ## Resilience
 
@@ -90,7 +93,7 @@ The gateway provides:
 - readiness checks that distinguish process liveness from service readiness;
 - request correlation;
 - safe error responses; and
-- tests for token caching and upstream request construction.
+- tests for token caching and canonical upstream request construction.
 
 The failure path must never convert an upstream outage into a false successful execution response.
 
@@ -100,7 +103,7 @@ Production readiness requires:
 
 - `FDE_SERVICE_TOKEN`;
 - `FDE_MASTER_UPSTREAM_URL`; and
-- complete OAuth client-credentials configuration.
+- complete OAuth client-credentials configuration when the upstream is configured for OIDC.
 
 Development/test may use the static upstream token fallback explicitly. Production readiness must fail closed when only the fallback is configured.
 
@@ -111,11 +114,13 @@ The integration test suite covers, at minimum:
 - authentication requirements;
 - missing upstream configuration;
 - production rejection of static upstream authentication;
+- all eight supported domains;
 - unsupported domains;
-- canonical upstream URL construction;
-- exact upstream request envelope;
-- tenant propagation;
+- canonical `/v1/triage/{client_id}/{domain}` upstream URL construction;
+- exact upstream payload translation;
+- tenant/client propagation;
 - authorization header propagation;
+- request correlation;
 - OAuth token retrieval;
 - OAuth token caching; and
 - repeated executions reusing a valid cached token.

@@ -24,7 +24,7 @@ def configure_static_test_auth(monkeypatch):
 def test_health_is_public(monkeypatch):
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "api_version": "0.4.0"}
+    assert response.json() == {"status": "ok", "api_version": "0.5.0"}
 
 
 def test_execute_requires_authentication(monkeypatch):
@@ -87,8 +87,21 @@ def test_execute_rejects_unknown_domain(monkeypatch):
 def test_execute_calls_fde_mastery_canonical_route_and_envelope(monkeypatch):
     configure_static_test_auth(monkeypatch)
 
-    route = respx.post("https://fde-mastery.internal/v1/cybersecurity/execute").mock(
-        return_value=Response(200, json={"executed": True})
+    route = respx.post(
+        "https://fde-mastery.internal/v1/triage/org123/cybersecurity"
+    ).mock(
+        return_value=Response(
+            200,
+            json={
+                "request_id": "upstream-request",
+                "client_id": "org123",
+                "domain": "cybersecurity",
+                "result": {"ok": True},
+                "confidence": 0.9,
+                "processing_time_ms": 1.2,
+                "audit_log_id": "AUDIT-upstream-request",
+            },
+        )
     )
 
     request_id = "12345678-1234-4234-8234-123456789012"
@@ -104,17 +117,14 @@ def test_execute_calls_fde_mastery_canonical_route_and_envelope(monkeypatch):
     assert response.status_code == 200
     assert route.called
     parsed = json.loads(route.calls.last.request.content)
-    assert parsed == {
-        "tenant_id": "org123",
-        "payload": {"case_id": "E2E-cybersecurity", "alert": "execute this"},
-    }
+    assert parsed == {"case_id": "E2E-cybersecurity", "alert": "execute this"}
     assert route.calls.last.request.headers["authorization"] == "Bearer static-token"
     assert route.calls.last.request.headers["idempotency-key"] == "test-idempotency-key"
     assert route.calls.last.request.headers["x-request-id"] == request_id
     assert response.json()["request_id"] == request_id
+    assert response.json()["result"]["client_id"] == "org123"
 
 
-@respx.mock
 def test_execute_rejects_invalid_tenant_id(monkeypatch):
     configure_static_test_auth(monkeypatch)
     response = client.post(
@@ -143,8 +153,21 @@ def test_execute_caches_oauth_token_across_requests(monkeypatch):
     token_route = respx.post("https://idp.internal/oauth/token").mock(
         return_value=Response(200, json={"access_token": "minted-token", "expires_in": 300})
     )
-    upstream_route = respx.post("https://fde-mastery.internal/v1/finance/execute").mock(
-        return_value=Response(200, json={"ok": True})
+    upstream_route = respx.post(
+        "https://fde-mastery.internal/v1/triage/org123/finance"
+    ).mock(
+        return_value=Response(
+            200,
+            json={
+                "request_id": "upstream-request",
+                "client_id": "org123",
+                "domain": "finance",
+                "result": {"ok": True},
+                "confidence": 0.9,
+                "processing_time_ms": 1.2,
+                "audit_log_id": "AUDIT-upstream-request",
+            },
+        )
     )
 
     for index in range(2):
