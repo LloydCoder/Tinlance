@@ -20,13 +20,35 @@ AgentRouter / domain agents
 
 ## Execution contract
 
-The gateway exposes the versioned execution shape:
+The gateway exposes the same versioned route shape expected by the current `fde-mastery` integration contract:
 
 ```http
 POST /v1/{domain}/execute
+Authorization: Bearer <Tinlance service credential>
+Idempotency-Key: <unique operation key>
+x-request-id: <UUID, optional>
+
+{
+  "tenant_id": "org-slug-or-id",
+  "payload": { ... }
+}
 ```
 
-The execution payload carries tenant-aware context, including task payload, organization context, and metadata. Request IDs are propagated so one operation can be correlated across Tinlance, the gateway, and the upstream execution platform.
+The gateway forwards the upstream envelope unchanged in meaning:
+
+```http
+POST {FDE_MASTER_UPSTREAM_URL}/v1/{domain}/execute
+Authorization: Bearer <OAuth access token>
+x-request-id: <correlation id>
+Idempotency-Key: <operation key>
+
+{
+  "tenant_id": "org-slug-or-id",
+  "payload": { ... }
+}
+```
+
+The tenant identifier is trusted only across the authenticated server-to-server boundary. Browser clients must never receive `FDE_SERVICE_TOKEN` or call the gateway directly.
 
 ## Supported domains
 
@@ -47,19 +69,17 @@ There are two distinct trust relationships:
 
 ### Tinlance → FDE API
 
-This is the internal service boundary. The gateway must not accept an unauthenticated public execution request.
+This is the internal service boundary. The gateway rejects unauthenticated requests and requires the server-only `FDE_SERVICE_TOKEN`.
 
 ### FDE API → fde-mastery
 
-The gateway supports OAuth 2.0 client credentials for upstream authentication. Configuration includes the upstream token endpoint, client ID, client secret, and optional audience. Access tokens are cached and refreshed before expiry rather than requesting a new token for every execution.
-
-A static-token fallback is intended for development compatibility only and must not silently replace production OAuth configuration.
+Production uses OAuth 2.0 client credentials. The access token is cached and refreshed before expiry. A static upstream token is accepted only when `FDE_ENV=development` or `FDE_ENV=test`; it is not a production authentication mechanism.
 
 ## Tenant propagation
 
-The gateway requires explicit tenant context and validates it before forwarding execution. Organization/task/metadata context is propagated upstream so the execution layer can enforce tenant-aware policy.
+The gateway requires explicit tenant context and validates its syntax before forwarding execution. The authoritative tenant identity must originate from the authenticated Tinlance server-side organization context. The gateway does not accept tenant identity from browser code.
 
-A client must not be able to bypass authorization by supplying an arbitrary organization identifier. The authoritative tenant identity comes from the authenticated Tinlance request context.
+The current `fde-mastery` service independently enforces tenant authorization from the authenticated upstream principal and the forwarded `tenant_id`.
 
 ## Resilience
 
@@ -76,7 +96,13 @@ The failure path must never convert an upstream outage into a false successful e
 
 ## Readiness
 
-Readiness checks validate the configuration required to serve execution traffic, including upstream configuration, tenant configuration, and required authentication material. Liveness and readiness are separate operational concepts.
+Production readiness requires:
+
+- `FDE_SERVICE_TOKEN`;
+- `FDE_MASTER_UPSTREAM_URL`; and
+- complete OAuth client-credentials configuration.
+
+Development/test may use the static upstream token fallback explicitly. Production readiness must fail closed when only the fallback is configured.
 
 ## Testing requirements
 
@@ -84,9 +110,10 @@ The integration test suite covers, at minimum:
 
 - authentication requirements;
 - missing upstream configuration;
+- production rejection of static upstream authentication;
 - unsupported domains;
-- upstream URL construction;
-- upstream request shape;
+- canonical upstream URL construction;
+- exact upstream request envelope;
 - tenant propagation;
 - authorization header propagation;
 - OAuth token retrieval;
@@ -94,6 +121,8 @@ The integration test suite covers, at minimum:
 - repeated executions reusing a valid cached token.
 
 Production acceptance additionally requires an actual authenticated Tinlance → FDE API → `fde-mastery` execution and a verified response path back to Tinlance.
+
+**LIVE FDE PATH: UNVERIFIED** until that end-to-end execution is observed in the deployed environment.
 
 ## Operational environment
 

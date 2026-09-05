@@ -20,6 +20,58 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
+  async redirects() {
+    return [
+      {
+        source: "/blog.php",
+        has: [
+          {
+            type: "query",
+            key: "slug",
+            value: "threatfade-quic-c2-detection",
+          },
+        ],
+        destination: "/research/threatfade-quic-c2-detection",
+        permanent: true,
+      },
+      {
+        source: "/blog",
+        has: [
+          {
+            type: "query",
+            key: "slug",
+            value: "threatfade-quic-c2-detection",
+          },
+        ],
+        destination: "/research/threatfade-quic-c2-detection",
+        permanent: true,
+      },
+      { source: "/services.php", destination: "/services", permanent: true },
+      { source: "/work.php", destination: "/work", permanent: true },
+      { source: "/about.php", destination: "/about", permanent: true },
+      { source: "/blog.php", destination: "/insights", permanent: true },
+      { source: "/pricing.php", destination: "/services", permanent: true },
+      { source: "/faq.php", destination: "/services", permanent: true },
+      { source: "/roadmap.php", destination: "/work", permanent: true },
+      { source: "/careers.php", destination: "/contact", permanent: true },
+      { source: "/press.php", destination: "/about", permanent: true },
+      { source: "/partners.php", destination: "/contact", permanent: true },
+      { source: "/threatfade.php", destination: "/threatfade", permanent: true },
+      { source: "/changelog.php", destination: "/insights", permanent: true },
+      { source: "/privacy.php", destination: "/contact", permanent: true },
+      { source: "/terms.php", destination: "/contact", permanent: true },
+      {
+        source: "/cookie-policy.php",
+        destination: "/contact",
+        permanent: true,
+      },
+      {
+        source: "/unsubscribe.php",
+        destination: "/contact",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
