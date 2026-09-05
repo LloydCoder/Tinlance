@@ -28,7 +28,7 @@ jobs:
           cache: pnpm
 
       - name: Refresh web lockfile
-        run: pnpm update --lockfile-only --filter @tinlance/web next@15.5.24
+        run: pnpm up --lockfile-only --filter @tinlance/web next@15.5.24 @next/eslint-plugin-next@15.5.24 eslint-config-next@15.5.24
 
       - name: Commit refreshed lockfile
         run: |
