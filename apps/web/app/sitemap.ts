@@ -54,7 +54,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const researchEntries: MetadataRoute.Sitemap = researchItems.map((item) => ({
     url: `https://tinlance.com${item.canonicalPath}`,
     lastModified: item.updatedAt,
-    changeFrequency: "quarterly",
+    changeFrequency: "monthly",
     priority: 0.75,
   }));
 
