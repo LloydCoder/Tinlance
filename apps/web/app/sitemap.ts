@@ -9,7 +9,6 @@ const staticRoutes = [
   "/work",
   "/threatfade",
   "/research",
-  ...researchItems.map((item) => item.canonicalPath),
   "/case-studies",
   ...caseStudies.map((item) => item.canonicalPath),
   "/guides",
