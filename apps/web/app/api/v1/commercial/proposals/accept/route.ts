@@ -24,11 +24,10 @@ export async function POST(request: Request) {
     const proposal = await db.proposal.findUnique({ where: { publicTokenHash: hashProposalToken(parsed.data.token) }, include: { lead: true, versions: { where: { version: { equals: 1 } }, take: 1 } } });
     if (!proposal) return NextResponse.json({ error: "proposal_not_found", requestId }, { status: 404, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     if (proposal.status === ProposalStatus.ACCEPTED) return NextResponse.json({ status: "already_accepted", requestId, engagementId: (await db.engagement.findUnique({ where: { proposalId: proposal.id }, select: { id: true } }))?.id ?? null }, { status: 200, headers: { "cache-control": "no-store", "x-request-id": requestId } });
-    if (![ProposalStatus.SENT, ProposalStatus.VIEWED].includes(proposal.status)) return NextResponse.json({ error: "proposal_not_accepting", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
+    if (proposal.status !== ProposalStatus.SENT && proposal.status !== ProposalStatus.VIEWED) return NextResponse.json({ error: "proposal_not_accepting", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     if (proposal.expiresAt && proposal.expiresAt <= new Date()) { await db.proposal.update({ where: { id: proposal.id }, data: { status: ProposalStatus.EXPIRED } }); return NextResponse.json({ error: "proposal_expired", requestId }, { status: 410, headers: { "cache-control": "no-store", "x-request-id": requestId } }); }
     const version = proposal.versions[0];
     if (!version) return NextResponse.json({ error: "proposal_version_missing", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
-
     const { token: onboardingToken, hash: onboardingHash } = createProposalToken();
     const onboardingExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const result = await db.$transaction(async (tx) => {
@@ -44,12 +43,7 @@ export async function POST(request: Request) {
       if (existingEngagement) return { ...existingEngagement, onboardingToken, onboardingCreated: false };
       const totalMinor = typeof version.pricing === "object" && version.pricing && "totalMinor" in version.pricing && typeof (version.pricing as { totalMinor?: unknown }).totalMinor === "number" ? (version.pricing as { totalMinor: number }).totalMinor : null;
       const currency = typeof version.pricing === "object" && version.pricing && "currency" in version.pricing && typeof (version.pricing as { currency?: unknown }).currency === "string" ? (version.pricing as { currency: string }).currency : "USD";
-      const created = await tx.engagement.create({ data: {
-        organizationId, clientId: client.id, opportunityId: proposal.opportunityId, proposalId: proposal.id, name: proposal.title,
-        scope: `${version.proposedSolution}\n\nScope:\n${JSON.stringify(version.scope)}`, commercialValueMinor: totalMinor, currency,
-        deliveryModel: DeliveryModel.PROJECT, status: EngagementStatus.ACTIVE, securityRequirements: version.securityConsiderations ?? null,
-        projects: { create: { organizationId, name: proposal.title, type: "commercial-engagement", status: "active", progress: 0, description: version.executiveSummary } },
-      }, select: { id: true, organizationId: true, clientId: true } });
+      const created = await tx.engagement.create({ data: { organizationId, clientId: client.id, opportunityId: proposal.opportunityId, proposalId: proposal.id, name: proposal.title, scope: `${version.proposedSolution}\n\nScope:\n${JSON.stringify(version.scope)}`, commercialValueMinor: totalMinor, currency, deliveryModel: DeliveryModel.PROJECT, status: EngagementStatus.ACTIVE, securityRequirements: version.securityConsiderations ?? null, projects: { create: { organizationId, name: proposal.title, type: "commercial-engagement", status: "active", progress: 0, description: version.executiveSummary } } }, select: { id: true, organizationId: true, clientId: true } });
       await tx.clientAccessInvite.create({ data: { clientId: client.id, email: proposal.lead.email, tokenHash: onboardingHash, expiresAt: onboardingExpiresAt } });
       await tx.proposal.update({ where: { id: proposal.id }, data: { status: ProposalStatus.ACCEPTED, acceptedAt: new Date(), acceptedByName: parsed.data.acceptedByName, acceptedByEmail: parsed.data.acceptedByEmail, organizationId } });
       if (proposal.opportunityId) await tx.opportunity.update({ where: { id: proposal.opportunityId }, data: { organizationId, stage: OpportunityStage.ACTIVE, lastActivityAt: new Date(), nextAction: "Begin client onboarding", nextActionAt: new Date(Date.now() + 24 * 60 * 60 * 1000) } });
@@ -60,7 +54,6 @@ export async function POST(request: Request) {
       ] });
       return { ...created, onboardingToken, onboardingCreated: true };
     });
-
     const onboardingUrl = new URL(`/client-onboarding/${result.onboardingToken}`, request.url).toString();
     const email = await sendCommercialEmail({ action: "proposal.accepted", resourceId: proposal.id, to: proposal.lead.email, subject: `Tinlance engagement created — ${proposal.title}`, html: `<p>Thank you. Your proposal <strong>${proposal.proposalNumber}</strong> has been accepted.</p><p>Your secure client workspace is ready to activate. <a href="${onboardingUrl}">Complete client access setup</a>.</p>`, requestId, organizationId: result.organizationId }).catch((error) => { console.error("acceptance_notification_failed", { requestId, error }); return { sent: false, duplicate: false, configured: false }; });
     return NextResponse.json({ status: "accepted", requestId, engagementId: result.id, organizationId: result.organizationId, clientId: result.clientId, onboardingUrl, notification: email }, { status: 201, headers: { "cache-control": "no-store", "x-request-id": requestId } });
