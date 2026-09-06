@@ -22,21 +22,12 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://tinlance.com",
     siteName: "Tinlance",
-    images: [
-      {
-        url: "/opengraph-image.svg",
-        width: 1200,
-        height: 630,
-        alt: "Tinlance AI engineering and Forward-Deployed Engineering",
-      },
-    ],
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "Tinlance — AI Engineering & Forward-Deployed Engineering",
     description:
       "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation.",
-    images: ["/opengraph-image.svg"],
   },
 };
 
