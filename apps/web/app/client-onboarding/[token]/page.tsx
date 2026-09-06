@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function ClientOnboardingPage({ params }: { params: Promise<{ token: string }> }) {
-  const [token, setToken] = useState<string>("");
+  const [token, setToken] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
-  useState(() => { void params.then((value) => setToken(value.token)); });
+  useEffect(() => { let active = true; void params.then((value) => { if (active) setToken(value.token); }); return () => { active = false; }; }, [params]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setStatus("submitting");
