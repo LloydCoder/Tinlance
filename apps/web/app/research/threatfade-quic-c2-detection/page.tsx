@@ -4,6 +4,7 @@ export const metadata = {
   title: "ThreatFade QUIC C2 Detection | Tinlance Research",
   description:
     "Tinlance research on detecting evasive C2 behavior in encrypted QUIC traffic with ThreatFade.",
+  alternates: { canonical: "/research/threatfade-quic-c2-detection" },
 };
 
 export default function ThreatFadeResearchPage() {
@@ -22,27 +23,40 @@ export default function ThreatFadeResearchPage() {
       </p>
 
       <article className="prose prose-neutral mt-12 max-w-none">
+        <h2>Early MVP validation</h2>
+        <p>
+          The early ThreatFade MVP was reported and publicly documented against
+          a test population of real Merlin QUIC C2 traffic. The reported result
+          was 490,847 packets analyzed, a z-score of 14.76, and 0% false
+          positives across the tested MVP populations.
+        </p>
+        <p>
+          These figures describe that historical validation population. They do
+          not establish universal detection accuracy, customer-scale
+          performance, or a current production false-positive guarantee.
+        </p>
+
         <h2>What ThreatFade measures</h2>
         <p>
-          The current engine describes a rolling Shannon-entropy signal combined
-          with multi-domain data fusion. The project is designed to operate
-          offline and to support reproducible analysis rather than requiring a
-          live cloud control plane.
+          The current engine describes rolling Shannon-entropy signals,
+          statistical deviation, heuristic detection, confidence scoring, and
+          multi-domain correlation. The project is designed to support
+          reproducible analysis and offline operation.
         </p>
 
         <h2>Evidence boundary</h2>
         <p>
-          ThreatFade&apos;s current public repository represents laboratory and
-          research validation. This page intentionally makes no independent
-          production-performance, false-positive, packet-count, or benchmark
-          claim beyond the evidence published with the project.
+          The current public repository is an evidence-first research and
+          engineering project. Its README explicitly separates repository
+          evidence from independent assurance such as third-party validation,
+          certification, contractual SLAs, and customer-scale performance.
         </p>
 
         <h2>Further work</h2>
         <p>
           Reproduction instructions, implementation details, tests, and
-          validation evidence should be treated as the authoritative technical
-          record as the research evolves.
+          validation evidence remain the authoritative technical record as the
+          research evolves.
         </p>
       </article>
 
