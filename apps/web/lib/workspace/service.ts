@@ -22,19 +22,19 @@ export async function transitionProject(input: { projectId: string; organization
 }
 
 export async function transitionFinding(input: { findingId: string; organizationId: string; actorUserId: string; to: WorkspaceFindingStatus; requestId: string }) {
-  const finding = await db.workspaceFinding.findFirst({ where: { id: input.findingId, organizationId }, select: { id: true, status: true, projectId: true } });
+  const finding = await db.workspaceFinding.findFirst({ where: { id: input.findingId, organizationId: input.organizationId }, select: { id: true, status: true, projectId: true } });
   if (!finding) throw new Error("finding_not_found");
   assertFindingTransition(finding.status, input.to);
   return db.$transaction(async (tx) => {
     const result = await tx.workspaceFinding.updateMany({ where: { id: finding.id, status: finding.status }, data: { status: input.to, visibility: ["CUSTOMER_VISIBLE","OPEN","ACKNOWLEDGED","IN_PROGRESS","REMEDIATED","VERIFICATION_PENDING","VERIFIED","CLOSED"].includes(input.to) ? "CUSTOMER" : undefined } });
     if (result.count !== 1) throw new Error("finding_transition_race");
-    await tx.auditEvent.create({ data: { organizationId: input.organizationId, actorUserId: input.actorUserId, action: "FINDING_STATUS_CHANGED", resourceType: "workspace_finding", resourceId: finding.id, requestId: input.requestId, metadata: { from: finding.status, to: input.to } });
+    await tx.auditEvent.create({ data: { organizationId: input.organizationId, actorUserId: input.actorUserId, action: "FINDING_STATUS_CHANGED", resourceType: "workspace_finding", resourceId: finding.id, requestId: input.requestId, metadata: { from: finding.status, to: input.to } } });
     return { status: input.to };
   });
 }
 
 export async function transitionRemediation(input: { remediationId: string; organizationId: string; actorUserId: string; to: WorkspaceRemediationStatus; requestId: string }) {
-  const remediation = await db.workspaceRemediation.findFirst({ where: { id: input.remediationId, organizationId }, select: { id: true, status: true, projectId: true, findingId: true } });
+  const remediation = await db.workspaceRemediation.findFirst({ where: { id: input.remediationId, organizationId: input.organizationId }, select: { id: true, status: true, projectId: true, findingId: true } });
   if (!remediation) throw new Error("remediation_not_found");
   assertRemediationTransition(remediation.status, input.to);
   return db.$transaction(async (tx) => {
@@ -50,13 +50,13 @@ export async function transitionRemediation(input: { remediationId: string; orga
 }
 
 export async function transitionReport(input: { reportId: string; organizationId: string; actorUserId: string; to: WorkspaceReportStatus; requestId: string }) {
-  const report = await db.workspaceReport.findFirst({ where: { id: input.reportId, organizationId }, select: { id: true, status: true, currentVersion: true } });
+  const report = await db.workspaceReport.findFirst({ where: { id: input.reportId, organizationId: input.organizationId }, select: { id: true, status: true, currentVersion: true } });
   if (!report) throw new Error("report_not_found");
   assertReportTransition(report.status, input.to);
   return db.$transaction(async (tx) => {
     const result = await tx.workspaceReport.updateMany({ where: { id: report.id, status: report.status }, data: { status: input.to, publishedAt: input.to === "PUBLISHED" ? new Date() : undefined, publishedByUserId: input.to === "PUBLISHED" ? input.actorUserId : undefined } });
     if (result.count !== 1) throw new Error("report_transition_race");
-    await tx.auditEvent.create({ data: { organizationId: input.organizationId, actorUserId: input.actorUserId, action: input.to === "PUBLISHED" ? "REPORT_PUBLISHED" : "REPORT_STATUS_CHANGED", resourceType: "workspace_report", resourceId: input.report.id, requestId: input.requestId, metadata: { from: report.status, to: input.to, version: report.currentVersion } } });
+    await tx.auditEvent.create({ data: { organizationId: input.organizationId, actorUserId: input.actorUserId, action: input.to === "PUBLISHED" ? "REPORT_PUBLISHED" : "REPORT_STATUS_CHANGED", resourceType: "workspace_report", resourceId: report.id, requestId: input.requestId, metadata: { from: report.status, to: input.to, version: report.currentVersion } } });
     return { status: input.to, version: report.currentVersion };
   });
 }
