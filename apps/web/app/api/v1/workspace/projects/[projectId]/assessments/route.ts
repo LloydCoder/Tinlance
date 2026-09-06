@@ -27,17 +27,12 @@ export async function POST(request: Request, context: { params: Promise<{ projec
   const { projectId } = await context.params;
   const authorized = await authorizeProject(projectId, "assessment:create");
   if (!authorized) return NextResponse.json({ error: "forbidden", requestId }, { status: 403, headers: { "cache-control": "no-store", "x-request-id": requestId } });
-  const idempotencyKey = request.headers.get("idempotency-key")?.trim() || null;
-  if (idempotencyKey) {
-    const existing = await db.workspaceAssessment.findUnique({ where: { assessmentId: idempotencyKey }, select: { id: true } }).catch(() => null);
-    if (existing) return NextResponse.json({ status: "duplicate", assessmentId: existing.id, requestId }, { status: 200, headers: { "cache-control": "no-store", "x-request-id": requestId } });
-  }
   const parsed = schema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "invalid_request", requestId }, { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const sourceAssessment = await db.assessment.findFirst({ where: { id: parsed.data.assessmentId, organizationId: authorized.project.organizationId }, select: { id: true } });
   if (!sourceAssessment) return NextResponse.json({ error: "assessment_not_found", requestId }, { status: 404, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const existing = await db.workspaceAssessment.findUnique({ where: { assessmentId: sourceAssessment.id }, select: { id: true, projectId: true } });
-  if (existing) return NextResponse.json({ status: "already_exists", assessmentId: existing.id, projectId: existing.projectId, requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
+  if (existing) return NextResponse.json({ status: existing.projectId === projectId ? "already_exists" : "assessment_already_bound", assessmentId: existing.id, projectId: existing.projectId, requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   try {
     const assessment = await db.$transaction(async (tx) => {
       const created = await tx.workspaceAssessment.create({ data: { projectId, organizationId: authorized.project.organizationId, assessmentId: sourceAssessment.id, type: parsed.data.type, objective: parsed.data.objective, scope: parsed.data.scope, methodology: parsed.data.methodology, status: "SCOPED", assessorUserId: authorized.principal.userId, version: parsed.data.version } });
