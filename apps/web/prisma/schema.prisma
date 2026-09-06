@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
 }
 
 enum QualificationStatus {
@@ -57,6 +57,123 @@ enum DeliveryModel {
   RETAINER
 }
 
+enum ProjectWorkspaceStatus {
+  DRAFT
+  ACTIVE
+  ASSESSMENT
+  FINDINGS_REVIEW
+  REPORTING
+  REMEDIATION
+  VERIFICATION
+  COMPLETED
+  ARCHIVED
+}
+
+enum WorkspaceAssessmentStatus {
+  PLANNED
+  SCOPED
+  ACTIVE
+  EVIDENCE_COLLECTION
+  ANALYSIS
+  FINDINGS_REVIEW
+  COMPLETED
+  REPORT_ISSUED
+}
+
+enum WorkspaceResultStatus {
+  PASS
+  FAIL
+  PARTIAL
+  NOT_ASSESSED
+  NOT_APPLICABLE
+  INCONCLUSIVE
+}
+
+enum WorkspaceFindingSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum WorkspaceFindingStatus {
+  DRAFT_INTERNAL
+  REVIEW
+  CUSTOMER_VISIBLE
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  REMEDIATED
+  VERIFICATION_PENDING
+  VERIFIED
+  CLOSED
+  ACCEPTED_RISK
+  FALSE_POSITIVE
+  NOT_APPLICABLE
+  DUPLICATE
+}
+
+enum WorkspaceVisibility {
+  CUSTOMER
+  CUSTOMER_CONFIDENTIAL
+  TINLANCE_INTERNAL
+  RESTRICTED
+}
+
+enum EvidenceIntegrityStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  SUPERSEDED
+}
+
+enum EvidenceRequestStatus {
+  REQUESTED
+  SUBMITTED
+  REVIEWING
+  ACCEPTED
+  REJECTED
+  REOPENED
+}
+
+enum WorkspaceReportStatus {
+  DRAFT
+  INTERNAL_REVIEW
+  APPROVED
+  PUBLISHED
+  SUPERSEDED
+}
+
+enum WorkspaceRemediationStatus {
+  OPEN
+  PLANNED
+  IN_PROGRESS
+  BLOCKED
+  READY_FOR_VERIFICATION
+  CUSTOMER_ATTESTED
+  VERIFIED
+  CLOSED
+}
+
+enum VerificationResult {
+  PASS
+  FAIL
+  INCONCLUSIVE
+}
+
+enum WorkspaceNoteKind {
+  INTERNAL_NOTE
+  CUSTOMER_COMMENT
+}
+
+enum AIAuthorship {
+  HUMAN_AUTHORED
+  AI_ASSISTED
+  AI_GENERATED
+  HUMAN_VERIFIED
+}
+
 model User {
   id            String       @id @default(cuid())
   name          String
@@ -84,7 +201,7 @@ model Session {
   token                String   @unique
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
-  ipAddress             String?
+  ipAddress            String?
   userAgent            String?
   userId               String
   activeOrganizationId String?
@@ -584,4 +701,231 @@ model GrowthEvent {
   @@index([source, occurredAt])
   @@index([organizationId, occurredAt])
   @@index([userId, occurredAt])
+}
+
+model ProjectWorkspaceState {
+  id            String                 @id @default(cuid())
+  projectId     String                 @unique
+  organizationId String
+  status        ProjectWorkspaceStatus  @default(DRAFT)
+  priority      String                 @default("normal")
+  ownerUserId   String?
+  startDate     DateTime?
+  targetDate    DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@index([organizationId, status])
+  @@index([organizationId, updatedAt])
+}
+
+model WorkspaceAssessment {
+  id              String                    @id @default(cuid())
+  projectId       String
+  organizationId  String
+  assessmentId    String                    @unique
+  type            String
+  objective       String                    @db.Text
+  scope           Json
+  methodology     String                    @db.Text
+  status          WorkspaceAssessmentStatus @default(PLANNED)
+  resultStatus    WorkspaceResultStatus     @default(NOT_ASSESSED)
+  assessorUserId  String?
+  version         String                    @default("1.0")
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  @@index([organizationId, projectId, status])
+  @@index([projectId, createdAt])
+  @@index([assessmentId])
+}
+
+model WorkspaceFinding {
+  id               String                  @id @default(cuid())
+  organizationId   String
+  projectId        String
+  assessmentId     String
+  title            String
+  description      String                  @db.Text
+  category         String
+  severity         WorkspaceFindingSeverity
+  likelihood       String?
+  impact           String?
+  riskScore        Decimal?                @db.Decimal(8, 3)
+  riskMethodology  String?
+  status           WorkspaceFindingStatus   @default(DRAFT_INTERNAL)
+  affectedAsset    String?
+  recommendation   String                  @db.Text
+  ownerUserId      String?
+  dueDate          DateTime?
+  visibility       WorkspaceVisibility      @default(TINLANCE_INTERNAL)
+  authorship       AIAuthorship             @default(HUMAN_AUTHORED)
+  idempotencyKey   String?                 @unique
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  @@index([organizationId, projectId, status])
+  @@index([projectId, severity, status])
+  @@index([assessmentId, createdAt])
+}
+
+model WorkspaceEvidence {
+  id               String                  @id @default(cuid())
+  organizationId   String
+  projectId        String
+  assessmentId     String?
+  title            String
+  description      String?                 @db.Text
+  type             String
+  source           String
+  collectedAt      DateTime
+  collectedByUserId String?
+  contentHash      String
+  hashAlgorithm    String                  @default("SHA-256")
+  mimeType         String
+  sizeBytes        BigInt
+  storageReference String
+  classification   WorkspaceVisibility     @default(CUSTOMER_CONFIDENTIAL)
+  integrityStatus  EvidenceIntegrityStatus @default(PENDING)
+  visibility       WorkspaceVisibility     @default(CUSTOMER_CONFIDENTIAL)
+  versionNumber    Int                     @default(1)
+  idempotencyKey   String?                 @unique
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  @@index([organizationId, projectId, createdAt])
+  @@index([projectId, classification, visibility])
+  @@index([assessmentId, createdAt])
+  @@index([contentHash])
+}
+
+model WorkspaceFindingEvidence {
+  findingId   String
+  evidenceId  String
+  createdAt   DateTime @default(now())
+
+  @@id([findingId, evidenceId])
+  @@index([evidenceId])
+}
+
+model WorkspaceReport {
+  id               String                @id @default(cuid())
+  organizationId   String
+  projectId        String
+  assessmentId     String?
+  title            String
+  type             String
+  currentVersion   Int                   @default(1)
+  status           WorkspaceReportStatus @default(DRAFT)
+  summary          String?               @db.Text
+  generatedAt      DateTime?
+  publishedAt      DateTime?
+  publishedByUserId String?
+  contentHash      String?
+  idempotencyKey   String?               @unique
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([organizationId, projectId, status])
+  @@index([projectId, createdAt])
+}
+
+model WorkspaceReportVersion {
+  id            String   @id @default(cuid())
+  reportId      String
+  version       Int
+  content       String   @db.Text
+  contentHash   String
+  createdByUserId String
+  createdAt     DateTime @default(now())
+
+  @@unique([reportId, version])
+  @@index([reportId, createdAt])
+}
+
+model WorkspaceRemediation {
+  id                 String                    @id @default(cuid())
+  organizationId     String
+  projectId          String
+  findingId          String
+  title              String
+  description        String                    @db.Text
+  ownerUserId        String?
+  priority           String
+  status             WorkspaceRemediationStatus @default(OPEN)
+  targetDate         DateTime?
+  completedAt        DateTime?
+  verificationStatus VerificationResult        @default(INCONCLUSIVE)
+  idempotencyKey     String?                   @unique
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  @@index([organizationId, projectId, status])
+  @@index([findingId, status])
+  @@index([ownerUserId, status, targetDate])
+}
+
+model WorkspaceRemediationEvidence {
+  remediationId String
+  evidenceId    String
+  createdAt     DateTime @default(now())
+
+  @@id([remediationId, evidenceId])
+  @@index([evidenceId])
+}
+
+model WorkspaceVerification {
+  id             String             @id @default(cuid())
+  organizationId String
+  projectId      String
+  findingId      String
+  remediationId  String?
+  verifierUserId String
+  method         String
+  result         VerificationResult
+  notes          String?            @db.Text
+  evidenceId     String?
+  createdAt      DateTime           @default(now())
+
+  @@index([organizationId, projectId, createdAt])
+  @@index([findingId, createdAt])
+  @@index([remediationId, createdAt])
+}
+
+model WorkspaceEvidenceRequest {
+  id             String               @id @default(cuid())
+  organizationId String
+  projectId      String
+  assessmentId   String?
+  title          String
+  description    String               @db.Text
+  requestedType  String
+  dueDate        DateTime?
+  requestedByUserId String
+  status         EvidenceRequestStatus @default(REQUESTED)
+  submittedEvidenceId String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([organizationId, projectId, status])
+  @@index([projectId, dueDate])
+}
+
+model WorkspaceNote {
+  id             String            @id @default(cuid())
+  organizationId String
+  projectId      String
+  resourceType   String
+  resourceId     String
+  authorUserId   String
+  kind           WorkspaceNoteKind
+  body           String            @db.Text
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([organizationId, projectId, kind, createdAt])
+  @@index([resourceType, resourceId, createdAt])
 }
