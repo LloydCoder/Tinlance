@@ -4,6 +4,8 @@ import { hashProposalToken } from "@/lib/commercial/security";
 import { db } from "@/lib/db";
 import ProposalAcceptance from "./proposal-acceptance";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProposalPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   if (!token || token.length < 32 || token.length > 128) notFound();
@@ -15,8 +17,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ token
   if (!version) notFound();
   const pricing = version.pricing as { currency?: string; totalMinor?: number; items?: { name: string; amountMinor: number }[] };
   return <main className="section-v2"><div className="container" style={{ paddingTop: "6rem", paddingBottom: "7rem", maxWidth: "960px" }}>
-    <p className="kicker">TINLANCE / PROPOSAL {proposal.proposalNumber}</p>
-    <h1>{proposal.title}</h1>
+    <p className="kicker">TINLANCE / PROPOSAL {proposal.proposalNumber}</p><h1>{proposal.title}</h1>
     <p style={{ marginTop: "1rem", maxWidth: "720px" }}>A scoped engineering proposal for {proposal.lead.organizationName}. Review the delivery scope, commercial terms and acceptance conditions below.</p>
     <div className="grid gap-6" style={{ marginTop: "3rem" }}>
       <section className="rounded-[24px] border border-neutral-200 bg-white p-7"><p className="kicker">EXECUTIVE SUMMARY</p><p className="mt-3 whitespace-pre-wrap">{version.executiveSummary}</p></section>
