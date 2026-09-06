@@ -11,7 +11,7 @@ export async function POST(request: Request, context: { params: Promise<{ report
   const requestId = getRequestId(request); const { reportId } = await context.params; const principal = await getWorkspacePrincipal();
   if (!principal || !hasWorkspacePermission(principal, "report:create") || !principal.isPrivileged) return NextResponse.json({ error: "forbidden", requestId }, { status: 403, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const report = await db.workspaceReport.findUnique({ where: { id: reportId }, select: { id: true, organizationId: true, projectId: true, currentVersion: true, status: true } });
-  if (!report || report.organizationId !== principal.organizationId) return NextResponse.json({ error: "not_found", requestId }, { status: 404, headers: { "cache-control": "no-store", "x-request-id": requestId } });
+  if (!report || (!principal.isPrivileged && report.organizationId !== principal.organizationId)) return NextResponse.json({ error: "not_found", requestId }, { status: 404, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const parsed = schema.safeParse(await request.json()); if (!parsed.success) return NextResponse.json({ error: "invalid_request", requestId }, { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const version = report.currentVersion + 1; const contentHash = createHash("sha256").update(parsed.data.content).digest("hex");
   await db.$transaction(async (tx) => {
