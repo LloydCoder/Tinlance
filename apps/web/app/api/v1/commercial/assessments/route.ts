@@ -20,9 +20,7 @@ function domainFromWebsite(website?: string) {
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
   const idempotencyKey = request.headers.get("idempotency-key")?.trim() || null;
-  if (idempotencyKey && idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
-    return NextResponse.json({ error: "invalid_idempotency_key", requestId }, { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } });
-  }
+  if (idempotencyKey && idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH) return NextResponse.json({ error: "invalid_idempotency_key", requestId }, { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } });
 
   try {
     validateProductionEnv();
@@ -72,7 +70,7 @@ export async function POST(request: Request) {
         }, select: { id: true } });
 
         await tx.auditEvent.createMany({ data: [
-          { action: "lead.created", resourceType: "lead", resourceId: lead.id, requestId, metadata: { source: parsed.data.source } },
+          { action: "lead.created", resourceType: "lead", resourceId: lead.id, requestId, metadata: { source: parsed.data.source, domain } },
           { action: "assessment.created", resourceType: "assessment", resourceId: assessment.id, requestId, metadata: { qualificationScore: qualification.score, qualificationStatus: qualification.status } },
           { action: "lead.qualified", resourceType: "opportunity", resourceId: opportunity.id, requestId, metadata: { score: qualification.score, status: qualification.status, missing: qualification.missing } },
         ] });
