@@ -1,14 +1,18 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd, breadcrumbSchema } from "../../components/json-ld";
 import { services } from "../../lib/content";
 
-export const metadata = {
-  title: "Services | Tinlance",
-  description: "AI engineering, AI security, FDE, and enterprise automation services from Tinlance.",
+export const metadata: Metadata = {
+  title: "Services",
+  description: "AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation services from Tinlance.",
+  alternates: { canonical: "/services" },
 };
 
 export default function ServicesPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-20">
+      <JsonLd data={breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Services", path: "/services" }])} />
       <header className="max-w-3xl">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-500">Services</p>
         <h1 className="mt-4 text-5xl font-semibold tracking-tight text-neutral-950">Engineering that moves from requirement to production.</h1>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { JsonLd, organizationSchema, websiteSchema } from "../components/json-ld";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
 import "./globals.css";
@@ -6,28 +7,27 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://tinlance.com"),
   title: {
-    default: "Tinlance — AI Engineering & Forward Deployed Engineering",
+    default: "Tinlance — AI Engineering & Forward-Deployed Engineering",
     template: "%s | Tinlance",
   },
   description:
-    "Production-grade AI engineering, security, automation, and Forward Deployed Engineering for ambitious organizations.",
+    "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation for organizations building and securing intelligent systems.",
+  applicationName: "Tinlance",
   robots: { index: true, follow: true },
   icons: { icon: "/icon.svg" },
   openGraph: {
-    title: "Tinlance — AI Engineering & Forward Deployed Engineering",
+    title: "Tinlance — AI Engineering & Forward-Deployed Engineering",
     description:
-      "Production-grade AI engineering, security, automation, and Forward Deployed Engineering.",
+      "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation.",
     type: "website",
     url: "https://tinlance.com",
     siteName: "Tinlance",
-    images: [
-      {
-        url: "/opengraph-image.svg",
-        width: 1200,
-        height: 630,
-        alt: "Tinlance AI engineering and FDE",
-      },
-    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Tinlance — AI Engineering & Forward-Deployed Engineering",
+    description:
+      "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation.",
   },
 };
 
@@ -37,6 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <JsonLd data={[organizationSchema, websiteSchema]} />
         <SiteHeader />
         <main>{children}</main>
         <SiteFooter />

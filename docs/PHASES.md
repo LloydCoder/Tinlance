@@ -1,69 +1,69 @@
 # Tinlance Delivery Phases
 
-Tinlance uses gated delivery. A phase is complete only when implementation, documentation, validation, and the required CI checks are complete and the resulting change is merged.
+Tinlance uses gated delivery. A phase is complete only when implementation, documentation, validation, required CI checks and the resulting merge evidence are complete.
 
-## Phase 0 — Production Foundation
+## Foundation and public platform history
 
-**Complete.** Repository governance, Next.js foundation, CI, baseline security, architecture documentation, and public-project standards established.
+The original Phase 0–9 implementation sequence established the public website, conversion system, identity, billing/operations, FDE boundary and enterprise hardening. Those historical phase records remain useful for provenance but are no longer the current phase ledger.
 
-## Phase 1 — Design & Content Architecture
+## M0 — Legacy Site Discovery and Migration
 
-**Complete.** Application structure, content model, service taxonomy, reusable page primitives, and SEO-ready content boundaries established.
+**Complete.** Legacy Tinlance routes were inventoried and classified, direct permanent redirects were implemented, canonical SEO signals were preserved, historical ThreatFade evidence was reconciled, and the migration certificate was merged. DNS cutover was explicitly excluded.
 
-## Phase 2 — Security & Platform Foundation
+Certificate: [`docs/migrations/LEGACY_SITE_MIGRATION_CERTIFICATE.md`](./migrations/LEGACY_SITE_MIGRATION_CERTIFICATE.md).
 
-**Complete.** Runtime boundaries, typed environment handling, request correlation, health/readiness endpoints, and security documentation established.
+## M1 — Commercial Engine
 
-## Phase 3 — Design System & Production UI
+**Complete.** The current commercial data model and workflow support assessment, qualification, booking, opportunities, proposals, acceptance and client onboarding without replacing the existing authentication, tenancy, billing or FDE boundaries.
 
-**Complete.** Visual foundations, responsive layout system, reusable UI primitives, accessibility focus states, and production page styling established.
+## M2 — Authority Engine
 
-## Phase 4 — Public Website & Conversion System
-
-**Complete.** Public information architecture, service discovery, proof/work entry points, contact conversion paths, and crawlable customer journeys established.
-
-## Phase 5 — Content, SEO & Monetization
-
-**Complete.** Indexable insight detail pages, content sitemap coverage, resource/lead-generation entry points, and commercial conversion boundaries established.
-
-## Phase 6 — Client Portal & Identity
-
-**Complete.** The portal and identity boundary were established and subsequently migrated from Clerk to Better Auth + Neon. The current identity architecture is documented in [`AUTHENTICATION.md`](./AUTHENTICATION.md).
-
-## Phase 7 — Billing, CRM & Operations
-
-**Complete.** Lead/booking persistence, Paystack webhook authentication and idempotency, invoice state handling, audit events, request correlation, and operational data boundaries were implemented.
-
-## Phase 8 — FDE Mastery Integration
-
-**Complete at the implementation boundary.** `apps/fde-api` provides the authenticated FastAPI gateway, tenant/domain validation, upstream OAuth 2.0 authentication, request propagation, health/readiness checks, and automated tests. External production execution remains a deployment acceptance test and must not be inferred solely from source presence.
-
-## Phase 9 — Enterprise Hardening & Production Verification
-
-**Current release gate.** The remaining work is production verification and evidence collection rather than another frontend rebuild.
+**Current implementation phase.** M2 covers public authority rather than M1 commercial automation or future product layers.
 
 ### Scope
 
-- Better Auth production authentication/session verification.
-- Organization and role enforcement in real deployment conditions.
-- Tenant-isolation E2E verification.
-- Production Neon/Prisma migration and transaction verification.
-- Live Paystack webhook verification, including duplicate delivery behavior.
-- Live Tinlance → FDE API → `fde-mastery` execution verification.
-- Upstream timeout, retry, authentication-failure, and degraded-service behavior.
-- Vercel/FastAPI deployment verification.
-- Monitoring, logging, and correlation verification.
-- Final security and supply-chain gate.
+- technical SEO and canonical discovery;
+- AI/search crawler policy and machine-readable entity clarity;
+- research model and evidence provenance;
+- case-study model with evidence gating;
+- insights/guides/documentation authority routes;
+- internal linking and assessment CTAs;
+- content freshness and review metadata;
+- documentation reconciliation and current architecture truth;
+- authority validation tests.
+
+### Implemented in the M2 branch
+
+- canonical authority content model;
+- research index and evidence-scoped ThreatFade research;
+- reusable case-study schema without fabricated customer outcomes;
+- guide and public documentation hubs;
+- Organization/WebSite/Breadcrumb/Article JSON-LD;
+- explicit Google/Bing/OpenAI crawler policy;
+- canonical sitemap expansion;
+- optional generated `/llms.txt` orientation aid;
+- article provenance and freshness fields;
+- authority governance and research policy documentation;
+- canonical current architecture documentation;
+- documentation reconciliation of the stale FDE route/domain description and README phase ledger.
 
 ### Exit criteria
 
-- CI is green on the exact release commit.
-- Typecheck, lint, tests, formatting, security scans, SBOM, container validation, and production builds pass.
-- Better Auth production flows pass.
-- Portal/admin authorization and tenant isolation pass E2E.
-- Production database transactions and migrations pass verification.
-- Paystack webhook authentication and idempotency pass live verification.
-- FDE upstream execution passes an authenticated end-to-end test.
-- Failure paths are safe and observable.
-- README and operational documentation match the verified implementation.
-- Release is merged only after all required checks are green.
+- M2 implementation tests green.
+- Existing enterprise CI/security gates remain blocking and green.
+- Main branch contains the merged M2 implementation.
+- Production deployment for the M2 commit is successful.
+- Representative public authority routes, robots, sitemap, metadata, structured data and assessment CTAs are verified in production.
+- M0 redirects remain green.
+- No material documentation contradiction remains in the audited current docs.
+
+## Post-M2 boundaries
+
+The following remain future phases and are not silently included in M2:
+
+- MCP implementation;
+- AI sales agent;
+- autonomous content publishing;
+- customer knowledge/RAG system;
+- AI Security Gateway/control plane;
+- full revenue intelligence platform.

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { notFound } from "next/navigation";
+import { JsonLd, breadcrumbSchema } from "../../../components/json-ld";
 
 const services = {
   "ai-engineering": {
@@ -67,98 +69,76 @@ export function generateStaticParams() {
   return Object.keys(services).map((slug) => ({ slug }));
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const service = services[slug as ServiceSlug];
-
-  if (!service) return { title: "Services | Tinlance" };
-
+  if (!service) return {};
   return {
-    title: `${service.title} | Tinlance`,
+    title: service.title,
     description: service.summary,
+    alternates: { canonical: `/services/${slug}` },
+    openGraph: {
+      type: "website",
+      title: service.title,
+      description: service.summary,
+      url: `https://tinlance.com/services/${slug}`,
+    },
   };
 }
 
-export default async function ServicePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function ServicePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const service = services[slug as ServiceSlug];
+  if (!service) notFound();
 
-  if (!service) {
-    return (
-      <main className="container section-v2">
-        <p className="kicker">404 / SERVICE</p>
-        <h1>That capability does not exist.</h1>
-        <Link className="text-link" href="/">
-          Return home <ArrowUpRight size={16} />
-        </Link>
-      </main>
-    );
-  }
+  const serviceSchema = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: service.title,
+    description: service.summary,
+    provider: { "@id": "https://tinlance.com/#organization" },
+    url: `https://tinlance.com/services/${slug}`,
+  };
 
   return (
     <main>
+      <JsonLd
+        data={[
+          serviceSchema,
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "Services", path: "/services" },
+            { name: service.title, path: `/services/${slug}` },
+          ]),
+        ]}
+      />
       <section className="section-v2 dark-section">
-        <div
-          className="container"
-          style={{ paddingTop: "7rem", paddingBottom: "7rem" }}
-        >
+        <div className="container" style={{ paddingTop: "7rem", paddingBottom: "7rem" }}>
           <p className="kicker kicker-dark">{service.eyebrow}</p>
           <h1 style={{ maxWidth: "900px" }}>{service.title}</h1>
-          <p
-            style={{
-              maxWidth: "760px",
-              fontSize: "1.25rem",
-              marginTop: "1.5rem",
-            }}
-          >
-            {service.summary}
-          </p>
+          <p style={{ maxWidth: "760px", fontSize: "1.25rem", marginTop: "1.5rem" }}>{service.summary}</p>
           <div style={{ marginTop: "2rem" }}>
-            <Link className="button button-accent button-large" href="/contact">
-              Discuss a project <ArrowUpRight size={18} />
+            <Link className="button button-accent button-large" href="/assessment">
+              Book a technical assessment <ArrowUpRight size={18} />
             </Link>
           </div>
         </div>
       </section>
 
       <section className="section-v2">
-        <div
-          className="container"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "4rem",
-          }}
-        >
+        <div className="container" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "4rem" }}>
           <div>
             <p className="kicker">THE APPROACH</p>
             <h2>Built for the operating environment.</h2>
           </div>
-          <p style={{ fontSize: "1.1rem", lineHeight: 1.8 }}>
-            {service.description}
-          </p>
+          <p style={{ fontSize: "1.1rem", lineHeight: 1.8 }}>{service.description}</p>
         </div>
       </section>
 
       <section className="section-v2 proof-section">
         <div className="container">
           <p className="kicker">WHAT WE DELIVER</p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              gap: "1rem",
-              marginTop: "2rem",
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem", marginTop: "2rem" }}>
             {service.outcomes.map((outcome) => (
               <div className="capability-card" key={outcome}>
                 <CheckCircle2 size={20} />
@@ -174,12 +154,9 @@ export default async function ServicePage({
           <div>
             <p className="kicker">NEXT STEP</p>
             <h2>Start with the problem, not the technology.</h2>
-            <p>
-              Bring the workflow, constraint, or system you need to change. We
-              will help define the engineering path.
-            </p>
+            <p>Bring the workflow, constraint, or system you need to change. We will help define the engineering path.</p>
           </div>
-          <Link className="button button-accent button-large" href="/contact">
+          <Link className="button button-accent button-large" href="/assessment">
             Book an assessment <ArrowUpRight size={18} />
           </Link>
         </div>
