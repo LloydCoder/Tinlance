@@ -1,0 +1,24 @@
+legacy_url,classification,current_canonical,redirect_status,reason,claim_status,asset_status,verification
+/,A,/,preserve,Primary company entry point; modern homepage remains canonical.,needs-context,site-assets,observed
+/services.php,B,/services,308,Legacy service catalogue consolidated into current service architecture.,needs-context,site-assets,implemented
+/work.php,B,/work,308,Proof-of-work content consolidated into current work route.,needs-context,site-assets,implemented
+/threatfade.php,B,/threatfade,308,ThreatFade has a canonical modern product and research authority layer.,historical-verified,site-assets,implemented
+/about.php,B,/about,308,Company information consolidated into current about page.,needs-context,site-assets,implemented
+/blog.php,C,/insights,308,Legacy blog index consolidated into current insights authority layer.,needs-context,site-assets,implemented
+/blog.php?slug=threatfade-quic-c2-detection,B,/research/threatfade-quic-c2-detection,308,Indexed ThreatFade research article mapped directly to canonical research URL.,historical-verified,site-assets,implemented
+/blog?slug=threatfade-quic-c2-detection,B,/research/threatfade-quic-c2-detection,308,Indexed query-string ThreatFade article mapped directly to canonical research URL.,historical-verified,site-assets,implemented
+/pricing.php,B,/pricing,308,Pricing modernized around assessment-led scoped proposals without inventing historical rates.,needs-context,none,implemented
+/faq.php,B,/faq,308,FAQ rebuilt around current assessment delivery security and engagement model.,needs-context,none,implemented
+/client/login.php,E,/sign-in,308,Legacy client authentication replaced by Better Auth boundary.,not-applicable,none,implemented
+/careers.php,B,/careers,308,Careers remains discoverable without inventing open roles.,not-applicable,none,implemented
+/roadmap.php,B,/roadmap,308,Public roadmap retained separately from internal planning.,needs-context,none,implemented
+/privacy.php,B,/privacy,308,Legal information retained as a first-class privacy route.,needs-context,none,implemented
+/terms.php,B,/terms,308,Legal terms retained as a first-class route.,needs-context,none,implemented
+/unsubscribe.php,E,/unsubscribe,308,Legacy unsubscribe intent retained as dedicated route.,not-applicable,none,implemented
+/rss.php,E,/feed.xml,308,Legacy RSS endpoint mapped to existing canonical feed.,not-applicable,none,implemented
+/changelog.php,C,/changelog,308,Changelog remains discoverable as a current route.,needs-context,none,implemented
+/press.php,B,/press,308,Press information retained without unsupported media claims.,needs-context,none,implemented
+/partners.php,B,/partners,308,Partner information retained as current route.,needs-context,none,implemented
+/sitemap-html.php,E,/sitemap.xml,308,Machine-readable sitemap is canonical crawl discovery mechanism.,not-applicable,none,implemented
+/cookies.php,B,/cookies,308,Cookie information retained as current legal route.,needs-context,none,implemented
+/blog,C,/insights,308,Legacy blog path consolidated into insights.,needs-context,none,implemented
