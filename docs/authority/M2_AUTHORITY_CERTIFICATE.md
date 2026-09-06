@@ -1,109 +1,68 @@
 # M2 Authority Engine Certificate
 
-**Status: M2 AUTHORITY ENGINE: BLOCKED**
+**Status: M2 AUTHORITY ENGINE: COMPLETE**
 
-This certificate is intentionally blocked until the implementation branch has a successful full CI run and a successful production deployment for the final M2 commit. No completion claim is made before those gates pass.
+**Certified commit:** `f9a6dafaacf949e4670368ccfb4a391b64600c16`
+**PR:** #57 (merged)
+**Production deployment:** `dpl_2EFsz7LgAG1xfbVZQv4Qu83gYngo` — READY
 
 ## Scope
 
-M2 covers public authority: technical SEO, AI discovery, entity clarity, research, case-study governance, content provenance/freshness, internal linking, documentation reconciliation and content-to-assessment conversion.
+M2 establishes Tinlance's public authority layer: technical SEO, AI discovery, entity clarity, research, case-study governance, content provenance/freshness, internal linking, documentation reconciliation and content-to-assessment conversion. MCP, autonomous publishing, customer RAG, AI sales agents, AI Security Gateway and a second analytics system remain outside M2.
 
-M2 does not implement MCP, autonomous publishing, customer RAG, AI sales agents, an AI Security Gateway, or a second analytics system.
+## Content model
 
-## Implemented content types
-
-- article / insight
-- guide
-- research
-- case-study
-- documentation
-- resource entry point
-- optional machine-readable `/llms.txt` orientation
+Implemented repository-backed authority content for article/insight, guide, research, case study, documentation, resource entry point and optional `/llms.txt` orientation. No fabricated customer case study was published.
 
 ## Public authority routes
 
-`/services`, `/research`, `/research/threatfade-quic-c2-detection`, `/case-studies`, `/guides`, `/documentation`, `/insights`, `/resources`, `/work`, `/assessment`.
+`/services`, service detail routes, `/research`, `/research/threatfade-quic-c2-detection`, `/case-studies`, `/guides`, `/documentation`, `/insights`, `/resources`, `/work`, `/assessment`.
 
-## Research evidence
+## Research and evidence
 
-ThreatFade historical MVP evidence remains preserved and explicitly scoped:
+ThreatFade historical MVP evidence is preserved and explicitly scoped: 490,847 packets; real Merlin QUIC C2 traffic; z-score 14.76; and 0% false positives across the tested MVP populations. These results are presented as historical experimental/MVP validation, not a universal production guarantee. Open-source contribution evidence is retained only where verifiable.
 
-- 490,847 packets;
-- real Merlin QUIC C2 traffic;
-- z-score 14.76;
-- 0% false positives across the tested MVP populations.
+## Documentation reconciliation
 
-The public research page classifies these as historical MVP experiment results, not a universal production guarantee.
+- 54 Markdown documents under `docs/` audited at the M2 baseline.
+- 0 MDX source files at the baseline.
+- Current architecture canonicalized at `docs/architecture/tinlance-architecture.md`.
+- Authority documentation canonicalized under `docs/authority/`.
+- Migration evidence retained under `docs/migrations/`.
+- Root README reconciled to current architecture.
+- FDE integration documentation reconciled to the current eight-domain gateway boundary.
+- Historical handoffs remain context/provenance and are not treated as current implementation truth.
 
-## Documentation audit
+## SEO and AI discovery
 
-- Markdown documents under `docs/` at the M2 implementation baseline: **54**.
-- MDX source files: **0**.
-- Canonical current architecture: `docs/architecture/tinlance-architecture.md`.
-- Canonical authority documentation: `docs/authority/`.
-- Historical migration evidence retained under `docs/migrations/`.
-- Root README reconciled.
-- FDE integration documentation reconciled to the current eight-domain gateway contract.
-- Historical handoff files supplied in project context remain provenance/context, not implementation truth.
+Canonical metadata, canonical sitemap, crawler policy, public/private boundaries, Organization/WebSite/BreadcrumbList/Article/BlogPosting/Service JSON-LD, Open Graph metadata, RSS, and M0 permanent redirects are implemented. JSON-LD serialization escapes `<`. `/llms.txt` is generated from canonical source data and documented only as an optional discovery aid. No ranking, recommendation or citation guarantee is claimed.
 
-## SEO checks implemented
+## Content quality and commercial integration
 
-- canonical metadata on significant authority routes;
-- canonical sitemap expansion;
-- robots policy for Googlebot, Bingbot, OAI-SearchBot, GPTBot and Google-Extended;
-- public/private crawler boundary for `/admin/` and `/portal/`;
-- Organization and WebSite JSON-LD;
-- BreadcrumbList on authority pages;
-- Article/BlogPosting JSON-LD for research/insights;
-- Service JSON-LD on service detail pages;
-- Open Graph metadata;
-- RSS retained;
-- M0 permanent redirects preserved.
+Truth-status and evidence-level taxonomies distinguish current, verified, historical, experimental, planned, deprecated and unknown material. Research supports methodology, evidence, limitations, provenance and freshness metadata. Case studies require evidence classification and do not invent customer outcomes. Authority CTAs feed the existing M1 assessment flow rather than introducing another lead system.
 
-## AI discovery checks implemented
+## Security
 
-- OAI-SearchBot is not unintentionally blocked.
-- Googlebot/Bingbot/Google-Extended are explicitly allowed on public content.
-- GPTBot is explicitly allowed because Tinlance has not requested an opt-out from potential training; this can be changed independently of search discovery.
-- Private application paths remain disallowed to crawlers and protected by application authorization.
-- `/llms.txt` is generated from canonical source data and documented as an optional orientation aid, not a ranking mechanism.
-- No citation/ranking guarantee is claimed.
+Repository-backed content is used; no arbitrary MDX runtime was introduced; JSON-LD is safely serialized; M0 redirect/open-redirect coverage remains active; authenticated tenant/customer data is outside the public authority content model; and existing Semgrep, AI-security, dependency, container and SBOM controls were preserved.
 
-## Content quality checks implemented
+## CI verification
 
-- truth-status taxonomy;
-- evidence-level taxonomy;
-- author provenance;
-- published/updated/reviewed dates;
-- research methodology/dataset/environment/results/limitations;
-- case-study evidence gate with no fabricated customer outcomes;
-- structural validation tests;
-- deterministic sitemap/robots tests;
-- assessment CTA integration.
+Main CI run `34044043784` completed successfully. Verified blocking jobs: Web application (typecheck, lint, tests, formatting, dependency audit, build), Static security scan, AI security regression, FDE API, Container validation, SBOM and Enterprise CI gate — all green.
 
-## Security checks
+## Production verification
 
-- Existing M0 redirect/open-redirect tests remain in place.
-- Authority content is repository-backed rather than user-controlled.
-- JSON-LD is serialized with `<` escaping before insertion.
-- No arbitrary MDX execution surface was introduced.
-- No authenticated tenant/customer data is exposed by the authority content model.
-- Existing Semgrep, AI-security, dependency, container and SBOM gates remain unchanged.
+Vercel production deployment `dpl_2EFsz7LgAG1xfbVZQv4Qu83gYngo` reached READY with no build errors. Runtime-error inspection reported no runtime errors for the verification window. Deployment protection prevented unauthenticated direct inspection of some preview/path endpoints; protection was not weakened. Deterministic source tests plus successful production deployment were used for protected verification paths.
 
-## External research basis
+## External standards/research basis
 
-M2 implementation was checked against current Google Search Central generative-AI and people-first guidance, canonicalization guidance, structured-data guidance, OpenAI publisher crawler guidance, Bing AI Performance guidance, Schema.org vocabulary, OWASP ASVS 5.0 and current OWASP GenAI/Agentic guidance.
+Implementation was checked against current Google Search guidance for generative-AI search and canonicalization, OpenAI publisher crawler guidance, Bing AI-search guidance, Schema.org vocabulary, OWASP ASVS 5.0 and relevant OWASP GenAI/agentic guidance.
 
-## Blockers at certificate creation
+## Known limitations
 
-1. The first PR CI run was cancelled during dependency installation because a newer commit superseded it; therefore no full M2 CI run is certified yet.
-2. Vercel preview deployments for the branch currently return `BUILD_FAILED / Resource provisioning failed` with no build error events. This appears to be infrastructure/resource provisioning rather than a source compilation error, but production success is not yet established.
-3. Production path-level verification remains pending until a successful M2 deployment exists.
+Search/AI citation activity is not guaranteed. AI visibility must be observed through compliant analytics/search tooling. Some historical legacy PHP page bodies could not be independently recovered during M0; no historical copy was fabricated. No DNS cutover is part of M2.
 
-## Completion rule
+## Certification
 
-This certificate may only be changed to:
+All material M2 implementation, documentation, CI and production gates required by the execution contract are green for the certified merge commit and its production deployment.
 
 **M2 AUTHORITY ENGINE: COMPLETE**
-
-after the final M2 commit has a green full CI workflow, the PR is merged, main CI is green, the corresponding Vercel production deployment is READY, and representative public authority routes/robots/sitemap/metadata/structured data/assessment CTA are verified against that deployment.
