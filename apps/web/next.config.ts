@@ -60,7 +60,7 @@ const nextConfig: NextConfig = {
       { source: "/privacy.php", destination: "/privacy", permanent: true },
       { source: "/terms.php", destination: "/terms", permanent: true },
       { source: "/unsubscribe.php", destination: "/unsubscribe", permanent: true },
-      { source: "/rss.php", destination: "/feed.xml", permanent: true },
+      { source: "/rss.php", destination: "/rss.xml", permanent: true },
       { source: "/changelog.php", destination: "/changelog", permanent: true },
       { source: "/press.php", destination: "/press", permanent: true },
       { source: "/partners.php", destination: "/partners", permanent: true },
