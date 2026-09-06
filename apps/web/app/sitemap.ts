@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { caseStudies, researchItems } from "../lib/authority";
 import { insights, services } from "../lib/content";
 
 const staticRoutes = [
@@ -7,7 +8,12 @@ const staticRoutes = [
   ...services.map((service) => `/services/${service.slug}`),
   "/work",
   "/threatfade",
-  "/research/threatfade-quic-c2-detection",
+  "/research",
+  ...researchItems.map((item) => item.canonicalPath),
+  "/case-studies",
+  ...caseStudies.map((item) => item.canonicalPath),
+  "/guides",
+  "/documentation",
   "/assessment",
   "/insights",
   "/resources",
@@ -34,17 +40,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
         ? 1
         : route.startsWith("/services/")
           ? 0.8
-          : route.startsWith("/research/")
+          : route.startsWith("/research") || route.startsWith("/case-studies")
             ? 0.75
             : 0.7,
   }));
 
   const insightEntries: MetadataRoute.Sitemap = insights.map((insight) => ({
     url: `https://tinlance.com/insights/${insight.slug}`,
-    lastModified: insight.publishedAt,
+    lastModified: insight.updatedAt,
     changeFrequency: "monthly",
     priority: 0.6,
   }));
 
-  return [...staticEntries, ...insightEntries];
+  const researchEntries: MetadataRoute.Sitemap = researchItems.map((item) => ({
+    url: `https://tinlance.com${item.canonicalPath}`,
+    lastModified: item.updatedAt,
+    changeFrequency: "quarterly",
+    priority: 0.75,
+  }));
+
+  return [...staticEntries, ...insightEntries, ...researchEntries];
 }
