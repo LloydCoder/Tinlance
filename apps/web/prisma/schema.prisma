@@ -126,6 +126,7 @@ model Organization {
   clerkOrgId    String?              @unique
   name          String
   slug          String               @unique @default(cuid())
+  websiteDomain String?              @unique
   logo          String?
   metadata      String?              @db.Text
   createdAt     DateTime             @default(now())
