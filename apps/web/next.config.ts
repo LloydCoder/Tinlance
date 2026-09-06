@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   async redirects() {
     return [
+      // Query-string routes must precede their generic path redirects.
       {
         source: "/blog.php",
         has: [
@@ -50,26 +51,24 @@ const nextConfig: NextConfig = {
       { source: "/work.php", destination: "/work", permanent: true },
       { source: "/about.php", destination: "/about", permanent: true },
       { source: "/blog.php", destination: "/insights", permanent: true },
-      { source: "/pricing.php", destination: "/services", permanent: true },
-      { source: "/faq.php", destination: "/services", permanent: true },
-      { source: "/roadmap.php", destination: "/work", permanent: true },
-      { source: "/careers.php", destination: "/contact", permanent: true },
-      { source: "/press.php", destination: "/about", permanent: true },
-      { source: "/partners.php", destination: "/contact", permanent: true },
+      { source: "/blog", destination: "/insights", permanent: true },
+      { source: "/pricing.php", destination: "/pricing", permanent: true },
+      { source: "/faq.php", destination: "/faq", permanent: true },
+      { source: "/client/login.php", destination: "/sign-in", permanent: true },
+      { source: "/careers.php", destination: "/careers", permanent: true },
+      { source: "/roadmap.php", destination: "/roadmap", permanent: true },
+      { source: "/privacy.php", destination: "/privacy", permanent: true },
+      { source: "/terms.php", destination: "/terms", permanent: true },
+      { source: "/unsubscribe.php", destination: "/unsubscribe", permanent: true },
+      { source: "/rss.php", destination: "/feed.xml", permanent: true },
+      { source: "/changelog.php", destination: "/changelog", permanent: true },
+      { source: "/press.php", destination: "/press", permanent: true },
+      { source: "/partners.php", destination: "/partners", permanent: true },
+      { source: "/sitemap-html.php", destination: "/sitemap.xml", permanent: true },
+      { source: "/cookies.php", destination: "/cookies", permanent: true },
+      // Historical spelling observed in older migration notes.
+      { source: "/cookie-policy.php", destination: "/cookies", permanent: true },
       { source: "/threatfade.php", destination: "/threatfade", permanent: true },
-      { source: "/changelog.php", destination: "/insights", permanent: true },
-      { source: "/privacy.php", destination: "/contact", permanent: true },
-      { source: "/terms.php", destination: "/contact", permanent: true },
-      {
-        source: "/cookie-policy.php",
-        destination: "/contact",
-        permanent: true,
-      },
-      {
-        source: "/unsubscribe.php",
-        destination: "/contact",
-        permanent: true,
-      },
     ];
   },
   async headers() {
