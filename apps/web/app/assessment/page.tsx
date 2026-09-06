@@ -1,185 +1,36 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 
+const fields = [
+  ["organizationName", "Organization", "text", true], ["contactName", "Your name", "text", true], ["email", "Work email", "email", true], ["country", "Country", "text", true], ["roleTitle", "Role / title", "text", false], ["companySize", "Company size", "text", false], ["website", "Company website", "url", false], ["capability", "Capability needed", "text", true], ["problem", "What problem needs solving?", "textarea", true], ["workflow", "Current workflow", "textarea", false], ["currentArchitecture", "Current architecture / process", "textarea", false], ["constraints", "Constraints", "textarea", false], ["desiredOutcome", "Desired outcome", "textarea", true], ["stakeholders", "Stakeholders / decision makers", "textarea", false], ["existingSystems", "Existing systems", "textarea", false], ["securityRequirements", "Security / compliance requirements", "textarea", false], ["businessImpact", "Expected business impact", "textarea", false], ["timeline", "Timeline", "text", false], ["technicalEnvironment", "Technical environment", "textarea", false],
+] as const;
+
 export default function AssessmentPage() {
-  const [status, setStatus] = useState<
-    "idle" | "submitting" | "success" | "error"
-  >("idle");
-  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [result, setResult] = useState<{ assessmentId: string; leadId: string; opportunityId: string; qualification: { status: string; score: number; maxScore: number; why: string; missing: string[]; nextAction: string } } | null>(null);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [bookingStatus, setBookingStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [bookingMessage, setBookingMessage] = useState("");
+  const [formSnapshot, setFormSnapshot] = useState<Record<string, string>>({});
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [timezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+  useEffect(() => { if (result?.qualification.status === "QUALIFIED") void fetch(`/api/v1/commercial/availability?timezone=${encodeURIComponent(timezone)}`).then((response) => response.ok ? response.json() : { slots: [] }).then((body: { slots?: string[] }) => setSlots(body.slots ?? [])).catch(() => setSlots([])); }, [result, timezone]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("submitting");
-    const form = new FormData(event.currentTarget);
-    const startsAt = String(form.get("startsAt") ?? "");
-    const key = idempotencyKey ?? crypto.randomUUID();
-    if (!idempotencyKey) setIdempotencyKey(key);
-
-    try {
-      const parsedStart = new Date(startsAt);
-      if (
-        !Number.isFinite(parsedStart.getTime()) ||
-        parsedStart.getTime() <= Date.now()
-      ) {
-        setStatus("error");
-        return;
-      }
-
-      const response = await fetch("/api/v1/operations/booking", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "idempotency-key": key,
-        },
-        body: JSON.stringify({
-          organizationName: form.get("organizationName"),
-          contactName: form.get("contactName"),
-          email: form.get("email"),
-          startsAt: parsedStart.toISOString(),
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          notes: form.get("notes"),
-        }),
-      });
-      setStatus(response.ok ? "success" : "error");
-      if (response.ok) {
-        event.currentTarget.reset();
-        setIdempotencyKey(null);
-      }
-    } catch {
-      setStatus("error");
-    }
+    event.preventDefault(); setStatus("submitting"); const data = new FormData(event.currentTarget); const payload: Record<string, unknown> = {};
+    fields.forEach(([name]) => { payload[name] = String(data.get(name) ?? "").trim(); });
+    payload.urgency = String(data.get("urgency") ?? "exploring"); payload.budgetSignal = String(data.get("budgetSignal") ?? "unknown"); payload.securitySensitivity = String(data.get("securitySensitivity") ?? "standard"); payload.source = "website"; payload.consent = Boolean(data.get("consent"));
+    try { const response = await fetch("/api/v1/commercial/assessments", { method: "POST", headers: { "content-type": "application/json", "idempotency-key": idempotencyKey }, body: JSON.stringify(payload) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "assessment_failed"); setFormSnapshot(payload as Record<string, string>); setResult(body); setStatus("success"); } catch { setStatus("error"); }
   }
 
-  return (
-    <main>
-      <section className="section-v2 dark-section">
-        <div
-          className="container"
-          style={{ paddingTop: "7rem", paddingBottom: "6rem" }}
-        >
-          <p className="kicker kicker-dark">TINLANCE / TECHNICAL ASSESSMENT</p>
-          <h1 style={{ maxWidth: "920px" }}>
-            Start with the system, not the sales pitch.
-          </h1>
-          <p
-            style={{
-              maxWidth: "700px",
-              fontSize: "1.2rem",
-              marginTop: "1.5rem",
-            }}
-          >
-            Choose a time for a focused engineering conversation. Bring the
-            workflow, constraints, existing architecture, and outcome you care
-            about.
-          </p>
-        </div>
-      </section>
+  async function book() {
+    if (!result || !selectedSlot) return; setBookingStatus("submitting");
+    try { const response = await fetch("/api/v1/operations/booking", { method: "POST", headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() }, body: JSON.stringify({ organizationName: formSnapshot.organizationName, contactName: formSnapshot.contactName, email: formSnapshot.email, startsAt: selectedSlot, timezone, notes: formSnapshot.problem, leadId: result.leadId, assessmentId: result.assessmentId, opportunityId: result.opportunityId }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "booking_failed"); setBookingStatus("success"); setBookingMessage("Your technical discovery time is requested and associated with the opportunity."); } catch (error) { setBookingStatus("error"); setBookingMessage(error instanceof Error ? error.message : "Booking failed."); }
+  }
 
-      <section className="section-v2">
-        <div className="container" style={{ maxWidth: "900px" }}>
-          {status === "success" ? (
-            <div
-              className="rounded-[24px] border border-neutral-200 bg-white p-8"
-              role="status"
-            >
-              <CheckCircle2 className="mb-5" aria-hidden="true" />
-              <p className="kicker">REQUEST ACCEPTED</p>
-              <h2 className="text-3xl font-semibold tracking-tight">
-                Your assessment request is in.
-              </h2>
-              <p className="mt-4 max-w-xl text-neutral-600">
-                We have the requested time, timezone, and context. The booking
-                system will confirm the next step through the configured
-                scheduling workflow.
-              </p>
-            </div>
-          ) : (
-            <form
-              onSubmit={submit}
-              className="grid gap-5 rounded-[28px] border border-neutral-200 bg-white p-6 md:p-10"
-              noValidate
-            >
-              <div className="grid gap-5 md:grid-cols-2">
-                <label className="grid gap-2 text-sm font-semibold">
-                  Organization
-                  <input
-                    required
-                    name="organizationName"
-                    minLength={2}
-                    maxLength={160}
-                    className="min-h-12 rounded-xl border border-neutral-300 px-4 outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10"
-                    autoComplete="organization"
-                  />
-                </label>
-                <label className="grid gap-2 text-sm font-semibold">
-                  Your name
-                  <input
-                    required
-                    name="contactName"
-                    minLength={2}
-                    maxLength={120}
-                    className="min-h-12 rounded-xl border border-neutral-300 px-4 outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10"
-                    autoComplete="name"
-                  />
-                </label>
-              </div>
-              <label className="grid gap-2 text-sm font-semibold">
-                Work email
-                <input
-                  required
-                  type="email"
-                  name="email"
-                  maxLength={254}
-                  className="min-h-12 rounded-xl border border-neutral-300 px-4 outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10"
-                  autoComplete="email"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-semibold">
-                Preferred time
-                <input
-                  required
-                  type="datetime-local"
-                  name="startsAt"
-                  className="min-h-12 rounded-xl border border-neutral-300 px-4 outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10"
-                />
-                <span className="text-xs font-normal text-neutral-500">
-                  Your browser timezone is submitted automatically.
-                </span>
-              </label>
-              <label className="grid gap-2 text-sm font-semibold">
-                Context for the assessment
-                <textarea
-                  name="notes"
-                  maxLength={4000}
-                  rows={7}
-                  className="rounded-xl border border-neutral-300 px-4 py-3 outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10"
-                  placeholder="Architecture, workflow, constraints, security requirements, target outcome…"
-                />
-              </label>
-              <div className="flex flex-wrap items-center gap-4 pt-2">
-                <button
-                  className="button button-accent"
-                  disabled={status === "submitting"}
-                  type="submit"
-                >
-                  {status === "submitting"
-                    ? "Submitting…"
-                    : "Request assessment"}{" "}
-                  <ArrowUpRight size={17} aria-hidden="true" />
-                </button>
-                {status === "error" && (
-                  <p className="text-sm text-red-700" role="alert">
-                    We could not submit the request. Check the fields and try
-                    again.
-                  </p>
-                )}
-              </div>
-            </form>
-          )}
-        </div>
-      </section>
-    </main>
-  );
+  return <main><section className="section-v2 dark-section"><div className="container" style={{ paddingTop: "7rem", paddingBottom: "5rem" }}><p className="kicker kicker-dark">TINLANCE / TECHNICAL ASSESSMENT</p><h1 style={{ maxWidth: "920px" }}>Start with the system, not the sales pitch.</h1><p style={{ maxWidth: "720px", fontSize: "1.2rem", marginTop: "1.5rem" }}>Describe the operational problem, current environment, constraints and outcome. Tinlance uses this to determine fit before asking for a technical conversation.</p></div></section><section className="section-v2"><div className="container" style={{ maxWidth: "920px" }}>{!result ? <form onSubmit={submit} className="grid gap-5 rounded-[28px] border border-neutral-200 bg-white p-6 md:p-10" noValidate><div className="grid gap-5 md:grid-cols-2">{fields.map(([name, label, type, required]) => <label key={name} className={`grid gap-2 text-sm font-semibold ${type === "textarea" ? "md:col-span-2" : ""}`}>{label}{type === "textarea" ? <textarea required={required} name={name} maxLength={4000} rows={5} className="rounded-xl border border-neutral-300 px-4 py-3" /> : <input required={required} name={name} type={type} maxLength={500} className="min-h-12 rounded-xl border border-neutral-300 px-4" autoComplete={name === "email" ? "email" : undefined} />}</label>)}</div><div className="grid gap-5 md:grid-cols-3"><label className="grid gap-2 text-sm font-semibold">Urgency<select name="urgency" className="min-h-12 rounded-xl border border-neutral-300 px-4"><option value="exploring">Exploring</option><option value="90_days">Within 90 days</option><option value="30_days">Within 30 days</option><option value="urgent">Urgent</option></select></label><label className="grid gap-2 text-sm font-semibold">Budget signal<select name="budgetSignal" className="min-h-12 rounded-xl border border-neutral-300 px-4"><option value="unknown">Not decided</option><option value="under_5k">Under $5k</option><option value="5k_25k">$5k–25k</option><option value="25k_100k">$25k–100k</option><option value="100k_plus">$100k+</option></select></label><label className="grid gap-2 text-sm font-semibold">Security sensitivity<select name="securitySensitivity" className="min-h-12 rounded-xl border border-neutral-300 px-4"><option value="standard">Standard</option><option value="sensitive">Sensitive</option><option value="regulated">Regulated</option><option value="critical">Critical</option></select></label></div><label className="flex gap-3 text-sm"><input name="consent" type="checkbox" />I agree that Tinlance may use this information to evaluate and respond to this request.</label><button className="button button-accent w-fit" disabled={status === "submitting"} type="submit">{status === "submitting" ? "Assessing…" : "Complete technical assessment"} <ArrowUpRight size={17} aria-hidden="true" /></button>{status === "error" && <p className="text-sm text-red-700" role="alert">We could not process the assessment. Check the fields and try again.</p>}</form> : <div className="grid gap-6"><section className="rounded-[24px] border border-neutral-200 bg-white p-8" role="status"><CheckCircle2 className="mb-5" aria-hidden="true" /><p className="kicker">ASSESSMENT RECEIVED</p><h2 className="text-3xl font-semibold tracking-tight">{result.qualification.status === "QUALIFIED" ? "There is enough signal for technical discovery." : "We need more qualification before booking."}</h2><p className="mt-4">{result.qualification.why}</p><p className="mt-3 font-semibold">Qualification: {result.qualification.score}/{result.qualification.maxScore}</p>{result.qualification.missing.length > 0 && <p className="mt-2 text-sm text-neutral-600">Still to validate: {result.qualification.missing.join(", ")}.</p>}</section>{result.qualification.status === "QUALIFIED" && <section className="rounded-[24px] border border-neutral-200 bg-white p-8"><p className="kicker">TECHNICAL DISCOVERY</p><h2 className="text-2xl font-semibold">Choose an available time</h2><p className="mt-2 text-neutral-600">Times are generated server-side and shown in your browser timezone ({timezone}).</p><select value={selectedSlot} onChange={(event) => setSelectedSlot(event.target.value)} className="mt-5 min-h-12 w-full rounded-xl border border-neutral-300 px-4"><option value="">Select a time</option>{slots.map((slot) => <option key={slot} value={slot}>{new Date(slot).toLocaleString()}</option>)}</select><button className="button button-dark mt-4" disabled={!selectedSlot || bookingStatus === "submitting"} onClick={book}>{bookingStatus === "submitting" ? "Requesting…" : "Request technical discovery"}</button>{bookingMessage && <p className={bookingStatus === "error" ? "mt-3 text-sm text-red-700" : "mt-3 text-sm"} role={bookingStatus === "error" ? "alert" : "status"}>{bookingMessage}</p>}</section>}</div>}</div></section></main>;
 }
