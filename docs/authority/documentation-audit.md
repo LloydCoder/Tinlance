@@ -4,31 +4,31 @@ Audit status: `CURRENT_VERIFIED`
 
 ## Scope
 
-The repository contains 54 Markdown documents under `docs/` at the M2 audit baseline, plus root/project README-style documents and the FDE API README. No MDX content source exists in the current repository tree. Uploaded chat handoffs are treated as historical context, not repository implementation truth.
+The repository contains **54 Markdown documents under `docs/` at the M2 implementation baseline**, plus root/project README-style documents and the FDE API README. No MDX content source exists in the current repository tree. Uploaded chat handoffs are treated as historical context, not repository implementation truth.
 
 ## Canonicalization result
 
-| Document family | Count / examples | Classification | Action |
-|---|---:|---|---|
-| `README.md`, `apps/fde-api/README.md` | 2 | Current | Reconciled to current architecture/contracts |
-| `CONTRIBUTING.md`, `SECURITY.md` | 2 | Current operational | Retained; no authority duplication |
-| `docs/architecture/*` | 27 including canonical overview | Current + historical ADR record | ADRs retained; `tinlance-architecture.md` is canonical overview |
-| `docs/authority/*` | 6 | Current M2 authority | New canonical Authority Engine documentation |
-| `docs/migrations/*` | 6 | Historical/current migration evidence | Retained as M0 evidence |
-| `docs/analytics/*` | 1 | Current operational | Retained as analytics contract |
-| `docs/growth/*` | 2 | Current strategic/operational | Retained; must not override current code |
-| `docs/AUTHENTICATION.md` | 1 | Current technical | Retained as auth source |
-| `docs/FDE-INTEGRATION.md` | 1 | Current technical | Reconciled to current gateway code |
-| `docs/BILLING-WEBHOOKS.md` | 1 | Current technical | Retained |
-| `docs/ENTERPRISE-CI-GATES.md` | 1 | Current operational | Retained |
-| `docs/ENTERPRISE-OPERATIONS.md` | 1 | Current operational | Retained |
-| `docs/SECURITY-RELEASE-GATE.md` | 1 | Current governance | Retained |
-| `docs/DEEP-AUDIT-2026-08.md` | 1 | Historical audit | Retained as dated evidence, not current truth |
-| `docs/P0-RECONCILIATION.md` | 1 | Historical reconciliation | Retained as dated evidence |
-| `docs/PHASE9-LAUNCH-CHECKLIST.md` | 1 | Historical gate | Retained; current phase ledger moved to `PHASES.md` |
-| `docs/ci-release-gate-final.md` | 1 | Historical release record | Retained |
-| `docs/design-system.md`, `DESIGN-SYSTEM.md` | 2 | Current design records | Retained; no architectural authority conflict |
-| `docs/decisions/README.md` | 1 | ADR index | Retained |
+| Document family | Classification | Action |
+|---|---|---|
+| `README.md`, `apps/fde-api/README.md` | Current | Reconciled to current architecture/contracts |
+| `CONTRIBUTING.md`, `SECURITY.md` | Current operational | Retained; no authority duplication |
+| `docs/architecture/*` | Current + historical ADR record | ADRs retained; `tinlance-architecture.md` is canonical overview |
+| `docs/authority/*` | Current M2 authority | Canonical Authority Engine documentation |
+| `docs/migrations/*` | Historical/current migration evidence | Retained as M0 evidence |
+| `docs/analytics/*` | Current operational | Retained as analytics contract |
+| `docs/growth/*` | Current strategic/operational | Retained; must not override current code |
+| `docs/AUTHENTICATION.md` | Current technical | Retained as auth source |
+| `docs/FDE-INTEGRATION.md` | Current technical | Reconciled to current gateway code |
+| `docs/BILLING-WEBHOOKS.md` | Current technical | Retained |
+| `docs/ENTERPRISE-CI-GATES.md` | Current operational | Retained |
+| `docs/ENTERPRISE-OPERATIONS.md` | Current operational | Retained |
+| `docs/SECURITY-RELEASE-GATE.md` | Current governance | Retained |
+| `docs/DEEP-AUDIT-2026-08.md` | Historical audit | Retained as dated evidence, not current truth |
+| `docs/P0-RECONCILIATION.md` | Historical reconciliation | Retained as dated evidence |
+| `docs/PHASE9-LAUNCH-CHECKLIST.md` | Historical gate | Retained; current phase ledger moved to `PHASES.md` |
+| `docs/ci-release-gate-final.md` | Historical release record | Retained |
+| `docs/design-system.md`, `DESIGN-SYSTEM.md` | Current design records | Retained; no architectural authority conflict |
+| `docs/decisions/README.md` | ADR index | Retained |
 
 ## Reconciled contradictions
 
