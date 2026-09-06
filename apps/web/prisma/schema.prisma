@@ -7,6 +7,56 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum QualificationStatus {
+  PENDING
+  QUALIFIED
+  DISQUALIFIED
+}
+
+enum OpportunityStage {
+  NEW
+  ASSESSMENT_REQUESTED
+  QUALIFYING
+  QUALIFIED
+  DISQUALIFIED
+  BOOKING_PENDING
+  BOOKED
+  ASSESSMENT_COMPLETE
+  PROPOSAL_DRAFT
+  PROPOSAL_SENT
+  PROPOSAL_VIEWED
+  NEGOTIATING
+  ACCEPTED
+  DECLINED
+  ENGAGEMENT_PENDING
+  ACTIVE
+  COMPLETED
+}
+
+enum ProposalStatus {
+  DRAFT
+  INTERNAL_REVIEW
+  SENT
+  VIEWED
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum EngagementStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryModel {
+  PROJECT
+  FDE_SPRINT
+  FRACTIONAL_FDE
+  RETAINER
+}
+
 model User {
   id            String       @id @default(cuid())
   name          String
@@ -22,6 +72,8 @@ model User {
   invitations   Invitation[] @relation("InvitationInviter")
   messages      Message[]
   auditEvents   AuditEvent[]
+  ownedLeads    Lead[]       @relation("LeadOwner")
+  ownedOpportunities Opportunity[] @relation("OpportunityOwner")
 
   @@index([role])
 }
@@ -92,6 +144,12 @@ model Organization {
   documents    Document[]
   messages     Message[]
   invoices     Invoice[]
+  contacts     Contact[]
+  assessments  Assessment[]
+  opportunities Opportunity[]
+  proposals    Proposal[]
+  engagements  Engagement[]
+  client       Client?
 }
 
 model Member {
@@ -136,8 +194,22 @@ model OrganizationMember {
   @@index([clerkUserId])
 }
 
+model Contact {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  email          String
+  role           String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, email])
+  @@index([organizationId, createdAt])
+}
+
 model Lead {
-  id               String        @id @default(cuid())
+  id               String              @id @default(cuid())
   organizationId   String?
   organizationName String
   contactName      String
@@ -145,16 +217,97 @@ model Lead {
   country          String
   service          String
   notes            String?
-  status           String        @default("new")
-  source           String        @default("website")
-  idempotencyKey   String?       @unique
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  status           String              @default("new")
+  source           String              @default("website")
+  campaign         String?
+  referral         String?
+  roleTitle        String?
+  companySize      String?
+  website          String?
+  problemStatement String?
+  desiredOutcome   String?
+  urgency          String?
+  budgetSignal     String?
+  timeline         String?
+  technicalEnvironment String?
+  securitySensitivity String?
+  qualificationScore Int?
+  qualificationStatus QualificationStatus @default(PENDING)
+  ownerUserId      String?
+  nextAction       String?
+  nextActionAt     DateTime?
+  consent          Boolean             @default(false)
+  idempotencyKey   String?             @unique
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  organization     Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  owner            User?               @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  assessments      Assessment[]
+  opportunities    Opportunity[]
 
   @@index([organizationId, status])
   @@index([email])
   @@index([createdAt])
+  @@index([qualificationStatus, nextActionAt])
+  @@index([ownerUserId, nextActionAt])
+}
+
+model Assessment {
+  id                   String       @id @default(cuid())
+  organizationId       String?
+  leadId               String
+  problem              String
+  workflow             String?
+  currentArchitecture  String?
+  constraints          String?
+  desiredOutcome       String
+  urgency              String?
+  stakeholders         String?
+  existingSystems      String?
+  securityRequirements String?
+  businessImpact       String?
+  status               String       @default("submitted")
+  summary              String?      @db.Text
+  idempotencyKey       String?      @unique
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  organization         Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  lead                 Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  opportunity          Opportunity?
+  booking              Booking?
+  proposals            Proposal[]
+
+  @@index([leadId, createdAt])
+  @@index([organizationId, createdAt])
+}
+
+model Opportunity {
+  id              String           @id @default(cuid())
+  organizationId  String?
+  leadId          String
+  assessmentId    String?          @unique
+  ownerUserId     String?
+  stage           OpportunityStage @default(NEW)
+  valueMinor      Int?
+  currency        String?          @default("USD")
+  nextAction      String?
+  nextActionAt    DateTime?
+  lastActivityAt  DateTime         @default(now())
+  lostReason      String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  lead            Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assessment     Assessment?      @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  owner           User?            @relation("OpportunityOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  bookings        Booking[]
+  proposals       Proposal[]
+  engagement      Engagement?
+
+  @@index([stage, nextActionAt])
+  @@index([organizationId, stage])
+  @@index([ownerUserId, stage, nextActionAt])
+  @@index([lastActivityAt])
 }
 
 model Booking {
@@ -168,19 +321,140 @@ model Booking {
   notes            String?
   status           String        @default("requested")
   source           String        @default("website")
+  leadId           String?
+  assessmentId     String?       @unique
+  opportunityId    String?
   idempotencyKey   String?       @unique
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  lead             Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  assessment       Assessment?   @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  opportunity      Opportunity?  @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, status])
   @@index([startsAt])
   @@index([email])
+  @@index([opportunityId, startsAt])
+}
+
+model Proposal {
+  id                String         @id @default(cuid())
+  proposalNumber    String         @unique
+  organizationId    String?
+  leadId            String
+  assessmentId      String?
+  opportunityId     String?
+  title             String
+  status            ProposalStatus @default(DRAFT)
+  currentVersion    Int            @default(1)
+  publicTokenHash   String         @unique
+  sentAt            DateTime?
+  viewedAt          DateTime?
+  acceptedAt        DateTime?
+  declinedAt        DateTime?
+  expiresAt         DateTime?
+  acceptedByName    String?
+  acceptedByEmail   String?
+  createdByUserId   String
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  organization      Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  lead              Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assessment        Assessment?    @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  opportunity       Opportunity?   @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  versions          ProposalVersion[]
+
+  @@index([organizationId, status])
+  @@index([leadId, createdAt])
+  @@index([opportunityId, createdAt])
+}
+
+model ProposalVersion {
+  id                 String   @id @default(cuid())
+  proposalId         String
+  version            Int
+  executiveSummary   String   @db.Text
+  problemDefinition  String   @db.Text
+  proposedSolution   String   @db.Text
+  scope              Json
+  deliverables       Json
+  assumptions        Json
+  exclusions         Json
+  timeline           Json
+  milestones         Json
+  pricing            Json
+  paymentSchedule    Json
+  dependencies       Json
+  securityConsiderations String? @db.Text
+  acceptanceTerms    String   @db.Text
+  createdByUserId    String
+  createdAt          DateTime @default(now())
+  proposal           Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, version])
+  @@index([proposalId, createdAt])
+}
+
+model Client {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  status         String       @default("active")
+  onboardedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  engagements    Engagement[]
+}
+
+model Engagement {
+  id               String          @id @default(cuid())
+  organizationId   String
+  clientId         String
+  opportunityId    String?         @unique
+  proposalId       String?         @unique
+  name             String
+  scope            String           @db.Text
+  commercialValueMinor Int?
+  currency         String           @default("USD")
+  startDate        DateTime?
+  expectedEndDate  DateTime?
+  ownerUserId      String?
+  deliveryModel    DeliveryModel
+  status           EngagementStatus @default(PENDING)
+  billingRelationship String?
+  securityRequirements String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client           Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  opportunity      Opportunity?     @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  proposal         Proposal?        @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  projects         Project[]
+  milestones       EngagementMilestone[]
+
+  @@index([organizationId, status])
+  @@index([clientId, status])
+}
+
+model EngagementMilestone {
+  id           String      @id @default(cuid())
+  engagementId String
+  name         String
+  description  String?
+  dueAt        DateTime?
+  status       String      @default("pending")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  engagement   Engagement  @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+
+  @@index([engagementId, status])
 }
 
 model Project {
   id             String       @id @default(cuid())
   organizationId String
+  engagementId   String?
   name           String
   type           String?
   status         String       @default("active")
@@ -191,8 +465,10 @@ model Project {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  engagement     Engagement?  @relation(fields: [engagementId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, status])
+  @@index([engagementId, status])
 }
 
 model Document {
@@ -223,6 +499,7 @@ model Message {
 model Invoice {
   id             String       @id @default(cuid())
   organizationId String
+  engagementId   String?
   currency       String
   amountMinor    Int
   description    String
@@ -231,8 +508,10 @@ model Invoice {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  engagement     Engagement?  @relation(fields: [engagementId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, status])
+  @@index([engagementId, status])
 }
 
 model WebhookEvent {
