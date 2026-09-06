@@ -16,9 +16,9 @@ describe("authority content contract", () => {
     for (const insight of insights) {
       expect(insight.title).toBeTruthy();
       expect(insight.authorId).toBeTruthy();
-      expect(insight.publishedAt).toMatch(/^\\d{4}-\\d{2}-\\d{2}$/);
-      expect(insight.updatedAt).toMatch(/^\\d{4}-\\d{2}-\\d{2}$/);
-      expect(insight.reviewedAt).toMatch(/^\\d{4}-\\d{2}-\\d{2}$/);
+      expect(insight.publishedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(insight.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(insight.reviewedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
   });
 
