@@ -2,55 +2,11 @@ generator client {
   provider = "prisma-client-js"
 }
 
-enum QualificationStatus {
-  PENDING
-  QUALIFIED
-  DISQUALIFIED
-}
-
-enum OpportunityStage {
-  NEW
-  ASSESSMENT_REQUESTED
-  QUALIFYING
-  QUALIFIED
-  DISQUALIFIED
-  BOOKING_PENDING
-  BOOKED
-  ASSESSMENT_COMPLETE
-  PROPOSAL_DRAFT
-  PROPOSAL_SENT
-  PROPOSAL_VIEWED
-  NEGOTIATING
-  ACCEPTED
-  DECLINED
-  ENGAGEMENT_PENDING
-  ACTIVE
-  COMPLETED
-}
-
-enum ProposalStatus {
-  DRAFT
-  INTERNAL_REVIEW
-  SENT
-  VIEWED
-  ACCEPTED
-  DECLINED
-  EXPIRED
-}
-
-enum EngagementStatus {
-  PENDING
-  ACTIVE
-  COMPLETED
-  CANCELLED
-}
-
-enum DeliveryModel {
-  PROJECT
-  FDE_SPRINT
-  FRACTIONAL_FDE
-  RETAINER
-}
+enum QualificationStatus { PENDING QUALIFIED DISQUALIFIED }
+enum OpportunityStage { NEW ASSESSMENT_REQUESTED QUALIFYING QUALIFIED DISQUALIFIED BOOKING_PENDING BOOKED ASSESSMENT_COMPLETE PROPOSAL_DRAFT PROPOSAL_SENT PROPOSAL_VIEWED NEGOTIATING ACCEPTED DECLINED ENGAGEMENT_PENDING ACTIVE COMPLETED }
+enum ProposalStatus { DRAFT INTERNAL_REVIEW SENT VIEWED ACCEPTED DECLINED EXPIRED }
+enum EngagementStatus { PENDING ACTIVE COMPLETED CANCELLED }
+enum DeliveryModel { PROJECT FDE_SPRINT FRACTIONAL_FDE RETAINER }
 
 model User {
   id            String       @id @default(cuid())
@@ -72,496 +28,86 @@ model User {
 
   @@index([role])
 }
-
 model Session {
-  id                   String   @id @default(cuid())
-  expiresAt            DateTime
-  token                String   @unique
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  ipAddress             String?
-  userAgent            String?
-  userId               String
+  id String @id @default(cuid())
+  expiresAt DateTime
+  token String @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId String
   activeOrganizationId String?
-  activeTeamId         String?
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  activeTeamId String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
   @@index([expiresAt])
 }
-
 model Account {
-  id                    String    @id @default(cuid())
-  accountId             String
-  providerId            String
-  userId                String
-  accessToken           String?   @db.Text
-  refreshToken          String?   @db.Text
-  idToken               String?   @db.Text
-  accessTokenExpiresAt  DateTime?
+  id String @id @default(cuid())
+  accountId String
+  providerId String
+  userId String
+  accessToken String? @db.Text
+  refreshToken String? @db.Text
+  idToken String? @db.Text
+  accessTokenExpiresAt DateTime?
   refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?   @db.Text
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  scope String?
+  password String? @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([providerId, accountId])
   @@index([userId])
 }
-
-model Verification {
-  id         String   @id @default(cuid())
-  identifier String
-  value      String   @db.Text
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([identifier])
-}
-
+model Verification { id String @id @default(cuid()); identifier String; value String @db.Text; expiresAt DateTime; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; @@index([identifier]) }
 model Organization {
-  id            String               @id @default(cuid())
-  clerkOrgId    String?              @unique
-  name          String
-  slug          String               @unique @default(cuid())
-  websiteDomain String?              @unique
-  logo          String?
-  metadata      String?              @db.Text
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  members       Member[]
-  invitations   Invitation[]
+  id String @id @default(cuid())
+  clerkOrgId String? @unique
+  name String
+  slug String @unique @default(cuid())
+  websiteDomain String? @unique
+  logo String?
+  metadata String? @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members Member[]
+  invitations Invitation[]
   legacyMembers OrganizationMember[] @relation("LegacyOrganizationMembers")
-  leads         Lead[]
-  bookings      Booking[]
-  projects      Project[]
-  documents    Document[]
-  messages     Message[]
-  invoices     Invoice[]
-  contacts     Contact[]
-  assessments  Assessment[]
+  leads Lead[]
+  bookings Booking[]
+  projects Project[]
+  documents Document[]
+  messages Message[]
+  invoices Invoice[]
+  contacts Contact[]
+  assessments Assessment[]
   opportunities Opportunity[]
-  proposals    Proposal[]
-  engagements  Engagement[]
-  client       Client?
+  proposals Proposal[]
+  engagements Engagement[]
+  client Client?
 }
-
-model Member {
-  id             String       @id @default(cuid())
-  organizationId String
-  userId         String
-  role           String
-  createdAt      DateTime     @default(now())
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([organizationId, userId])
-  @@index([userId])
-}
-
-model Invitation {
-  id             String       @id @default(cuid())
-  email          String
-  inviterId      String
-  organizationId String
-  role           String?
-  status         String
-  createdAt      DateTime     @default(now())
-  expiresAt      DateTime
-  inviter        User         @relation("InvitationInviter", fields: [inviterId], references: [id], onDelete: Cascade)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  @@index([email])
-  @@index([organizationId, status])
-  @@index([expiresAt])
-}
-
-model OrganizationMember {
-  id             String       @id @default(cuid())
-  organizationId String
-  clerkUserId    String
-  role           String
-  createdAt      DateTime     @default(now())
-  organization   Organization @relation("LegacyOrganizationMembers", fields: [organizationId], references: [id], onDelete: Cascade)
-
-  @@unique([organizationId, clerkUserId])
-  @@index([clerkUserId])
-}
-
-model Contact {
-  id             String       @id @default(cuid())
-  organizationId String
-  name           String
-  email          String
-  role           String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  @@unique([organizationId, email])
-  @@index([organizationId, createdAt])
-}
-
+model Member { id String @id @default(cuid()); organizationId String; userId String; role String; createdAt DateTime @default(now()); organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade); user User @relation(fields: [userId], references: [id], onDelete: Cascade); @@unique([organizationId,userId]); @@index([userId]) }
+model Invitation { id String @id @default(cuid()); email String; inviterId String; organizationId String; role String?; status String; createdAt DateTime @default(now()); expiresAt DateTime; inviter User @relation("InvitationInviter", fields:[inviterId], references:[id], onDelete: Cascade); organization Organization @relation(fields:[organizationId], references:[id], onDelete: Cascade); @@index([email]); @@index([organizationId,status]); @@index([expiresAt]) }
+model OrganizationMember { id String @id @default(cuid()); organizationId String; clerkUserId String; role String; createdAt DateTime @default(now()); organization Organization @relation("LegacyOrganizationMembers", fields:[organizationId], references:[id], onDelete: Cascade); @@unique([organizationId,clerkUserId]); @@index([clerkUserId]) }
+model Contact { id String @id @default(cuid()); organizationId String; name String; email String; role String?; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; organization Organization @relation(fields:[organizationId], references:[id], onDelete: Cascade); @@unique([organizationId,email]); @@index([organizationId,createdAt]) }
 model Lead {
-  id               String              @id @default(cuid())
-  organizationId   String?
-  organizationName String
-  contactName      String
-  email            String
-  country          String
-  service          String
-  notes            String?
-  status           String              @default("new")
-  source           String              @default("website")
-  campaign         String?
-  referral         String?
-  roleTitle        String?
-  companySize      String?
-  website          String?
-  problemStatement String?
-  desiredOutcome   String?
-  urgency          String?
-  budgetSignal     String?
-  timeline         String?
-  technicalEnvironment String?
-  securitySensitivity String?
-  qualificationScore Int?
-  qualificationStatus QualificationStatus @default(PENDING)
-  ownerUserId      String?
-  nextAction       String?
-  nextActionAt     DateTime?
-  consent          Boolean             @default(false)
-  idempotencyKey   String?             @unique
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  organization     Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  owner            User?               @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  assessments      Assessment[]
-  opportunities    Opportunity[]
-  bookings         Booking[]
-  proposals        Proposal[]
-
-  @@index([organizationId, status])
-  @@index([email])
-  @@index([createdAt])
-  @@index([qualificationStatus, nextActionAt])
-  @@index([ownerUserId, nextActionAt])
+  id String @id @default(cuid()); organizationId String?; organizationName String; contactName String; email String; country String; service String; notes String?; status String @default("new"); source String @default("website"); campaign String?; referral String?; roleTitle String?; companySize String?; website String?; problemStatement String?; desiredOutcome String?; urgency String?; budgetSignal String?; timeline String?; technicalEnvironment String?; securitySensitivity String?; qualificationScore Int?; qualificationStatus QualificationStatus @default(PENDING); ownerUserId String?; nextAction String?; nextActionAt DateTime?; consent Boolean @default(false); idempotencyKey String? @unique; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; organization Organization? @relation(fields:[organizationId], references:[id], onDelete: SetNull); owner User? @relation("LeadOwner", fields:[ownerUserId], references:[id], onDelete: SetNull); assessments Assessment[]; opportunities Opportunity[]; bookings Booking[]; proposals Proposal[]; @@index([organizationId,status]); @@index([email]); @@index([createdAt]); @@index([qualificationStatus,nextActionAt]); @@index([ownerUserId,nextActionAt])
 }
-
-model Assessment {
-  id                   String       @id @default(cuid())
-  organizationId       String?
-  leadId               String
-  problem              String
-  workflow             String?
-  currentArchitecture  String?
-  constraints          String?
-  desiredOutcome       String
-  urgency              String?
-  stakeholders         String?
-  existingSystems      String?
-  securityRequirements String?
-  businessImpact       String?
-  status               String       @default("submitted")
-  summary              String?      @db.Text
-  idempotencyKey       String?      @unique
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-  organization         Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  lead                 Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  opportunity          Opportunity?
-  booking              Booking?
-  proposals            Proposal[]
-
-  @@index([leadId, createdAt])
-  @@index([organizationId, createdAt])
-}
-
-model Opportunity {
-  id              String           @id @default(cuid())
-  organizationId  String?
-  leadId          String
-  assessmentId    String?          @unique
-  ownerUserId     String?
-  stage           OpportunityStage @default(NEW)
-  valueMinor      Int?
-  currency        String?          @default("USD")
-  nextAction      String?
-  nextActionAt    DateTime?
-  lastActivityAt  DateTime         @default(now())
-  lostReason      String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  lead            Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  assessment     Assessment?      @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
-  owner           User?            @relation("OpportunityOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  bookings        Booking[]
-  proposals       Proposal[]
-  engagement      Engagement?
-
-  @@index([stage, nextActionAt])
-  @@index([organizationId, stage])
-  @@index([ownerUserId, stage, nextActionAt])
-  @@index([lastActivityAt])
-}
-
-model Booking {
-  id               String        @id @default(cuid())
-  organizationId   String?
-  organizationName String
-  contactName      String
-  email            String
-  startsAt         DateTime
-  timezone         String
-  notes            String?
-  status           String        @default("requested")
-  source           String        @default("website")
-  leadId           String?
-  assessmentId     String?       @unique
-  opportunityId    String?
-  idempotencyKey   String?       @unique
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  lead             Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  assessment       Assessment?   @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
-  opportunity      Opportunity?  @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
-
-  @@index([organizationId, status])
-  @@index([startsAt])
-  @@index([email])
-  @@index([opportunityId, startsAt])
-}
-
-model Proposal {
-  id                String         @id @default(cuid())
-  proposalNumber    String         @unique
-  organizationId    String?
-  leadId            String
-  assessmentId      String?
-  opportunityId     String?
-  title             String
-  status            ProposalStatus @default(DRAFT)
-  currentVersion    Int            @default(1)
-  publicTokenHash   String         @unique
-  sentAt            DateTime?
-  viewedAt          DateTime?
-  acceptedAt        DateTime?
-  declinedAt        DateTime?
-  expiresAt         DateTime?
-  acceptedByName    String?
-  acceptedByEmail   String?
-  createdByUserId   String
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  organization      Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  lead              Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  assessment        Assessment?    @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
-  opportunity       Opportunity?   @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
-  versions          ProposalVersion[]
-  engagement        Engagement?
-
-  @@index([organizationId, status])
-  @@index([leadId, createdAt])
-  @@index([opportunityId, createdAt])
-}
-
-model ProposalVersion {
-  id                 String   @id @default(cuid())
-  proposalId         String
-  version            Int
-  executiveSummary   String   @db.Text
-  problemDefinition  String   @db.Text
-  proposedSolution   String   @db.Text
-  scope              Json
-  deliverables       Json
-  assumptions        Json
-  exclusions         Json
-  timeline           Json
-  milestones         Json
-  pricing            Json
-  paymentSchedule    Json
-  dependencies       Json
-  securityConsiderations String? @db.Text
-  acceptanceTerms    String   @db.Text
-  createdByUserId    String
-  createdAt          DateTime @default(now())
-  proposal           Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-
-  @@unique([proposalId, version])
-  @@index([proposalId, createdAt])
-}
-
-model Client {
-  id             String       @id @default(cuid())
-  organizationId String       @unique
-  status         String       @default("active")
-  onboardedAt    DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  engagements    Engagement[]
-}
-
-model Engagement {
-  id               String          @id @default(cuid())
-  organizationId   String
-  clientId         String
-  opportunityId    String?         @unique
-  proposalId       String?         @unique
-  name             String
-  scope            String           @db.Text
-  commercialValueMinor Int?
-  currency         String           @default("USD")
-  startDate        DateTime?
-  expectedEndDate  DateTime?
-  ownerUserId      String?
-  deliveryModel    DeliveryModel
-  status           EngagementStatus @default(PENDING)
-  billingRelationship String?
-  securityRequirements String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  client           Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  opportunity      Opportunity?     @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
-  proposal         Proposal?        @relation(fields: [proposalId], references: [id], onDelete: SetNull)
-  projects         Project[]
-  milestones       EngagementMilestone[]
-  invoices         Invoice[]
-
-  @@index([organizationId, status])
-  @@index([clientId, status])
-}
-
-model EngagementMilestone {
-  id           String      @id @default(cuid())
-  engagementId String
-  name         String
-  description  String?
-  dueAt        DateTime?
-  status       String      @default("pending")
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  engagement   Engagement  @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
-  @@index([engagementId, status])
-}
-
-model Project {
-  id             String       @id @default(cuid())
-  organizationId String
-  engagementId   String?
-  name           String
-  type           String?
-  status         String       @default("active")
-  progress       Int          @default(0)
-  nextDecision   String?
-  dueAt          DateTime?
-  description    String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  engagement     Engagement?  @relation(fields: [engagementId], references: [id], onDelete: SetNull)
-
-  @@index([organizationId, status])
-  @@index([engagementId, status])
-}
-
-model Document {
-  id             String       @id @default(cuid())
-  organizationId String
-  name           String
-  storageKey     String
-  contentType    String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  @@index([organizationId, createdAt])
-}
-
-model Message {
-  id             String       @id @default(cuid())
-  organizationId String
-  authorUserId   String
-  body           String
-  createdAt      DateTime     @default(now())
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  author         User         @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
-
-  @@index([organizationId, createdAt])
-}
-
-model Invoice {
-  id             String       @id @default(cuid())
-  organizationId String
-  engagementId   String?
-  currency       String
-  amountMinor    Int
-  description    String
-  status         String       @default("draft")
-  externalId     String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  engagement     Engagement?  @relation(fields: [engagementId], references: [id], onDelete: SetNull)
-
-  @@index([organizationId, status])
-  @@index([engagementId, status])
-}
-
-model WebhookEvent {
-  id         String   @id @default(cuid())
-  provider   String
-  eventId    String
-  eventType  String
-  receivedAt DateTime @default(now())
-
-  @@unique([provider, eventId])
-  @@index([provider, receivedAt])
-}
-
-model AuditEvent {
-  id             String   @id @default(cuid())
-  organizationId String?
-  actorUserId    String?
-  action         String
-  resourceType   String
-  resourceId     String?
-  requestId      String?
-  metadata       Json?
-  createdAt      DateTime @default(now())
-  actor          User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
-
-  @@index([organizationId, createdAt])
-  @@index([actorUserId, createdAt])
-  @@index([resourceType, resourceId])
-}
-
-model GrowthEvent {
-  id             String   @id @default(cuid())
-  eventId        String   @unique
-  eventName      String
-  schemaVersion  Int      @default(1)
-  occurredAt     DateTime @default(now())
-  anonymousId    String?
-  userId         String?
-  organizationId String?
-  source         String
-  path           String?
-  referrer       String?
-  campaign       Json?
-  entityId       String?
-  privacyClass   String
-  properties     Json?
-  createdAt      DateTime @default(now())
-
-  @@index([eventName, occurredAt])
-  @@index([source, occurredAt])
-  @@index([organizationId, occurredAt])
-  @@index([userId, occurredAt])
-}
+model Assessment { id String @id @default(cuid()); organizationId String?; leadId String; problem String; workflow String?; currentArchitecture String?; constraints String?; desiredOutcome String; urgency String?; stakeholders String?; existingSystems String?; securityRequirements String?; businessImpact String?; status String @default("submitted"); summary String? @db.Text; idempotencyKey String? @unique; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; organization Organization? @relation(fields:[organizationId], references:[id], onDelete:SetNull); lead Lead @relation(fields:[leadId], references:[id], onDelete:Cascade); opportunity Opportunity?; booking Booking?; proposals Proposal[]; @@index([leadId,createdAt]); @@index([organizationId,createdAt]) }
+model Opportunity { id String @id @default(cuid()); organizationId String?; leadId String; assessmentId String? @unique; ownerUserId String?; stage OpportunityStage @default(NEW); valueMinor Int?; currency String? @default("USD"); nextAction String?; nextActionAt DateTime?; lastActivityAt DateTime @default(now()); lostReason String?; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; organization Organization? @relation(fields:[organizationId], references:[id], onDelete:SetNull); lead Lead @relation(fields:[leadId], references:[id], onDelete:Cascade); assessment Assessment? @relation(fields:[assessmentId], references:[id], onDelete:SetNull); owner User? @relation("OpportunityOwner", fields:[ownerUserId], references:[id], onDelete:SetNull); bookings Booking[]; proposals Proposal[]; engagement Engagement?; @@index([stage,nextActionAt]); @@index([organizationId,stage]); @@index([ownerUserId,stage,nextActionAt]); @@index([lastActivityAt]) }
+model Booking { id String @id @default(cuid()); organizationId String?; organizationName String; contactName String; email String; startsAt DateTime; timezone String; notes String?; status String @default("requested"); source String @default("website"); leadId String?; assessmentId String? @unique; opportunityId String?; idempotencyKey String? @unique; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; organization Organization? @relation(fields:[organizationId], references:[id], onDelete:SetNull); lead Lead? @relation(fields:[leadId], references:[id], onDelete:SetNull); assessment Assessment? @relation(fields:[assessmentId], references:[id], onDelete:SetNull); opportunity Opportunity? @relation(fields:[opportunityId], references:[id], onDelete:SetNull); @@index([organizationId,status]); @@index([startsAt]); @@index([email]); @@index([opportunityId,startsAt]) }
+model Proposal { id String @id @default(cuid()); proposalNumber String @unique; organizationId String?; leadId String; assessmentId String?; opportunityId String?; title String; status ProposalStatus @default(DRAFT); currentVersion Int @default(1); publicTokenHash String @unique; sentAt DateTime?; viewedAt DateTime?; acceptedAt DateTime?; declinedAt DateTime?; expiresAt DateTime?; acceptedByName String?; acceptedByEmail String?; createdByUserId String; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; organization Organization? @relation(fields:[organizationId], references:[id], onDelete:SetNull); lead Lead @relation(fields:[leadId], references:[id], onDelete:Cascade); assessment Assessment? @relation(fields:[assessmentId], references:[id], onDelete:SetNull); opportunity Opportunity? @relation(fields:[opportunityId], references:[id], onDelete:SetNull); versions ProposalVersion[]; engagement Engagement?; @@index([organizationId,status]); @@index([leadId,createdAt]); @@index([opportunityId,createdAt]) }
+model ProposalVersion { id String @id @default(cuid()); proposalId String; version Int; executiveSummary String @db.Text; problemDefinition String @db.Text; proposedSolution String @db.Text; scope Json; deliverables Json; assumptions Json; exclusions Json; timeline Json; milestones Json; pricing Json; paymentSchedule Json; dependencies Json; securityConsiderations String? @db.Text; acceptanceTerms String @db.Text; createdByUserId String; createdAt DateTime @default(now()); proposal Proposal @relation(fields:[proposalId], references:[id], onDelete:Cascade); @@unique([proposalId,version]); @@index([proposalId,createdAt]) }
+model Client { id String @id @default(cuid()); organizationId String @unique; status String @default("active"); onboardedAt DateTime?; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; organization Organization @relation(fields:[organizationId], references:[id], onDelete:Cascade); engagements Engagement[]; accessInvites ClientAccessInvite[] }
+model ClientAccessInvite { id String @id @default(cuid()); clientId String; email String; tokenHash String @unique; expiresAt DateTime; acceptedAt DateTime?; createdAt DateTime @default(now()); client Client @relation(fields:[clientId], references:[id], onDelete:Cascade); @@index([clientId,email]); @@index([expiresAt]) }
+model Engagement { id String @id @default(cuid()); organizationId String; clientId String; opportunityId String? @unique; proposalId String? @unique; name String; scope String @db.Text; commercialValueMinor Int?; currency String @default("USD"); startDate DateTime?; expectedEndDate DateTime?; ownerUserId String?; deliveryModel DeliveryModel; status EngagementStatus @default(PENDING); billingRelationship String?; securityRequirements String?; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; organization Organization @relation(fields:[organizationId], references:[id], onDelete:Cascade); client Client @relation(fields:[clientId], references:[id], onDelete:Cascade); opportunity Opportunity? @relation(fields:[opportunityId], references:[id], onDelete:SetNull); proposal Proposal? @relation(fields:[proposalId], references:[id], onDelete:SetNull); projects Project[]; milestones EngagementMilestone[]; invoices Invoice[]; @@index([organizationId,status]); @@index([clientId,status]) }
+model EngagementMilestone { id String @id @default(cuid()); engagementId String; name String; description String?; dueAt DateTime?; status String @default("pending"); createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; engagement Engagement @relation(fields:[engagementId], references:[id], onDelete:Cascade); @@index([engagementId,status]) }
+model Project { id String @id @default(cuid()); organizationId String; engagementId String?; name String; type String?; status String @default("active"); progress Int @default(0); nextDecision String?; dueAt DateTime?; description String?; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; organization Organization @relation(fields:[organizationId], references:[id], onDelete:Cascade); engagement Engagement? @relation(fields:[engagementId], references:[id], onDelete:SetNull); @@index([organizationId,status]); @@index([engagementId,status]) }
+model Document { id String @id @default(cuid()); organizationId String; name String; storageKey String; contentType String; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; organization Organization @relation(fields:[organizationId], references:[id], onDelete:Cascade); @@index([organizationId,createdAt]) }
+model Message { id String @id @default(cuid()); organizationId String; authorUserId String; body String; createdAt DateTime @default(now()); organization Organization @relation(fields:[organizationId], references:[id], onDelete:Cascade); author User @relation(fields:[authorUserId], references:[id], onDelete:Cascade); @@index([organizationId,createdAt]) }
+model Invoice { id String @id @default(cuid()); organizationId String; engagementId String?; currency String; amountMinor Int; description String; status String @default("draft"); externalId String?; createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; organization Organization @relation(fields:[organizationId], references:[id], onDelete:Cascade); engagement Engagement? @relation(fields:[engagementId], references:[id], onDelete:SetNull); @@index([organizationId,status]); @@index([engagementId,status]) }
+model WebhookEvent { id String @id @default(cuid()); provider String; eventId String; eventType String; receivedAt DateTime @default(now()); @@unique([provider,eventId]); @@index([provider,receivedAt]) }
+model AuditEvent { id String @id @default(cuid()); organizationId String?; actorUserId String?; action String; resourceType String; resourceId String?; requestId String?; metadata Json?; createdAt DateTime @default(now()); actor User? @relation(fields:[actorUserId], references:[id], onDelete:SetNull); @@index([organizationId,createdAt]); @@index([actorUserId,createdAt]); @@index([resourceType,resourceId]) }
+model GrowthEvent { id String @id @default(cuid()); eventId String @unique; eventName String; schemaVersion Int @default(1); occurredAt DateTime @default(now()); anonymousId String?; userId String?; organizationId String?; source String; path String?; referrer String?; campaign Json?; entityId String?; privacyClass String; properties Json?; createdAt DateTime @default(now()); @@index([eventName,occurredAt]); @@index([source,occurredAt]); @@index([organizationId,occurredAt]); @@index([userId,occurredAt]) }
