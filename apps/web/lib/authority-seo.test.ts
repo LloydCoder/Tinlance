@@ -17,8 +17,9 @@ describe("authority SEO contract", () => {
     }
   });
 
-  it("contains canonical authority routes and excludes private routes", () => {
+  it("contains unique canonical authority routes and excludes private routes", () => {
     const urls = sitemap().map((entry) => entry.url);
+    expect(new Set(urls).size).toBe(urls.length);
     for (const path of [
       "/research",
       "/research/threatfade-quic-c2-detection",
