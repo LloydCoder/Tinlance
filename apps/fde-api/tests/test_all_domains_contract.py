@@ -16,7 +16,6 @@ DOMAINS = (
     "procurement",
     "custom",
 )
-
 PAYLOADS = {
     domain: {"synthetic": True, "domain": domain, "case_id": f"E2E-{domain}"}
     for domain in DOMAINS
@@ -24,15 +23,14 @@ PAYLOADS = {
 
 
 @respx.mock
-def test_gateway_forwards_every_supported_domain(monkeypatch):
+def test_gateway_forwards_every_supported_domain_to_canonical_triage(monkeypatch):
     monkeypatch.setenv("FDE_ENV", "test")
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_URL", "https://fde-mastery.internal")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_TOKEN", "static-token")
-
     routes = {
         domain: respx.post(
-            f"https://fde-mastery.internal/v1/{domain}/execute"
+            f"https://fde-mastery.internal/v1/triage/org123/{domain}"
         ).mock(
             return_value=Response(
                 200,
@@ -49,7 +47,6 @@ def test_gateway_forwards_every_supported_domain(monkeypatch):
         )
         for domain in DOMAINS
     }
-
     client = TestClient(app)
     for index, domain in enumerate(DOMAINS):
         response = client.post(
@@ -59,18 +56,12 @@ def test_gateway_forwards_every_supported_domain(monkeypatch):
                 "Idempotency-Key": f"domain-contract-{domain}",
                 "X-Request-ID": f"12345678-1234-4234-8234-{index:012d}",
             },
-            json={
-                "tenant_id": "org123",
-                "payload": PAYLOADS[domain],
-            },
+            json={"tenant_id": "org123", "payload": PAYLOADS[domain]},
         )
         assert response.status_code == 200, f"{domain}: {response.text}"
         assert routes[domain].called
         forwarded = json.loads(routes[domain].calls.last.request.content)
-        assert forwarded == {
-            "tenant_id": "org123",
-            "payload": PAYLOADS[domain],
-        }
+        assert forwarded == PAYLOADS[domain]
         assert response.json()["result"]["domain"] == domain
 
 
@@ -85,9 +76,6 @@ def test_unknown_domain_fails_closed(monkeypatch):
             "Authorization": "Bearer secret",
             "Idempotency-Key": "unknown-domain",
         },
-        json={
-            "tenant_id": "org123",
-            "payload": {"synthetic": True},
-        },
+        json={"tenant_id": "org123", "payload": {"synthetic": True}},
     )
     assert response.status_code == 422

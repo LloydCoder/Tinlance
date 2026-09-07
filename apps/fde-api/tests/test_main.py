@@ -24,7 +24,7 @@ def configure_static_test_auth(monkeypatch):
 def test_health_is_public(monkeypatch):
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "api_version": "0.5.1"}
+    assert response.json() == {"status": "ok", "api_version": "0.6.0"}
 
 
 def test_execute_requires_authentication(monkeypatch):
@@ -84,10 +84,10 @@ def test_execute_rejects_unknown_domain(monkeypatch):
 
 
 @respx.mock
-def test_execute_calls_fde_mastery_canonical_route_and_envelope(monkeypatch):
+def test_execute_calls_fde_mastery_canonical_route_and_payload(monkeypatch):
     configure_static_test_auth(monkeypatch)
     route = respx.post(
-        "https://fde-mastery.internal/v1/cybersecurity/execute"
+        "https://fde-mastery.internal/v1/triage/org123/cybersecurity"
     ).mock(
         return_value=Response(
             200,
@@ -111,13 +111,7 @@ def test_execute_calls_fde_mastery_canonical_route_and_envelope(monkeypatch):
     assert response.status_code == 200
     assert route.called
     parsed = json.loads(route.calls.last.request.content)
-    assert parsed == {
-        "tenant_id": "org123",
-        "payload": {
-            "case_id": "E2E-cybersecurity",
-            "alert": "execute this",
-        },
-    }
+    assert parsed == {"case_id": "E2E-cybersecurity", "alert": "execute this"}
     assert route.calls.last.request.headers["authorization"] == "Bearer static-token"
     assert route.calls.last.request.headers["idempotency-key"] == "test-idempotency-key"
     assert route.calls.last.request.headers["x-request-id"] == request_id
@@ -144,19 +138,17 @@ def test_execute_caches_oauth_token_across_requests(monkeypatch):
     monkeypatch.setenv("FDE_OAUTH_TOKEN_URL", "https://idp.internal/oauth/token")
     monkeypatch.setenv("FDE_OAUTH_CLIENT_ID", "fde-api")
     monkeypatch.setenv("FDE_OAUTH_CLIENT_SECRET", "shh")
-
     import app.main as main_module
 
     main_module._cached_token = None
     main_module._cached_token_expires_at = 0.0
     token_route = respx.post("https://idp.internal/oauth/token").mock(
         return_value=Response(
-            200,
-            json={"access_token": "minted-token", "expires_in": 300},
+            200, json={"access_token": "minted-token", "expires_in": 300}
         )
     )
     upstream_route = respx.post(
-        "https://fde-mastery.internal/v1/finance/execute"
+        "https://fde-mastery.internal/v1/triage/org123/finance"
     ).mock(
         return_value=Response(
             200,
@@ -183,6 +175,4 @@ def test_execute_caches_oauth_token_across_requests(monkeypatch):
         assert response.status_code == 200
     assert token_route.call_count == 1
     assert upstream_route.call_count == 2
-    assert upstream_route.calls.last.request.headers["authorization"] == (
-        "Bearer minted-token"
-    )
+    assert upstream_route.calls.last.request.headers["authorization"] == "Bearer minted-token"
