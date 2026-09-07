@@ -13,7 +13,7 @@ export default async function WorkflowsPage({ params }: { params: Promise<{ proj
   const { projectId } = await params;
   const authorized = await authorizeProject(projectId, "project:read");
   if (!authorized) notFound();
-  const [playbooks, runs] = await Promise.all([
+  const [playbooks, runs, assessments] = await Promise.all([
     db.$queryRaw<Array<{ id: string; slug: string; name: string; description: string; version: string; objective: string }>>`
       SELECT p.id,p.slug,p.name,p.description,v.version,v.objective
       FROM "automation_playbooks" p JOIN "automation_playbook_versions" v ON v.playbook_id=p.id
@@ -26,6 +26,9 @@ export default async function WorkflowsPage({ params }: { params: Promise<{ proj
       WHERE r."organization_id"=${authorized.project.organizationId} AND r."project_id"=${projectId}
       ORDER BY r."created_at" DESC LIMIT 25
     `,
+    db.$queryRaw<Array<{ id: string; type: string; status: string; objective: string }>>`
+      SELECT id,type,status,objective FROM "WorkspaceAssessment" WHERE "organizationId"=${authorized.project.organizationId} AND "projectId"=${projectId} ORDER BY "createdAt" DESC LIMIT 10
+    `,
   ]);
-  return <PortalShell active="projects"><div className="portal-page-head"><div><p className="kicker">FDE AUTOMATION / WORKFLOWS</p><h1>Automate repeatable FDE work.</h1><p>Run versioned playbooks with durable execution, evidence provenance and explicit human approval.</p></div></div><ProjectNav projectId={projectId} active="workflows" /><WorkflowClient projectId={projectId} playbooks={playbooks} initialRuns={runs} /></PortalShell>;
+  return <PortalShell active="projects"><div className="portal-page-head"><div><p className="kicker">FDE AUTOMATION / WORKFLOWS</p><h1>Automate repeatable FDE work.</h1><p>Run versioned playbooks with durable execution, evidence provenance and explicit human approval.</p></div></div><ProjectNav projectId={projectId} active="workflows" /><WorkflowClient projectId={projectId} playbooks={playbooks} initialRuns={runs} assessments={assessments} /></PortalShell>;
 }
