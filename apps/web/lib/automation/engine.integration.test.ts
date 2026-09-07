@@ -42,10 +42,10 @@ describe("M4 durable workflow persistence", () => {
     );
     await db.$executeRaw(
       Prisma.sql`
-        INSERT INTO "Organization" (id,name,slug,"createdAt","updatedAt")
+        INSERT INTO "Organization" (id,"clerkOrgId",name,slug,"createdAt","updatedAt")
         VALUES
-          (${orgA},'M4 Test A',${`m4-a-${orgA}`},CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-          (${orgB},'M4 Test B',${`m4-b-${orgB}`},CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+          (${orgA},${`m4-clerk-a-${orgA}`},'M4 Test A',${`m4-a-${orgA}`},CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+          (${orgB},${`m4-clerk-b-${orgB}`},'M4 Test B',${`m4-b-${orgB}`},CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
       `
     );
     await db.$executeRaw(
