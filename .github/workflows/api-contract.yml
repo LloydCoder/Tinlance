@@ -1,0 +1,43 @@
+name: API contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/api/openapi/**'
+      - 'apps/web/app/api/v1/**'
+      - 'apps/web/lib/api/**'
+      - 'apps/web/lib/api/**/*.test.ts'
+      - '.github/workflows/api-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/api/openapi/**'
+      - 'apps/web/app/api/v1/**'
+      - 'apps/web/lib/api/**'
+      - '.github/workflows/api-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: OpenAPI contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+      - name: Validate OpenAPI 3.1.1
+        run: docker run --rm -v "$GITHUB_WORKSPACE:/work:ro" tufin/oasdiff:v1.27.0 validate /work/docs/api/openapi/v1.json
+      - name: Detect breaking changes against main
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git cat-file -e "origin/main:docs/api/openapi/v1.json" 2>/dev/null; then
+            git show "origin/main:docs/api/openapi/v1.json" > /tmp/tinlance-openapi-main.json
+            docker run --rm -v /tmp:/work:ro tufin/oasdiff:v1.27.0 breaking /work/tinlance-openapi-main.json /work/../work/docs/api/openapi/v1.json --fail-on ERR
+          else
+            echo 'No previous stable OpenAPI contract exists; this is the initial v1 publication.'
+          fi
