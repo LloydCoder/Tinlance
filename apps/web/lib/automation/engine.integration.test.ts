@@ -5,12 +5,16 @@ import { db } from "@/lib/db";
 import { cancelAutomation, startAutomation } from "./engine";
 
 const createdOrganizations: string[] = [];
+const createdUsers: string[] = [];
 
 afterEach(async () => {
   for (const organizationId of createdOrganizations.splice(0)) {
     await db.$executeRaw(
       Prisma.sql`DELETE FROM "Organization" WHERE id=${organizationId}`
     );
+  }
+  for (const userId of createdUsers.splice(0)) {
+    await db.$executeRaw(Prisma.sql`DELETE FROM "User" WHERE id=${userId}`);
   }
 });
 
@@ -20,8 +24,16 @@ describe("M4 durable workflow persistence", () => {
     const orgB = randomUUID();
     const projectA = randomUUID();
     const projectB = randomUUID();
+    const userId = randomUUID();
     createdOrganizations.push(orgA, orgB);
+    createdUsers.push(userId);
 
+    await db.$executeRaw(
+      Prisma.sql`
+        INSERT INTO "User" (id,name,email,"emailVerified",role,"createdAt","updatedAt")
+        VALUES (${userId},'M4 Test User',${`m4-${userId}@example.invalid`},true,'admin',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+      `
+    );
     await db.$executeRaw(
       Prisma.sql`
         INSERT INTO "Organization" (id,name,slug,"createdAt","updatedAt")
@@ -43,9 +55,9 @@ describe("M4 durable workflow persistence", () => {
       organizationId: orgA,
       projectId: projectA,
       playbookSlug: "fde-technical-assessment",
-      actorUserId: "m4-test-user",
+      actorUserId: userId,
       triggerType: "TEST",
-      idempotencyKey: "m4-integration-1",
+      idempotencyKey: `m4-integration-1-${orgA}`,
       requestId: randomUUID(),
       input: { scope: { target: "synthetic" } },
     });
@@ -53,9 +65,9 @@ describe("M4 durable workflow persistence", () => {
       organizationId: orgA,
       projectId: projectA,
       playbookSlug: "fde-technical-assessment",
-      actorUserId: "m4-test-user",
+      actorUserId: userId,
       triggerType: "TEST",
-      idempotencyKey: "m4-integration-1",
+      idempotencyKey: `m4-integration-1-${orgA}`,
       requestId: randomUUID(),
       input: { scope: { target: "different" } },
     });
@@ -66,15 +78,15 @@ describe("M4 durable workflow persistence", () => {
         organizationId: orgA,
         projectId: projectB,
         playbookSlug: "fde-technical-assessment",
-        actorUserId: "m4-test-user",
+        actorUserId: userId,
         triggerType: "TEST",
-        idempotencyKey: "m4-cross-tenant",
+        idempotencyKey: `m4-cross-tenant-${orgA}`,
         requestId: randomUUID(),
         input: { scope: { target: "synthetic" } },
       })
     ).rejects.toThrow("project not found");
 
-    const cancelled = await cancelAutomation(first.id, orgA, "m4-test-user");
+    const cancelled = await cancelAutomation(first.id, orgA, userId);
     expect(cancelled.status).toBe("CANCELLED");
   });
 });
