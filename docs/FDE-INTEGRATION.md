@@ -11,17 +11,15 @@ Tinlance FDE API
       │
       │ OAuth 2.0 client credentials in production
       ▼
-fde-mastery gateway
+fde-mastery platform-core
       │
       ▼
-/v1/triage/{tenant_id}/{domain}
+/v1/{domain}/execute
 ```
 
 The browser never calls `fde-mastery` directly.
 
 ## Tinlance → FDE API contract
-
-The current Tinlance FDE API exposes:
 
 ```http
 POST /v1/{domain}/execute
@@ -39,16 +37,9 @@ The FDE API validates the domain, authenticates the Tinlance caller and propagat
 
 ## FDE API → fde-mastery contract
 
-The gateway translates the server-side request to:
+The current `fde-mastery` production API contract is `POST /v1/{domain}/execute`. The Tinlance gateway forwards the authenticated tenant identifier and wraps the workspace payload in the same execution envelope expected by the current platform-core API.
 
-```http
-POST {FDE_MASTER_UPSTREAM_URL}/v1/triage/{tenant_id}/{domain}
-Authorization: Bearer <upstream credential>
-x-request-id: <correlation id>
-Idempotency-Key: <operation key>
-```
-
-The upstream tenant/client identifier is therefore derived from the authenticated Tinlance organization context. It is never trusted from browser-controlled data.
+The upstream tenant/client identifier is derived from the authenticated Tinlance organization context. It is never trusted from browser-controlled data.
 
 ## Supported domains
 
@@ -73,7 +64,7 @@ The FDE API requires the server-only `FDE_SERVICE_TOKEN`. End users never authen
 
 ### FDE API → fde-mastery
 
-Production uses OAuth 2.0 client credentials when the OAuth configuration is present. The static upstream token fallback is restricted to development/test by the gateway.
+Production uses OAuth 2.0 client credentials when the OAuth configuration is present. The static upstream token fallback is restricted to development/test by the gateway. The upstream platform itself applies its tenant-aware authorization contract.
 
 ## M3 execution
 
@@ -90,7 +81,7 @@ The assessment result is persisted in the workspace with its request correlation
 
 ## Resilience and safety
 
-The gateway provides bounded input validation, domain allowlisting, timeout controls, request correlation, idempotency and safe upstream error handling. Production readiness fails closed when upstream authentication is unavailable.
+The gateway provides bounded input validation, domain allowlisting, timeout controls, request correlation, required idempotency, and safe upstream error handling. Production readiness fails closed when upstream authentication is unavailable.
 
 ## Verification status
 
