@@ -32,7 +32,7 @@ def test_gateway_forwards_every_supported_domain(monkeypatch):
 
     routes = {
         domain: respx.post(
-            f"https://fde-mastery.internal/v1/triage/org123/{domain}"
+            f"https://fde-mastery.internal/v1/{domain}/execute"
         ).mock(
             return_value=Response(
                 200,
@@ -67,7 +67,10 @@ def test_gateway_forwards_every_supported_domain(monkeypatch):
         assert response.status_code == 200, f"{domain}: {response.text}"
         assert routes[domain].called
         forwarded = json.loads(routes[domain].calls.last.request.content)
-        assert forwarded == PAYLOADS[domain]
+        assert forwarded == {
+            "tenant_id": "org123",
+            "payload": PAYLOADS[domain],
+        }
         assert response.json()["result"]["domain"] == domain
 
 
