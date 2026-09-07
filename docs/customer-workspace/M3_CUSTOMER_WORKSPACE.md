@@ -19,10 +19,10 @@ Tinlance Core / workspace services
       ├── canonical AuditEvent ledger
       └── FDE API
              ↓ service credential
-        fde-mastery
+        fde-mastery platform-core
 ```
 
-The browser never calls `fde-mastery` directly. The Tinlance FDE API validates the supported domain, authenticates the service call, propagates the tenant identifier and request correlation, then invokes the upstream triage contract.
+The browser never calls `fde-mastery` directly. The Tinlance FDE API validates the supported domain, authenticates the service call, propagates the tenant identifier and request correlation, then invokes the current platform-core execution contract.
 
 ## Tenant isolation
 
@@ -40,7 +40,7 @@ Transitions are explicitly guarded and audited. Existing M1 `Project` records ar
 
 M3 extends the existing commercial `Assessment` record with `WorkspaceAssessment`. It records technical objective, explicit JSON scope, methodology/version, assessor, lifecycle and result status. FDE execution is server-only and uses `FDE_API_URL` + `FDE_SERVICE_TOKEN`.
 
-The FDE API contract is currently `POST /v1/{domain}/execute`; that gateway translates internally to `POST /v1/triage/{tenant_id}/{domain}` in `fde-mastery`. This distinction is intentional: customers and browser code do not bypass the gateway.
+The Tinlance FDE API contract is `POST /v1/{domain}/execute`. It forwards the tenant-aware execution envelope to the current `fde-mastery` platform-core contract at the same `/v1/{domain}/execute` path. The browser never bypasses the Tinlance gateway.
 
 Structured execution results are persisted in `WorkspaceAssessmentResult` with a SHA-256 result hash and correlation request ID.
 
@@ -59,12 +59,13 @@ Upload controls include:
 - private Vercel Blob access
 - authorization on every download
 - audit events for upload/download
+- idempotency-key support for retry safety
 
-Published reports reference evidence by stable IDs and hashes; storage paths are never exposed as the customer-facing contract.
+Evidence remains untrusted data and is never executed by the application. Malware scanning is not claimed unless a separately configured scanning service exists.
 
 ## Findings
 
-Findings have explicit severity, lifecycle, visibility, risk metadata and authorship classification. Internal findings remain hidden until explicitly reviewed/published. Finding status is independent from remediation status.
+Findings have explicit severity, lifecycle, visibility, risk metadata and authorship classification. Internal findings remain hidden until explicitly reviewed/published. Finding status is independent from remediation status. Findings are bound to the canonical commercial Assessment through its existing ID while the workspace API addresses the workspace assessment extension.
 
 ## Reports
 
@@ -131,7 +132,7 @@ Server API families:
 
 ## Current limitations
 
-- The workspace currently uses a bounded server upload path; the 4 MiB limit is deliberate for the current deployment/runtime and should be replaced with authorized direct-to-private-object-storage multipart uploads if larger evidence artifacts become a requirement.
-- Malware scanning is not claimed by M3 unless an existing deployment scanner is configured. Evidence is therefore treated as untrusted data and is never executed by the application.
-- PDF generation is not claimed by the initial M3 implementation; the canonical customer report is accessible as authenticated HTML.
+- Evidence upload is bounded to 4 MiB per file for the current server runtime. Larger artifacts require authorized direct-to-private-object-storage multipart uploads.
+- Malware scanning is not claimed unless separately configured; evidence is treated as untrusted data.
+- PDF generation is not claimed by the initial M3 implementation; the canonical customer report is authenticated HTML.
 - Live deployed Tinlance → FDE API → `fde-mastery` execution remains a production acceptance test and must be observed before certification.
