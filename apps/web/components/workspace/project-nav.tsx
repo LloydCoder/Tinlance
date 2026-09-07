@@ -4,6 +4,7 @@ export function ProjectNav({ projectId, active }: { projectId: string; active: s
   const links = [
     ["overview", "Overview", `/portal/projects/${projectId}`],
     ["assessments", "Assessments", `/portal/projects/${projectId}/assessments`],
+    ["workflows", "Workflows", `/portal/projects/${projectId}/workflows`],
     ["findings", "Findings", `/portal/projects/${projectId}/findings`],
     ["evidence", "Evidence", `/portal/projects/${projectId}/evidence`],
     ["reports", "Reports", `/portal/projects/${projectId}/reports`],
