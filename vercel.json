@@ -3,9 +3,7 @@
   "installCommand": "cd ../.. && corepack enable && corepack prepare pnpm@10.14.0 --activate && pnpm install --frozen-lockfile",
   "buildCommand": "cd ../.. && pnpm --filter @tinlance/web build",
   "crons": [
-    {
-      "path": "/api/internal/automation/worker",
-      "schedule": "*/5 * * * *"
-    }
+    { "path": "/api/internal/automation/worker", "schedule": "*/5 * * * *" },
+    { "path": "/api/internal/webhooks/worker", "schedule": "*/5 * * * *" }
   ]
 }
