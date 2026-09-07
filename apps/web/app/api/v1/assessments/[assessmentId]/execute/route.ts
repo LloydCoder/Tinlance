@@ -1,11 +1,9 @@
 import { db } from "@/lib/db";
 import { startAutomation } from "@/lib/automation/engine";
 import { authenticateApi, ok, problem } from "@/lib/api/v1";
-
 const domains = new Set(["cybersecurity", "finance", "healthtech", "logistics", "legal", "revops", "procurement", "custom"]);
-
 export async function POST(request: Request, context: { params: Promise<{ assessmentId: string }> }) {
-  const auth = await authenticateApi(request, "assessments:execute"); if ("response" in auth) return auth.response; const { assessmentId } = await context.params;
+  const auth = await authenticateApi(request, "assessments:execute", "expensive"); if ("response" in auth) return auth.response; const { assessmentId } = await context.params;
   const assessment = await db.workspaceAssessment.findFirst({ where: { id: assessmentId, organizationId: auth.principal.organizationId }, select: { id: true, projectId: true, organizationId: true, type: true, status: true, assessmentId: true } });
   if (!assessment) return problem(auth.principal.requestId, 404, "resource_not_found", "Assessment not found");
   if (assessment.status === "COMPLETED" || assessment.status === "REPORT_ISSUED") return problem(auth.principal.requestId, 409, "conflict", "Assessment already completed");
