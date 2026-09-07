@@ -1,5 +1,7 @@
 # M3 — FDE Customer Workspace
 
+> Execution status is certified only from the latest repository CI run; preview-hosting failures are tracked separately from the blocking repository CI gate.
+
 ## Purpose
 
 M3 makes the authenticated Tinlance customer workspace the durable system of record for FDE/security engagements:
@@ -87,7 +89,7 @@ Sensitive evidence content and secrets are not written to audit metadata.
 
 ## AI boundary
 
-M3 stores authorship metadata for AI-assisted/generated finding content, but no M3 AI workflow can autonomously publish a report, verify remediation, close a finding, grant access or delete evidence. AI inputs remain untrusted evidence; high-impact actions remain human-authorized.
+M3 stores authorship metadata for AI-assisted/generated finding content, but no M3 AI workflow can autonomously publish a report, verify remediation, close a finding, grant access or delete evidence. AI inputs remain untrusted data; high-impact actions remain human-authorized.
 
 ## Security baseline
 
