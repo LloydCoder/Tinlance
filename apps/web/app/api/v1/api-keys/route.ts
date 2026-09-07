@@ -1,0 +1,37 @@
+import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+import { createHash, randomUUID } from "node:crypto";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { API_KEY_PREFIX, PUBLIC_SCOPES, createApiSecret, problem } from "@/lib/api/v1";
+import { getRequestId } from "@/lib/security/request-id";
+
+const createSchema = z.object({ name: z.string().trim().min(1).max(100), scopes: z.array(z.enum(PUBLIC_SCOPES)).min(1).max(PUBLIC_SCOPES.length), expiresAt: z.string().datetime().optional() });
+function hash(value: string) { return createHash("sha256").update(value).digest("hex"); }
+async function principal(requestId: string) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.session.activeOrganizationId) return null;
+  const member = await db.member.findUnique({ where: { organizationId_userId: { organizationId: session.session.activeOrganizationId, userId: session.user.id } }, select: { role: true } });
+  if (!member || !["owner", "admin", "client-admin"].includes(member.role)) return null;
+  return { organizationId: session.session.activeOrganizationId, userId: session.user.id };
+}
+
+export async function GET(request: Request) {
+  const requestId = getRequestId(request); const p = await principal(requestId); if (!p) return problem(requestId, 403, "authorization_denied", "API credential administration is not permitted");
+  const rows = await db.$queryRaw<Array<{ id: string; name: string; prefix: string; scopes: unknown; expiresAt: Date | null; lastUsedAt: Date | null; revokedAt: Date | null; createdAt: Date }>>(Prisma.sql`SELECT "id","name","prefix","scopes","expiresAt","lastUsedAt","revokedAt","createdAt" FROM "ApiCredential" WHERE "organizationId"=${p.organizationId} ORDER BY "createdAt" DESC LIMIT 100`);
+  return NextResponse.json({ data: rows, requestId }, { headers: { "cache-control": "private, no-store", "x-request-id": requestId } });
+}
+
+export async function POST(request: Request) {
+  const requestId = getRequestId(request); const p = await principal(requestId); if (!p) return problem(requestId, 403, "authorization_denied", "API credential administration is not permitted");
+  let parsed; try { parsed = createSchema.parse(await request.json()); } catch { return problem(requestId, 422, "validation_failed", "Invalid API credential request"); }
+  const secret = createApiSecret(); const prefix = secret.slice(0, API_KEY_PREFIX.length + 8); const id = randomUUID(); const expiresAt = parsed.expiresAt ? new Date(parsed.expiresAt) : null;
+  if (expiresAt && expiresAt <= new Date()) return problem(requestId, 422, "validation_failed", "expiresAt must be in the future");
+  await db.$transaction(async (tx) => {
+    await tx.$executeRaw(Prisma.sql`INSERT INTO "ApiCredential" ("id","organizationId","createdByUserId","name","prefix","secretHash","scopes","expiresAt","createdAt","updatedAt") VALUES (${id},${p.organizationId},${p.userId},${parsed.name},${prefix},${hash(secret)},${JSON.stringify(parsed.scopes)}::jsonb,${expiresAt},CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`);
+    await tx.auditEvent.create({ data: { organizationId: p.organizationId, actorUserId: p.userId, action: "API_KEY_CREATED", resourceType: "api_credential", resourceId: id, requestId, metadata: { prefix, scopes: parsed.scopes, expiresAt } } });
+  });
+  return NextResponse.json({ data: { id, name: parsed.name, prefix, scopes: parsed.scopes, expiresAt, secret, warning: "Store this secret now. Tinlance will not display it again." }, requestId }, { status: 201, headers: { "cache-control": "no-store", "x-request-id": requestId } });
+}
