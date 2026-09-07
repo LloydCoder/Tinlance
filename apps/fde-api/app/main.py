@@ -25,7 +25,7 @@ VALID_DOMAINS = {
 
 app = FastAPI(
     title="Tinlance FDE API",
-    version="0.5.1",
+    version="0.6.0",
     docs_url=(
         "/docs"
         if os.getenv("FDE_ENABLE_DOCS", "false").lower() == "true"
@@ -147,7 +147,7 @@ async def get_upstream_token() -> str | None:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok", "api_version": "0.5.1"}
+    return {"status": "ok", "api_version": "0.6.0"}
 
 
 @app.get("/ready")
@@ -217,16 +217,14 @@ async def execute(
         "Idempotency-Key": idempotency_key,
         "authorization": f"Bearer {token}",
     }
-    upstream_payload = {
-        "tenant_id": payload.tenant_id,
-        "payload": payload.payload,
-    }
+    upstream_payload = payload.payload
     try:
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(30.0, connect=5.0)
         ) as client:
             response = await client.post(
-                upstream.rstrip("/") + f"/v1/{normalized_domain}/execute",
+                upstream.rstrip("/")
+                + f"/v1/triage/{payload.tenant_id}/{normalized_domain}",
                 json=upstream_payload,
                 headers=headers,
             )
