@@ -1,5 +1,10 @@
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+
+async function audit(tx: Prisma.TransactionClient, organizationId: string, actorUserId: string, action: string, runId: string) {
+  await tx.$executeRaw(Prisma.sql`INSERT INTO "AuditEvent" ("id","organizationId","actorUserId","action","resourceType","resourceId","metadata") VALUES (${randomUUID()},${organizationId},${actorUserId},${action},'WorkflowRun',${runId},'{}'::jsonb)`);
+}
 
 export async function pauseAutomation(runId: string, organizationId: string, actorUserId: string) {
   return db.$transaction(async (tx) => {
@@ -9,7 +14,7 @@ export async function pauseAutomation(runId: string, organizationId: string, act
     if (!["RUNNING", "RETRYING", "WAITING"].includes(run.status)) throw new Error("workflow cannot be paused in its current state");
     await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='PAUSED',"updated_at"=CURRENT_TIMESTAMP WHERE id=${runId}`);
     await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_workflow_events" ("workflow_run_id","organization_id","event_type","actor_type","actor_id","payload") VALUES (${runId},${organizationId},'WORKFLOW_PAUSED','user',${actorUserId},'{}'::jsonb)`);
-    await tx.$executeRaw(Prisma.sql`INSERT INTO "AuditEvent" ("id","organizationId","actorUserId","action","resourceType","resourceId","metadata") VALUES (gen_random_uuid()::text,${organizationId},${actorUserId},'WORKFLOW_PAUSED','WorkflowRun',${runId},'{}'::jsonb)`);
+    await audit(tx, organizationId, actorUserId, "WORKFLOW_PAUSED", runId);
     return (await tx.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId}`))[0];
   });
 }
@@ -25,7 +30,7 @@ export async function retryAutomation(runId: string, organizationId: string, act
     await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_steps" SET status='PENDING',"error_code"=NULL,"error_message"=NULL,"updated_at"=CURRENT_TIMESTAMP WHERE id=${steps[0].id}`);
     await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='RUNNING',"error_code"=NULL,"error_message"=NULL,"completed_at"=NULL,"next_run_at"=CURRENT_TIMESTAMP,"updated_at"=CURRENT_TIMESTAMP WHERE id=${runId}`);
     await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_workflow_events" ("workflow_run_id","organization_id","event_type","actor_type","actor_id","payload") VALUES (${runId},${organizationId},'WORKFLOW_RETRY_REQUESTED','user',${actorUserId},'{}'::jsonb)`);
-    await tx.$executeRaw(Prisma.sql`INSERT INTO "AuditEvent" ("id","organizationId","actorUserId","action","resourceType","resourceId","metadata") VALUES (gen_random_uuid()::text,${organizationId},${actorUserId},'WORKFLOW_RETRY_REQUESTED','WorkflowRun',${runId},'{}'::jsonb)`);
+    await audit(tx, organizationId, actorUserId, "WORKFLOW_RETRY_REQUESTED", runId);
     return (await tx.$queryRaw<Array<Record<string, unknown>>>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId}`))[0];
   });
 }
