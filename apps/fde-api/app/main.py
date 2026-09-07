@@ -160,7 +160,11 @@ async def ready() -> dict[str, str]:
     has_static_auth = static_token_allowed() and bool(
         os.getenv("FDE_MASTER_UPSTREAM_TOKEN")
     )
-    if not os.getenv("FDE_SERVICE_TOKEN") or not os.getenv("FDE_MASTER_UPSTREAM_URL"):
+    gateway_configured = bool(
+        os.getenv("FDE_SERVICE_TOKEN")
+        and os.getenv("FDE_MASTER_UPSTREAM_URL")
+    )
+    if not gateway_configured:
         raise HTTPException(
             status_code=503,
             detail="FDE gateway is not configured",
