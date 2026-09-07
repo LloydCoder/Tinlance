@@ -7,14 +7,14 @@ Tinlance Next.js
       │
       │ server-only FDE_SERVICE_TOKEN
       ▼
-Tinlance FDE API
+Tinlance FDE API gateway
       │
       │ OAuth 2.0 client credentials in production
       ▼
 fde-mastery platform-core
       │
       ▼
-/v1/{domain}/execute
+POST /v1/triage/{client_id}/{domain}
 ```
 
 The browser never calls `fde-mastery` directly.
@@ -33,17 +33,28 @@ x-request-id: <UUID>
 }
 ```
 
-The FDE API validates the domain, authenticates the Tinlance caller and propagates the tenant and correlation identifiers.
+This is the Tinlance gateway interface only. It is intentionally different from the upstream contract.
 
 ## FDE API → fde-mastery contract
 
-The current `fde-mastery` production API contract is `POST /v1/{domain}/execute`. The Tinlance gateway forwards the authenticated tenant identifier and wraps the workspace payload in the same execution envelope expected by the current platform-core API.
+The canonical upstream production contract is:
 
-The upstream tenant/client identifier is derived from the authenticated Tinlance organization context. It is never trusted from browser-controlled data.
+```http
+POST /v1/triage/{client_id}/{domain}
+Authorization: Bearer <OAuth access token>
+Idempotency-Key: <unique operation key>
+x-request-id: <UUID>
+
+{ ...validated triage payload... }
+```
+
+The gateway propagates the tenant/client identifier as the path parameter, preserves correlation and idempotency headers, and forwards the validated workspace payload. It does not wrap the payload in a competing execution envelope.
+
+The `fde-mastery` v1 facade reuses its established triage implementation; it is not a second execution engine.
 
 ## Supported domains
 
-The current gateway allowlist is:
+The current Tinlance gateway allowlist is:
 
 - `cybersecurity`
 - `finance`
@@ -54,7 +65,7 @@ The current gateway allowlist is:
 - `procurement`
 - `custom`
 
-Unknown domains are rejected.
+The canonical `fde-mastery` `Domain` enum is the source of truth for the upstream domain taxonomy. Unknown domains are rejected at the gateway.
 
 ## Authentication
 
@@ -64,31 +75,33 @@ The FDE API requires the server-only `FDE_SERVICE_TOKEN`. End users never authen
 
 ### FDE API → fde-mastery
 
-Production uses OAuth 2.0 client credentials when the OAuth configuration is present. The static upstream token fallback is restricted to development/test by the gateway. The upstream platform itself applies its tenant-aware authorization contract.
+Production uses OAuth 2.0 client credentials when configured. Static upstream tokens are restricted to development/test by the gateway. The upstream platform applies its own tenant-aware authorization and scope checks.
 
-## M3 execution
+## M3/M4 execution
 
-The M3 customer workspace invokes the Tinlance FDE API from a server-side route after resolving:
+M3 and M4 server-side execution resolves:
 
 1. Better Auth session.
-2. Active organization membership.
+2. Active organization membership or authorized internal operator.
 3. Project ownership.
-4. Assessment ownership.
-5. Supported execution domain.
+4. Assessment ownership for customer assessment workflows.
+5. Supported execution domain/capability.
 6. FDE service configuration.
 
-The assessment result is persisted in the workspace with its request correlation ID and SHA-256 result hash. Upstream failures never become successful assessment results.
+M4 additionally propagates workflow run ID, workflow step ID, request ID and pinned capability metadata as validated payload context. Results are stored with provenance and SHA-256 hashes before they feed M3 findings/reports/remediation.
 
 ## Resilience and safety
 
-The gateway provides bounded input validation, domain allowlisting, timeout controls, request correlation, required idempotency, and safe upstream error handling. Production readiness fails closed when upstream authentication is unavailable.
+The gateway provides bounded input validation, domain allowlisting, timeout controls, request correlation, required idempotency and safe upstream error handling. Production readiness fails closed when upstream authentication is unavailable.
+
+M4 adds persisted workflow leases, bounded retries, retry scheduling, approval gates and operator controls without introducing a second authorization or execution system.
 
 ## Verification status
 
-Source-level gateway contract tests are part of CI. A live Tinlance → FDE API → `fde-mastery` execution remains a deployment acceptance test and must be observed before being certified as live.
+Source-level gateway contract tests cover every supported domain and assert the canonical `/v1/triage/{client_id}/{domain}` route. A live authenticated Tinlance → FDE API → `fde-mastery` execution remains a deployment acceptance test and must be observed before it is certified as live.
 
 **LIVE FDE PATH: UNVERIFIED** until authenticated production execution is observed.
 
 ## Security baseline
 
-Changes must preserve least privilege, domain allowlisting, tenant isolation, authenticated service-to-service communication, request correlation, safe error handling, timeout enforcement and auditability. The boundary is reviewed against OWASP ASVS 5.0 and current AI/agent security guidance.
+Changes preserve least privilege, domain allowlisting, tenant isolation, authenticated service-to-service communication, request correlation, safe error handling, timeout enforcement and auditability. The boundary is reviewed against OWASP ASVS 5.0 and current AI/agent security guidance.
