@@ -10,10 +10,16 @@ const createdUsers: string[] = [];
 afterEach(async () => {
   for (const organizationId of createdOrganizations.splice(0)) {
     await db.$executeRaw(
+      Prisma.sql`DELETE FROM "AuditEvent" WHERE "organizationId"=${organizationId}`
+    );
+    await db.$executeRaw(
       Prisma.sql`DELETE FROM "Organization" WHERE id=${organizationId}`
     );
   }
   for (const userId of createdUsers.splice(0)) {
+    await db.$executeRaw(
+      Prisma.sql`DELETE FROM "AuditEvent" WHERE "actorUserId"=${userId}`
+    );
     await db.$executeRaw(Prisma.sql`DELETE FROM "User" WHERE id=${userId}`);
   }
 });
