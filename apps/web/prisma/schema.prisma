@@ -57,6 +57,123 @@ enum DeliveryModel {
   RETAINER
 }
 
+enum ProjectWorkspaceStatus {
+  DRAFT
+  ACTIVE
+  ASSESSMENT
+  FINDINGS_REVIEW
+  REPORTING
+  REMEDIATION
+  VERIFICATION
+  COMPLETED
+  ARCHIVED
+}
+
+enum WorkspaceAssessmentStatus {
+  PLANNED
+  SCOPED
+  ACTIVE
+  EVIDENCE_COLLECTION
+  ANALYSIS
+  FINDINGS_REVIEW
+  COMPLETED
+  REPORT_ISSUED
+}
+
+enum WorkspaceResultStatus {
+  PASS
+  FAIL
+  PARTIAL
+  NOT_ASSESSED
+  NOT_APPLICABLE
+  INCONCLUSIVE
+}
+
+enum WorkspaceFindingSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum WorkspaceFindingStatus {
+  DRAFT_INTERNAL
+  REVIEW
+  CUSTOMER_VISIBLE
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  REMEDIATED
+  VERIFICATION_PENDING
+  VERIFIED
+  CLOSED
+  ACCEPTED_RISK
+  FALSE_POSITIVE
+  NOT_APPLICABLE
+  DUPLICATE
+}
+
+enum WorkspaceVisibility {
+  CUSTOMER
+  CUSTOMER_CONFIDENTIAL
+  TINLANCE_INTERNAL
+  RESTRICTED
+}
+
+enum EvidenceIntegrityStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  SUPERSEDED
+}
+
+enum EvidenceRequestStatus {
+  REQUESTED
+  SUBMITTED
+  REVIEWING
+  ACCEPTED
+  REJECTED
+  REOPENED
+}
+
+enum WorkspaceReportStatus {
+  DRAFT
+  INTERNAL_REVIEW
+  APPROVED
+  PUBLISHED
+  SUPERSEDED
+}
+
+enum WorkspaceRemediationStatus {
+  OPEN
+  PLANNED
+  IN_PROGRESS
+  BLOCKED
+  READY_FOR_VERIFICATION
+  CUSTOMER_ATTESTED
+  VERIFIED
+  CLOSED
+}
+
+enum VerificationResult {
+  PASS
+  FAIL
+  INCONCLUSIVE
+}
+
+enum WorkspaceNoteKind {
+  INTERNAL_NOTE
+  CUSTOMER_COMMENT
+}
+
+enum AIAuthorship {
+  HUMAN_AUTHORED
+  AI_ASSISTED
+  AI_GENERATED
+  HUMAN_VERIFIED
+}
+
 model User {
   id            String       @id @default(cuid())
   name          String
@@ -74,7 +191,6 @@ model User {
   auditEvents   AuditEvent[]
   ownedLeads    Lead[]       @relation("LeadOwner")
   ownedOpportunities Opportunity[] @relation("OpportunityOwner")
-
   @@index([role])
 }
 
@@ -90,7 +206,6 @@ model Session {
   activeOrganizationId String?
   activeTeamId         String?
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@index([userId])
   @@index([expiresAt])
 }
@@ -110,7 +225,6 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@unique([providerId, accountId])
   @@index([userId])
 }
@@ -122,7 +236,6 @@ model Verification {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
   @@index([identifier])
 }
 
@@ -161,7 +274,6 @@ model Member {
   createdAt      DateTime     @default(now())
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@unique([organizationId, userId])
   @@index([userId])
 }
@@ -177,7 +289,6 @@ model Invitation {
   expiresAt      DateTime
   inviter        User         @relation("InvitationInviter", fields: [inviterId], references: [id], onDelete: Cascade)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
   @@index([email])
   @@index([organizationId, status])
   @@index([expiresAt])
@@ -190,7 +301,6 @@ model OrganizationMember {
   role           String
   createdAt      DateTime     @default(now())
   organization   Organization @relation("LegacyOrganizationMembers", fields: [organizationId], references: [id], onDelete: Cascade)
-
   @@unique([organizationId, clerkUserId])
   @@index([clerkUserId])
 }
@@ -204,7 +314,6 @@ model Contact {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
   @@unique([organizationId, email])
   @@index([organizationId, createdAt])
 }
@@ -247,7 +356,6 @@ model Lead {
   opportunities         Opportunity[]
   bookings              Booking[]
   proposals             Proposal[]
-
   @@index([organizationId, status])
   @@index([email])
   @@index([createdAt])
@@ -279,7 +387,6 @@ model Assessment {
   opportunity          Opportunity?
   booking              Booking?
   proposals            Proposal[]
-
   @@index([leadId, createdAt])
   @@index([organizationId, createdAt])
 }
@@ -306,7 +413,6 @@ model Opportunity {
   bookings       Booking[]
   proposals      Proposal[]
   engagement     Engagement?
-
   @@index([stage, nextActionAt])
   @@index([organizationId, stage])
   @@index([ownerUserId, stage, nextActionAt])
@@ -334,7 +440,6 @@ model Booking {
   lead             Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
   assessment       Assessment?   @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
   opportunity      Opportunity?  @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
-
   @@index([organizationId, status])
   @@index([startsAt])
   @@index([email])
@@ -368,7 +473,6 @@ model Proposal {
   opportunity     Opportunity?   @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   versions        ProposalVersion[]
   engagement      Engagement?
-
   @@index([organizationId, status])
   @@index([leadId, createdAt])
   @@index([opportunityId, createdAt])
@@ -395,7 +499,6 @@ model ProposalVersion {
   createdByUserId       String
   createdAt             DateTime @default(now())
   proposal              Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-
   @@unique([proposalId, version])
   @@index([proposalId, createdAt])
 }
@@ -421,7 +524,6 @@ model ClientAccessInvite {
   acceptedAt DateTime?
   createdAt  DateTime @default(now())
   client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-
   @@index([clientId, email])
   @@index([expiresAt])
 }
@@ -452,7 +554,6 @@ model Engagement {
   projects             Project[]
   milestones           EngagementMilestone[]
   invoices             Invoice[]
-
   @@index([organizationId, status])
   @@index([clientId, status])
 }
@@ -467,7 +568,6 @@ model EngagementMilestone {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   engagement   Engagement  @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
   @@index([engagementId, status])
 }
 
@@ -486,7 +586,6 @@ model Project {
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   engagement     Engagement?  @relation(fields: [engagementId], references: [id], onDelete: SetNull)
-
   @@index([organizationId, status])
   @@index([engagementId, status])
 }
@@ -500,7 +599,6 @@ model Document {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
   @@index([organizationId, createdAt])
 }
 
@@ -512,7 +610,6 @@ model Message {
   createdAt      DateTime     @default(now())
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   author         User         @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
-
   @@index([organizationId, createdAt])
 }
 
@@ -529,7 +626,6 @@ model Invoice {
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   engagement     Engagement?  @relation(fields: [engagementId], references: [id], onDelete: SetNull)
-
   @@index([organizationId, status])
   @@index([engagementId, status])
 }
@@ -540,7 +636,6 @@ model WebhookEvent {
   eventId    String
   eventType  String
   receivedAt DateTime @default(now())
-
   @@unique([provider, eventId])
   @@index([provider, receivedAt])
 }
@@ -556,7 +651,6 @@ model AuditEvent {
   metadata       Json?
   createdAt      DateTime @default(now())
   actor          User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
-
   @@index([organizationId, createdAt])
   @@index([actorUserId, createdAt])
   @@index([resourceType, resourceId])
@@ -579,9 +673,236 @@ model GrowthEvent {
   privacyClass   String
   properties     Json?
   createdAt      DateTime @default(now())
-
   @@index([eventName, occurredAt])
   @@index([source, occurredAt])
   @@index([organizationId, occurredAt])
   @@index([userId, occurredAt])
+}
+
+model ProjectWorkspaceState {
+  id             String                @id @default(cuid())
+  projectId      String                @unique
+  organizationId String
+  status         ProjectWorkspaceStatus @default(DRAFT)
+  priority       String                @default("normal")
+  ownerUserId    String?
+  startDate      DateTime?
+  targetDate     DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  @@index([organizationId, status])
+  @@index([organizationId, updatedAt])
+}
+
+model WorkspaceAssessment {
+  id             String                    @id @default(cuid())
+  projectId      String
+  organizationId String
+  assessmentId   String                    @unique
+  type           String
+  objective      String                    @db.Text
+  scope          Json
+  methodology    String                    @db.Text
+  status         WorkspaceAssessmentStatus @default(PLANNED)
+  resultStatus   WorkspaceResultStatus     @default(NOT_ASSESSED)
+  assessorUserId String?
+  version        String                    @default("1.0")
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  @@index([organizationId, projectId, status])
+  @@index([projectId, createdAt])
+  @@index([assessmentId])
+}
+
+model WorkspaceAssessmentResult {
+  id             String   @id @default(cuid())
+  assessmentId   String   @unique
+  organizationId String
+  projectId      String
+  requestId      String
+  status         String
+  result         Json
+  resultHash     String
+  createdAt      DateTime @default(now())
+  @@index([organizationId, projectId, createdAt])
+}
+
+model WorkspaceFinding {
+  id               String                  @id @default(cuid())
+  organizationId   String
+  projectId        String
+  assessmentId     String
+  title            String
+  description      String                  @db.Text
+  category         String
+  severity         WorkspaceFindingSeverity
+  likelihood       String?
+  impact           String?
+  riskScore        Decimal?                @db.Decimal(8, 3)
+  riskMethodology  String?
+  status           WorkspaceFindingStatus   @default(DRAFT_INTERNAL)
+  affectedAsset    String?
+  recommendation   String                  @db.Text
+  ownerUserId      String?
+  dueDate          DateTime?
+  visibility       WorkspaceVisibility      @default(TINLANCE_INTERNAL)
+  authorship       AIAuthorship             @default(HUMAN_AUTHORED)
+  idempotencyKey   String?                 @unique
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  @@index([organizationId, projectId, status])
+  @@index([projectId, severity, status])
+  @@index([assessmentId, createdAt])
+}
+
+model WorkspaceEvidence {
+  id                String                  @id @default(cuid())
+  organizationId    String
+  projectId         String
+  assessmentId      String?
+  title             String
+  description       String?                 @db.Text
+  type              String
+  source            String
+  collectedAt       DateTime
+  collectedByUserId String?
+  contentHash       String
+  hashAlgorithm     String                  @default("SHA-256")
+  mimeType          String
+  sizeBytes         BigInt
+  storageReference  String
+  classification    WorkspaceVisibility     @default(CUSTOMER_CONFIDENTIAL)
+  integrityStatus   EvidenceIntegrityStatus @default(PENDING)
+  visibility        WorkspaceVisibility     @default(CUSTOMER_CONFIDENTIAL)
+  versionNumber     Int                     @default(1)
+  idempotencyKey    String?                 @unique
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  @@index([organizationId, projectId, createdAt])
+  @@index([projectId, classification, visibility])
+  @@index([assessmentId, createdAt])
+  @@index([contentHash])
+}
+
+model WorkspaceFindingEvidence {
+  findingId  String
+  evidenceId String
+  createdAt  DateTime @default(now())
+  @@id([findingId, evidenceId])
+  @@index([evidenceId])
+}
+
+model WorkspaceReport {
+  id                String                @id @default(cuid())
+  organizationId    String
+  projectId         String
+  assessmentId      String?
+  title             String
+  type              String
+  currentVersion    Int                   @default(1)
+  status            WorkspaceReportStatus @default(DRAFT)
+  summary           String?               @db.Text
+  generatedAt       DateTime?
+  publishedAt       DateTime?
+  publishedByUserId String?
+  contentHash       String?
+  idempotencyKey    String?               @unique
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  @@index([organizationId, projectId, status])
+  @@index([projectId, createdAt])
+}
+
+model WorkspaceReportVersion {
+  id             String   @id @default(cuid())
+  reportId       String
+  version        Int
+  content        String   @db.Text
+  contentHash    String
+  createdByUserId String
+  createdAt      DateTime @default(now())
+  @@unique([reportId, version])
+  @@index([reportId, createdAt])
+}
+
+model WorkspaceRemediation {
+  id                 String                    @id @default(cuid())
+  organizationId     String
+  projectId          String
+  findingId          String
+  title              String
+  description        String                    @db.Text
+  ownerUserId        String?
+  priority           String
+  status             WorkspaceRemediationStatus @default(OPEN)
+  targetDate         DateTime?
+  completedAt        DateTime?
+  verificationStatus VerificationResult        @default(INCONCLUSIVE)
+  idempotencyKey     String?                   @unique
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  @@index([organizationId, projectId, status])
+  @@index([findingId, status])
+  @@index([ownerUserId, status, targetDate])
+}
+
+model WorkspaceRemediationEvidence {
+  remediationId String
+  evidenceId    String
+  createdAt     DateTime @default(now())
+  @@id([remediationId, evidenceId])
+  @@index([evidenceId])
+}
+
+model WorkspaceVerification {
+  id             String             @id @default(cuid())
+  organizationId String
+  projectId      String
+  findingId      String
+  remediationId  String?
+  verifierUserId String
+  method         String
+  result         VerificationResult
+  notes          String?            @db.Text
+  evidenceId     String?
+  createdAt      DateTime           @default(now())
+  @@index([organizationId, projectId, createdAt])
+  @@index([findingId, createdAt])
+  @@index([remediationId, createdAt])
+}
+
+model WorkspaceEvidenceRequest {
+  id                  String               @id @default(cuid())
+  organizationId      String
+  projectId           String
+  assessmentId        String?
+  title               String
+  description         String               @db.Text
+  requestedType       String
+  dueDate             DateTime?
+  requestedByUserId   String
+  status              EvidenceRequestStatus @default(REQUESTED)
+  submittedEvidenceId String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  @@index([organizationId, projectId, status])
+  @@index([projectId, dueDate])
+}
+
+model WorkspaceNote {
+  id             String            @id @default(cuid())
+  organizationId String
+  projectId      String
+  resourceType   String
+  resourceId     String
+  authorUserId   String
+  kind           WorkspaceNoteKind
+  body           String            @db.Text
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  @@index([organizationId, projectId, kind, createdAt])
+  @@index([resourceType, resourceId, createdAt])
 }

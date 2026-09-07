@@ -54,6 +54,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile=true
         working-directory: .
+      - name: Validate database migrations
+        run: pnpm prisma migrate deploy
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm --filter @tinlance/web test -- --passWithNoTests
