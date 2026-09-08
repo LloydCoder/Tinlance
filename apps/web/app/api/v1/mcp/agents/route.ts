@@ -18,10 +18,12 @@ const createSchema = z.object({
 
 const PUBLIC_AGENT_SCOPES = new Set(["mcp:read", "mcp:write", "projects:read", "assessments:read", "assessments:execute", "findings:read", "reports:read", "remediation:read"]);
 
+const json = (body: unknown, status: number, requestId: string) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": requestId } });
+
 export async function GET(request: Request) {
   const principal = await getWorkspacePrincipal();
   const requestId = getRequestId(request);
-  if (!principal || !hasWorkspacePermission(principal, "workspace:manage")) return new Response(JSON.stringify({ code: "FORBIDDEN", requestId }), { status: 403, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": requestId } });
+  if (!principal || !hasWorkspacePermission(principal, "workspace:manage")) return json({ code: "FORBIDDEN", requestId }, 403, requestId);
   const rows = await db.$queryRaw<Array<{ id: string; clientId: string; name: string; description: string | null; status: string; environment: string; scopes: unknown; allowedTools: unknown; expiresAt: Date | null; lastUsedAt: Date | null; revokedAt: Date | null; createdAt: Date }>>(Prisma.sql`SELECT "id","clientId","name","description","status","environment","scopes","allowedTools","expiresAt","lastUsedAt","revokedAt","createdAt" FROM "McpAgent" WHERE "organizationId"=${principal.organizationId} ORDER BY "createdAt" DESC`);
   return new Response(JSON.stringify({ data: rows.map((row) => ({ ...row, expiresAt: row.expiresAt?.toISOString() ?? null, lastUsedAt: row.lastUsedAt?.toISOString() ?? null, revokedAt: row.revokedAt?.toISOString() ?? null, createdAt: row.createdAt.toISOString() })), requestId }), { status: 200, headers: { "content-type": "application/json", "cache-control": "private, no-store", "x-request-id": requestId } });
 }
@@ -29,24 +31,28 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const principal = await getWorkspacePrincipal();
   const requestId = getRequestId(request);
-  if (!principal || !hasWorkspacePermission(principal, "workspace:manage")) return new Response(JSON.stringify({ code: "FORBIDDEN", requestId }), { status: 403, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": requestId } });
+  if (!principal || !hasWorkspacePermission(principal, "workspace:manage")) return json({ code: "FORBIDDEN", requestId }, 403, requestId);
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return new Response(JSON.stringify({ code: "INVALID_ARGUMENT", requestId }), { status: 422, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": requestId } });
+  if (!parsed.success) return json({ code: "INVALID_ARGUMENT", requestId }, 422, requestId);
   const input = parsed.data;
   const expiresAt = new Date(input.expiresAt);
-  try { validateAgentExpiry(expiresAt); } catch { return new Response(JSON.stringify({ code: "INVALID_ARGUMENT", detail: "Agent credentials may expire no more than 90 days after creation", requestId }), { status: 422, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": requestId } }); }
-  if (input.scopes.some((scope) => !PUBLIC_AGENT_SCOPES.has(scope))) return new Response(JSON.stringify({ code: "INVALID_ARGUMENT", detail: "Unsupported MCP agent scope", requestId }), { status: 422, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": requestId } });
+  try { validateAgentExpiry(expiresAt); } catch { return json({ code: "INVALID_ARGUMENT", detail: "Agent credentials may expire no more than 90 days after creation", requestId }, 422, requestId); }
+  if (input.scopes.some((scope) => !PUBLIC_AGENT_SCOPES.has(scope))) return json({ code: "INVALID_ARGUMENT", detail: "Unsupported MCP agent scope", requestId }, 422, requestId);
+  if (new Set(input.allowedTools).size !== input.allowedTools.length) return json({ code: "INVALID_ARGUMENT", detail: "Duplicate MCP tool grants are not allowed", requestId }, 422, requestId);
   const registry = listMcpTools();
   const selected = input.allowedTools.map((toolId) => registry.find((tool) => tool.toolId === toolId));
-  if (selected.some((tool) => !tool)) return new Response(JSON.stringify({ code: "INVALID_ARGUMENT", detail: "Agent requested an unknown tool", requestId }), { status: 422, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": requestId } });
-  if (selected.some((tool) => tool!.requiredScopes.some((scope) => !input.scopes.includes(scope)))) return new Response(JSON.stringify({ code: "INVALID_ARGUMENT", detail: "Agent scopes do not cover every requested tool", requestId }), { status: 422, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": requestId } });
+  if (selected.some((tool) => !tool)) return json({ code: "INVALID_ARGUMENT", detail: "Agent requested an unknown tool", requestId }, 422, requestId);
+  const selectedTools = selected.filter((tool): tool is NonNullable<typeof tool> => Boolean(tool));
+  const requiredScopes = new Set(selectedTools.flatMap((tool) => tool.requiredScopes));
+  if (input.scopes.some((scope) => !requiredScopes.has(scope)) || selectedTools.some((tool) => tool.requiredScopes.some((scope) => !input.scopes.includes(scope)))) return json({ code: "INVALID_ARGUMENT", detail: "Agent scopes must exactly match the selected tool grants", requestId }, 422, requestId);
+  if (selectedTools.some((tool) => tool.requiredPermissions.some((permission) => !hasWorkspacePermission(principal, permission)))) return json({ code: "FORBIDDEN", detail: "The issuing user cannot delegate one or more requested MCP capabilities", requestId }, 403, requestId);
   const token = generateMcpToken();
   const id = `mcp_agent_${crypto.randomUUID().replaceAll("-", "")}`;
   try {
     await db.$executeRaw(Prisma.sql`INSERT INTO "McpAgent" ("id","organizationId","ownerUserId","clientId","name","description","status","environment","scopes","allowedTools","tokenPrefix","tokenHash","expiresAt","createdAt","updatedAt") VALUES (${id},${principal.organizationId},${principal.userId},${input.clientId},${input.name},${input.description ?? null},'ACTIVE',${input.environment},${JSON.stringify(input.scopes)}::jsonb,${JSON.stringify(input.allowedTools)}::jsonb,${mcpTokenPrefix(token)},${mcpTokenHash(token)},${expiresAt},CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`);
     await db.auditEvent.create({ data: { organizationId: principal.organizationId, actorUserId: principal.userId, action: "MCP_AGENT_CREATED", resourceType: "McpAgent", resourceId: id, requestId, metadata: { clientId: input.clientId, environment: input.environment, scopes: input.scopes, allowedTools: input.allowedTools, expiresAt: expiresAt.toISOString() } } });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return new Response(JSON.stringify({ code: "CONFLICT", detail: "Agent clientId or credential already exists", requestId }), { status: 409, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": requestId } });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return json({ code: "CONFLICT", detail: "Agent clientId or credential already exists", requestId }, 409, requestId);
     throw error;
   }
   return new Response(JSON.stringify({ data: { id, clientId: input.clientId, name: input.name, environment: input.environment, expiresAt: expiresAt.toISOString(), token }, requestId }), { status: 201, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": requestId } });
