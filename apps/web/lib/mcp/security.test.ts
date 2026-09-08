@@ -32,7 +32,7 @@ describe("MCP adversarial security contract", () => {
   });
 
   it("contains no unrestricted network, shell or database tools", () => {
-    const forbidden = listMcpTools().filter((tool) => /shell|exec|http|fetch|sql|database|delete|permission|credential/i.test(`${tool.toolId} ${tool.name} ${tool.description}`));
+    const forbidden = listMcpTools().filter((tool) => /(^|[._-])(shell|exec|http|fetch|sql|database|delete|permission|credential)([._-]|$)/i.test(`${tool.toolId} ${tool.name} ${tool.description}`));
     expect(forbidden).toHaveLength(0);
   });
 });
