@@ -12,6 +12,8 @@ const REQUIRED_SCOPE = "mcp:read";
 const SERVER_VERSION = "1.0.0";
 const MAX_RESULT_BYTES = 512 * 1024;
 type ToolArgs = Record<string, unknown>;
+type McpResult = ReturnType<typeof textResult>;
+type AuthorizationResult = { principal: NonNullable<ReturnType<typeof principalFromAuth>>; requestId: string } | { error: McpResult };
 
 function textResult(value: unknown, isError = false) {
   const serialized = JSON.stringify(value);
@@ -21,26 +23,26 @@ function textResult(value: unknown, isError = false) {
 function errorResult(code: string, title: string, detail?: string) { return textResult({ code, title, detail: detail ?? title }, true); }
 function requestId(ctx: ServerContext) { return ctx.http?.req ? getRequestId(ctx.http.req) : String(ctx.mcpReq.id || randomUUID()); }
 
-async function authorize(ctx: ServerContext, tool: McpToolDefinition, args: ToolArgs) {
+async function authorize(ctx: ServerContext, tool: McpToolDefinition, args: ToolArgs): Promise<AuthorizationResult> {
   const authInfo = ctx.http?.authInfo as AuthInfo | undefined;
-  if (!authInfo) return { error: errorResult("UNAUTHENTICATED", "Authentication required") } as const;
+  if (!authInfo) return { error: errorResult("UNAUTHENTICATED", "Authentication required") };
   const principal = principalFromAuth(authInfo);
-  if (!principal) return { error: errorResult("UNAUTHENTICATED", "Authenticated agent identity is incomplete") } as const;
+  if (!principal) return { error: errorResult("UNAUTHENTICATED", "Authenticated agent identity is incomplete") };
   const rid = requestId(ctx);
   try {
     const rate = await enforcePublicRateLimit(`${principal.organizationId}:${principal.agentId}:${tool.toolId}`, tool.rateLimit);
-    if (!rate.allowed) return { error: errorResult("RATE_LIMITED", "Tool rate limit exceeded", "Retry later") } as const;
+    if (!rate.allowed) return { error: errorResult("RATE_LIMITED", "Tool rate limit exceeded", "Retry later") };
   } catch {
-    return { error: errorResult("RATE_LIMIT_UNAVAILABLE", "Rate limiting is temporarily unavailable") } as const;
+    return { error: errorResult("RATE_LIMIT_UNAVAILABLE", "Rate limiting is temporarily unavailable") };
   }
   const decision = await authorizeMcpTool({ principal, tool, args, requestId: rid });
-  if (decision.decision === "DENY") return { error: errorResult("POLICY_DENIED", "Tool invocation denied", decision.reason) } as const;
+  if (decision.decision === "DENY") return { error: errorResult("POLICY_DENIED", "Tool invocation denied", decision.reason) };
   if (decision.decision === "REQUIRE_APPROVAL") {
     const approvalId = typeof args.approvalId === "string" ? args.approvalId : null;
-    if (!approvalId) { const created = await createApproval({ principal, tool, args, requestId: rid }); return { error: errorResult("APPROVAL_REQUIRED", "Human approval is required", created) } as const; }
-    try { await consumeApproval({ principal, tool, args, approvalId, requestId: rid }); } catch (error) { const code = error instanceof Error && error.message === "approval_self_approval_forbidden" ? "APPROVAL_SELF_APPROVAL_FORBIDDEN" : "APPROVAL_INVALID"; return { error: errorResult(code, "Approval cannot authorize this exact action") } as const; }
+    if (!approvalId) { const created = await createApproval({ principal, tool, args, requestId: rid }); return { error: errorResult("APPROVAL_REQUIRED", "Human approval is required", created) }; }
+    try { await consumeApproval({ principal, tool, args, approvalId, requestId: rid }); } catch (error) { const code = error instanceof Error && error.message === "approval_self_approval_forbidden" ? "APPROVAL_SELF_APPROVAL_FORBIDDEN" : "APPROVAL_INVALID"; return { error: errorResult(code, "Approval cannot authorize this exact action") }; }
   }
-  return { principal, requestId: rid } as const;
+  return { principal, requestId: rid };
 }
 
 function buildServer(authInfo?: AuthInfo) {
