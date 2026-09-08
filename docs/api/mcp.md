@@ -146,5 +146,3 @@ For external OAuth/OIDC, configure:
 For browser-capable clients, configure explicit comma-separated `MCP_ALLOWED_ORIGINS`; do not use a wildcard.
 
 Managed agent credentials are created through the authenticated `/api/v1/mcp/agents` control plane and the secret is displayed only at creation time.
-
-<!-- lockfile bootstrap trigger -->
