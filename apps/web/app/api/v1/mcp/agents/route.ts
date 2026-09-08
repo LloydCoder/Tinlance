@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { getWorkspacePrincipal, hasWorkspacePermission } from "@/lib/workspace/authorization";
+import { getWorkspacePrincipal, hasWorkspacePermission, type WorkspacePermission } from "@/lib/workspace/authorization";
 import { generateMcpToken, mcpTokenHash, mcpTokenPrefix, validateAgentExpiry } from "@/lib/mcp/auth";
 import { listMcpTools } from "@/lib/mcp/registry";
 import { getRequestId } from "@/lib/security/request-id";
@@ -17,7 +17,6 @@ const createSchema = z.object({
 });
 
 const PUBLIC_AGENT_SCOPES = new Set(["mcp:read", "mcp:write", "projects:read", "assessments:read", "assessments:execute", "findings:read", "reports:read", "remediation:read"]);
-
 const json = (body: unknown, status: number, requestId: string) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": requestId } });
 
 export async function GET(request: Request) {
@@ -45,7 +44,7 @@ export async function POST(request: Request) {
   const selectedTools = selected.filter((tool): tool is NonNullable<typeof tool> => Boolean(tool));
   const requiredScopes = new Set(selectedTools.flatMap((tool) => tool.requiredScopes));
   if (input.scopes.some((scope) => !requiredScopes.has(scope)) || selectedTools.some((tool) => tool.requiredScopes.some((scope) => !input.scopes.includes(scope)))) return json({ code: "INVALID_ARGUMENT", detail: "Agent scopes must exactly match the selected tool grants", requestId }, 422, requestId);
-  if (selectedTools.some((tool) => tool.requiredPermissions.some((permission) => !hasWorkspacePermission(principal, permission)))) return json({ code: "FORBIDDEN", detail: "The issuing user cannot delegate one or more requested MCP capabilities", requestId }, 403, requestId);
+  if (selectedTools.some((tool) => tool.requiredPermissions.some((permission) => !hasWorkspacePermission(principal, permission as WorkspacePermission)))) return json({ code: "FORBIDDEN", detail: "The issuing user cannot delegate one or more requested MCP capabilities", requestId }, 403, requestId);
   const token = generateMcpToken();
   const id = `mcp_agent_${crypto.randomUUID().replaceAll("-", "")}`;
   try {
