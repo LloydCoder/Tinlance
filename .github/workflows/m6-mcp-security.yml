@@ -56,6 +56,8 @@ jobs:
         working-directory: .
       - name: Validate database migrations
         run: pnpm prisma migrate deploy
+      - name: Generate Prisma client
+        run: pnpm prisma generate
       - name: Run MCP security and protocol tests
         run: pnpm exec vitest run lib/mcp/registry.test.ts lib/mcp/policy.test.ts lib/mcp/security.test.ts lib/mcp/server.test.ts
       - name: Verify MCP package is the official v2 server SDK
