@@ -14,7 +14,14 @@ describe("MCP governed registry", () => {
       expect(tool.requiredPermissions.length).toBeGreaterThan(0);
       expect(tool.timeoutMs).toBeGreaterThan(0);
       expect(tool.timeoutMs).toBeLessThanOrEqual(10_000);
+      expect(tool.allowedActorTypes).toContain("AGENT");
+      expect(tool.allowedEnvironments.length).toBeGreaterThan(0);
     }
+  });
+
+  it("requires the endpoint bearer baseline plus explicit execution scopes", () => {
+    const tool = listMcpTools().find((candidate) => candidate.toolId === "assessments.execute");
+    expect(tool?.requiredScopes).toEqual(["mcp:read", "mcp:write", "assessments:execute"]);
   });
 
   it("requires approval for assessment execution", () => {
@@ -22,6 +29,7 @@ describe("MCP governed registry", () => {
     expect(tool?.approvalRequired).toBe(true);
     expect(tool?.riskLevel).toBe("ANALYZE");
     expect(tool?.idempotent).toBe(true);
+    expect(tool?.auditPolicy).toBe("ALL");
   });
 
   it("does not expose destructive or unrestricted integration tools", () => {

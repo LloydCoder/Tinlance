@@ -17,7 +17,7 @@ export const MCP_TOOLS: readonly McpToolDefinition[] = [
   base("findings.list", "tinlance.findings.list", "List customer-visible findings for a tenant-owned project.", z.object({ projectId: id, limit, cursor }), ["mcp:read", "findings:read"], ["finding:read"], "READ"),
   base("reports.get", "tinlance.reports.get", "Get permitted report metadata for a tenant-owned report.", z.object({ reportId: id }), ["mcp:read", "reports:read"], ["report:read"], "READ"),
   base("remediation.list", "tinlance.remediation.list", "List remediation records for a tenant-owned project.", z.object({ projectId: id, limit, cursor }), ["mcp:read", "remediation:read"], ["remediation:read"], "READ"),
-  base("assessments.execute", "tinlance.assessments.execute", "Start an approved durable FDE assessment workflow. This never executes FDE code directly.", z.object({ projectId: id, assessmentId: id, idempotencyKey: z.string().trim().min(8).max(255), approvalId }), ["mcp:write", "assessments:execute"], ["assessment:execute"], "ANALYZE", true),
+  base("assessments.execute", "tinlance.assessments.execute", "Start an approved durable FDE assessment workflow. This never executes FDE code directly.", z.object({ projectId: id, assessmentId: id, idempotencyKey: z.string().trim().min(8).max(255), approvalId }), ["mcp:read", "mcp:write", "assessments:execute"], ["assessment:execute"], "ANALYZE", true),
 ];
 
 export function getMcpTool(name: string): McpToolDefinition | null { return MCP_TOOLS.find((tool) => tool.enabled && tool.name === name) ?? null; }
