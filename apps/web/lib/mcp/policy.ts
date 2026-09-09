@@ -14,11 +14,12 @@ export function parameterHash(args: Record<string, unknown>) { const copy = { ..
 
 export async function authorizeMcpTool(input: { principal: McpPrincipal; tool: McpToolDefinition; args: Record<string, unknown>; requestId: string }) {
   const { principal, tool, args, requestId } = input;
-  const agentRows = await db.$queryRaw<Array<{ status: string; allowedTools: unknown; scopes: unknown; environment: string; organizationId: string; ownerUserId: string; clientId: string }>>(Prisma.sql`SELECT "status","allowedTools","scopes","environment","organizationId","ownerUserId","clientId" FROM "McpAgent" WHERE "id"=${principal.agentId} AND "organizationId"=${principal.organizationId} LIMIT 1`);
+  const agentRows = await db.$queryRaw<Array<{ status: string; allowedTools: unknown; scopes: unknown; environment: string; organizationId: string; ownerUserId: string; clientId: string; runtimeEnabled: boolean }>>(Prisma.sql`SELECT "status","allowedTools","scopes","environment","organizationId","ownerUserId","clientId","runtimeEnabled" FROM "McpAgent" WHERE "id"=${principal.agentId} AND "organizationId"=${principal.organizationId} LIMIT 1`);
   const agent = agentRows[0];
   const allowedTools = Array.isArray(agent?.allowedTools) ? agent.allowedTools.filter((value): value is string => typeof value === "string") : [];
   const grantedScopes = Array.isArray(agent?.scopes) ? agent.scopes.filter((value): value is string => typeof value === "string") : [];
-  const scopeAllowed = tool.requiredScopes.every((scope) => principal.scopes.includes(scope) && grantedScopes.includes(scope));
+  const runtimeInternal = principal.issuer === "m9-runtime" && agent?.runtimeEnabled === true;
+  const scopeAllowed = tool.requiredScopes.every((scope) => (runtimeInternal ? grantedScopes.includes(scope) : principal.scopes.includes(scope) && grantedScopes.includes(scope)));
   const toolAllowed = allowedTools.includes(tool.toolId);
   const environmentAllowed = tool.allowedEnvironments.includes(principal.environment);
   let decision: McpDecision = "ALLOW"; let reason = "authorized"; const workspace = null;
@@ -31,7 +32,7 @@ export async function authorizeMcpTool(input: { principal: McpPrincipal; tool: M
     if (!tool.requiredPermissions.length) { decision = "DENY"; reason = "tool_permission_missing"; }
     else if (tool.requiredPermissions.length > 1) { decision = "DENY"; reason = "multiple_permissions_require_explicit_policy"; }
     else {
-      const security = await authorizeAgentPermission({ organizationId: principal.organizationId, agentId: principal.agentId, clientId: principal.clientId, ownerUserId: principal.ownerUserId, scopes: principal.scopes, environment: principal.environment, permission: tool.requiredPermissions[0] as WorkspacePermission, action: tool.name, resourceType: "McpTool", toolId: tool.toolId, requestId, risk, approvalPresent: typeof args.approvalId === "string" });
+      const security = await authorizeAgentPermission({ organizationId: principal.organizationId, agentId: principal.agentId, clientId: principal.clientId, ownerUserId: principal.ownerUserId, scopes: grantedScopes, environment: principal.environment, permission: tool.requiredPermissions[0] as WorkspacePermission, action: tool.name, resourceType: "McpTool", toolId: tool.toolId, requestId, risk, approvalPresent: typeof args.approvalId === "string" });
       if (security.decision === "DENY" || security.decision === "BLOCKED") { decision = "DENY"; reason = security.reasonCode.toLowerCase(); }
       else if (tool.approvalRequired) { decision = "REQUIRE_APPROVAL"; reason = "human_approval_required"; }
     }
