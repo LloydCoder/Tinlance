@@ -6,6 +6,7 @@ import { authorizeEvaluation, createEvaluationProject, createTarget, listCases, 
 const createSchema = z.object({
   project: z.object({ name: z.string().min(1).max(200), description: z.string().max(2000).optional() }).optional(),
   projectId: z.string().min(1).optional(),
+  assessmentId: z.string().min(1).optional(),
   target: z.object({ name: z.string().min(1).max(200), targetType: z.string().min(1).max(80), version: z.string().min(1).max(120), environment: z.enum(["sandbox","staging","production"]).default("sandbox"), metadata: z.record(z.string(), z.unknown()).default({}) }),
   suiteId: z.string().min(1).default("m8-suite-production-security-v1"),
   suiteVersion: z.string().default("1"),
@@ -40,14 +41,12 @@ export async function POST(request: Request) {
     const projectId = body.projectId ?? (body.project ? await createEvaluationProject({ organizationId: auth.principal.organizationId, userId: auth.principal.userId, ...body.project }) : null);
     if (!projectId) return problem(requestId, 400, "evaluation_project_required", "projectId or project is required");
     const targetId = await createTarget({ organizationId: auth.principal.organizationId, projectId, userId: auth.principal.userId, ...body.target });
-    const runId = await startRun({ organizationId: auth.principal.organizationId, projectId, targetId, suiteId: body.suiteId, suiteVersion: body.suiteVersion, datasetSlug: body.datasetSlug, datasetVersion: body.datasetVersion, profile: body.profile, userId: auth.principal.userId, commitSha: body.commitSha, model: body.model });
+    const runId = await startRun({ organizationId: auth.principal.organizationId, projectId, assessmentId: body.assessmentId, targetId, suiteId: body.suiteId, suiteVersion: body.suiteVersion, datasetSlug: body.datasetSlug, datasetVersion: body.datasetVersion, profile: body.profile, userId: auth.principal.userId, commitSha: body.commitSha, model: body.model });
     const cases = await listCases(auth.principal.organizationId, body.datasetSlug, body.datasetVersion);
     const selected = body.profile === "DEVELOPMENT" ? cases.slice(0, 6) : cases;
-    for (const testCase of selected) {
-      const execution = body.executions[testCase.id];
-      if (!execution) continue;
-      await recordResult({ organizationId: auth.principal.organizationId, runId, testCase, execution });
-    }
+    const missing = selected.filter((testCase) => !body.executions[testCase.id]).map((testCase) => testCase.id);
+    if (missing.length) return problem(requestId, 422, "evaluation_execution_incomplete", "Evaluation evidence is incomplete", `Missing executions for ${missing.length} required cases.`);
+    for (const testCase of selected) await recordResult({ organizationId: auth.principal.organizationId, runId, testCase, execution: body.executions[testCase.id] });
     const gate = await completeRun({ organizationId: auth.principal.organizationId, runId });
     return ok(request, { runId, targetId, projectId, suite: body.suiteId, dataset: `${body.datasetSlug}@${body.datasetVersion}`, gate }, 201);
   } catch (error) {
