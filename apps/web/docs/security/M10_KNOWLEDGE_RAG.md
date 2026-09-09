@@ -10,45 +10,49 @@ M10 owns document lifecycle, versions, classification, permission metadata, chun
 
 ## Current implementation
 
-- PostgreSQL-backed knowledge collections, documents, immutable versions, chunks, agent grants, ingestion jobs, retrievals, citations and access events.
+- PostgreSQL-backed knowledge collections, documents, immutable versions, chunks, explicit agent grants, ingestion jobs, retrievals, citations and access events.
 - Explicit visibility: PUBLIC, PLATFORM_INTERNAL, ORGANIZATION_PRIVATE, TEAM_RESTRICTED, PROJECT_RESTRICTED, USER_PRIVATE.
 - Explicit classification and authority metadata.
-- Current-time authorization filters are applied during retrieval; vector/lexical similarity is never an authorization decision.
-- Chunk-level ACL metadata travels with every indexed chunk.
-- SHA-256 source/content/chunk hashes provide integrity and deduplication anchors.
-- Controlled text/Markdown/JSON ingestion with size limits, normalization and secret detection. Arbitrary binary parsing is deliberately not introduced in M10.
-- Heading-aware bounded chunking and PostgreSQL full-text retrieval provide the deterministic baseline. The schema records embedding model/version fields so semantic indexing can be added without mixing incompatible versions.
-- Retrieval records query hashes, security context, selected sources and human-readable citation metadata without storing raw query/document content in ordinary audit metadata.
-- Retrieved content is wrapped as explicitly delimited data before entering any model context. It cannot grant permissions, invoke tools, modify memory or change M7 policy.
-- Agent access requires an explicit `KnowledgeAgentGrant`; an agent does not inherit its human owner's knowledge permissions.
-- Revocation changes the source, version and chunks so future retrievals fail closed.
+- Retrieval authorization is evaluated against the current authenticated principal and current chunk ACL metadata. Similarity/rank is never an authorization decision.
+- Every chunk carries organization, collection, document/version, classification, visibility, project/assessment scope, role/user/team ACL metadata, permission version and authority metadata.
+- SHA-256 normalized-document and chunk hashes are verified before authorized results become context. A mismatch fails closed.
+- Text/Markdown/JSON ingestion is bounded, normalized and scanned for secret-shaped content. Arbitrary binary parsing is deliberately outside the first production M10 scope.
+- Ingestion creates QUARANTINED documents and non-active chunks. Publication is a separate governed action; unapproved content is not searchable.
+- Heading-aware bounded chunking and PostgreSQL full-text retrieval provide the deterministic baseline. Embedding fields are versioned extension points; no external embedding provider is enabled implicitly.
+- Retrieval records a hashed query, security scope, counts, selected citations and latency without storing raw private query text in ordinary audit metadata.
+- Retrieved content is explicitly delimited as untrusted data before model context assembly. It cannot grant permissions, invoke tools, modify memory or change M7 policy.
+- Agent access requires a live `KnowledgeAgentGrant` for the matching collection, classification and optional project/assessment scope. Agents do not inherit their human owner's knowledge permissions.
+- Revocation changes the document, version and chunk states so future retrieval fails closed; publication never reactivates a revoked document.
 
 ## API
 
-- `POST /v1/knowledge/collections` — create a governed collection.
-- `POST /v1/knowledge/documents` — ingest bounded text content.
-- `GET /v1/knowledge/search?q=...` — authorized search/retrieval with citations.
-- `POST /v1/knowledge/documents/{id}/lifecycle` — publish after governance checks.
-- `DELETE /v1/knowledge/documents/{id}/lifecycle` — revoke and remove from retrieval.
-- `POST /v1/knowledge/agent-grants` — grant an agent an explicit bounded collection/classification scope.
+- `POST /v1/knowledge/collections` — create an organization-scoped governed collection.
+- `POST /v1/knowledge/documents` — ingest bounded text content into quarantine.
+- `GET /v1/knowledge/search?q=...` — authorized search/retrieval with provenance and citations.
+- `POST /v1/knowledge/documents/{id}/lifecycle` — publish a quarantined document after governance checks.
+- `DELETE /v1/knowledge/documents/{id}/lifecycle` — revoke a document and its derived retrieval records.
+- `POST /v1/knowledge/agent-grants` — grant an agent an explicit collection/classification/scope boundary.
+- M6 exposes `tinlance.knowledge.search`; M9 reaches knowledge through M6/M7-controlled runtime paths rather than direct database access.
 
 ## Security invariants
 
-1. Tenant scope is resolved from authenticated membership, not request IDs.
-2. Customer-private knowledge is never treated as public because of storage location or filename.
-3. Chunk ACL metadata is retained and current authorization is checked at query time.
-4. Agents cannot query storage directly and cannot expand their own knowledge grant.
-5. Deleted/revoked documents are excluded from active retrieval.
-6. Search results expose only authorized source metadata/content.
-7. Retrieved instructions are data, not commands.
-8. Secrets are rejected by the text-ingestion boundary rather than embedded into the knowledge index.
-9. Retrieval is bounded by result count and query length.
-10. M7 decisions and M10 access events are auditable.
+1. Tenant scope is derived from authenticated membership, not caller-supplied organization IDs.
+2. Customer-private knowledge never becomes public because of a filename, URL or storage location.
+3. Chunk ACL metadata is retained and current authorization is enforced at query time.
+4. Agent retrieval requires an explicit grant for the selected collection; agent scope cannot be widened by query parameters.
+5. Project-restricted and user-restricted knowledge is excluded unless the corresponding authorized scope is present.
+6. TEAM_RESTRICTED content fails closed until a real team-membership integration is available; an empty team ACL never becomes an implicit allow.
+7. Deleted/revoked documents and versions are excluded from active retrieval.
+8. Citation provenance is derived from the authorized retrieved chunk, including its content hash.
+9. Retrieved instructions are data, not commands.
+10. Secret-shaped text is rejected before indexing.
+11. Retrieval is bounded by query length and result count.
+12. M7 decisions and M10 access events are auditable.
 
 ## Deliberate scope
 
-M10 currently uses deterministic PostgreSQL lexical retrieval. External embedding/model providers are not enabled implicitly: restricted customer content must not leave Tinlance merely because a semantic provider is available. Future semantic indexing must preserve the same per-chunk authorization metadata and use an explicit, versioned provider/data-residency decision.
+M10 currently uses deterministic PostgreSQL lexical retrieval. It is intentionally not a generic vector-search demo and does not silently transmit customer data to an embedding/model provider. A future semantic index must preserve the same per-chunk authorization metadata, version the embedding model/index, and make provider, data-use and residency decisions explicit before restricted data leaves Tinlance.
 
 ## Standards basis
 
-The design follows OWASP RAG guidance for query-time access control, per-chunk permission metadata and treating retrieved content as data rather than commands, and uses NIST AI RMF/GenAI Profile concepts for governance, measurement and risk management.
+The design follows OWASP RAG security guidance for query-time access control, per-chunk permission metadata, source provenance, deletion/revocation propagation, context delimiters and fail-closed behavior. NIST AI RMF/GenAI Profile concepts are used for governance, measurement, monitoring and risk management. These references do not constitute a formal certification.
