@@ -13,7 +13,7 @@ export async function enforcePersistedSecurity(input: SecurityRequest & { reques
   let result: SecurityDecisionResult;
   if (revoked[0]) result = { decision: "DENY", policyId, policyVersion, reasonCode: "PRINCIPAL_REVOKED", risk: { score: 100, level: "CRITICAL" }, approvalRequired: false, stepUpRequired: false };
   else if (!policy) result = { decision: "DENY", policyId, policyVersion, reasonCode: "POLICY_UNAVAILABLE", risk: { score: 100, level: "CRITICAL" }, approvalRequired: false, stepUpRequired: false };
-  else result = evaluateSecurity(input);
+  else { const evaluated = evaluateSecurity(input); result = { ...evaluated, policyId, policyVersion }; }
   await recordSecurityDecision({ request: input, result, requestId: input.requestId });
   return result;
 }
