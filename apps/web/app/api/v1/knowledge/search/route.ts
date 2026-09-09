@@ -1,0 +1,4 @@
+import { authenticateApi, ok, problem } from "@/lib/api/v1";
+import { getRequestId } from "@/lib/security/request-id";
+import { retrieveKnowledge } from "@/lib/knowledge";
+export async function GET(request:Request){const auth=await authenticateApi(request);if("response" in auth)return auth.response;const url=new URL(request.url);try{return ok(request,await retrieveKnowledge({principalId:auth.principal.userId,userId:auth.principal.userId,principalType:"HUMAN",organizationId:auth.principal.organizationId,requestId:getRequestId(request),query:url.searchParams.get("q")??"",projectId:url.searchParams.get("projectId")??undefined,assessmentId:url.searchParams.get("assessmentId")??undefined,maxResults:Number(url.searchParams.get("limit")??10)}))}catch(e){return problem(getRequestId(request),403,"knowledge_access_denied","Knowledge search denied",e instanceof Error?e.message:"unknown")}}

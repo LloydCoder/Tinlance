@@ -1,0 +1,67 @@
+name: M10 Knowledge / RAG
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main, 'feat/**', 'fix/**', 'chore/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m10-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  knowledge:
+    name: M10 knowledge security and retrieval assurance
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: apps/web
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: tinlance_m10
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tinlance_m10"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres@localhost:5432/tinlance_m10?schema=public
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with: { version: 10.14.0 }
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile=true
+        working-directory: .
+      - name: Apply migrations
+        run: pnpm prisma migrate deploy
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Lint
+        run: pnpm lint
+      - name: M10 security regression
+        run: pnpm test -- tests/security/m10-knowledge.test.ts --passWithNoTests
+      - name: M8 assurance regression
+        run: pnpm test -- tests/security/m8-evaluation.test.ts --passWithNoTests
+      - name: Build
+        run: pnpm build
+      - name: Dependency audit
+        run: pnpm audit --audit-level=high
+      - name: Current-tree secret scan
+        working-directory: .
+        run: |
+          rm -rf /tmp/m10-secret-scan && mkdir -p /tmp/m10-secret-scan
+          rsync -a --exclude='.git' --exclude='node_modules' --exclude='.next' ./ /tmp/m10-secret-scan/
+          docker run --rm -v "/tmp/m10-secret-scan:/repo:ro" zricethezav/gitleaks:v8.28.0 dir /repo --config=/repo/.gitleaks.toml --no-banner --redact --exit-code 1
