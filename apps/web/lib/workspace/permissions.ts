@@ -7,6 +7,8 @@ export type WorkspacePermission =
   | "remediation:read" | "remediation:create" | "remediation:update" | "remediation:verify" | "remediation:close"
   | "workspace:manage" | "team:read" | "comment:write";
 
+export type WorkspacePrincipal = Readonly<{ userId: string; organizationId: string; memberRole: string; globalRole: string | null; isPrivileged: boolean }>;
+
 const privilegedRoles = new Set(["super-admin", "admin"]);
 const rolePermissions: Record<string, Set<WorkspacePermission>> = {
   "client-admin": new Set(["project:read","assessment:read","evidence:read","evidence:upload","finding:read","report:read","report:download","remediation:read","remediation:create","remediation:update","comment:write","team:read"]),
