@@ -13,7 +13,6 @@ export type KnowledgeResult = { rank: number; documentId: string; documentVersio
 const MAX_CONTENT = 2_000_000;
 const MAX_CHUNKS = 2_000;
 const MAX_RESULTS = 25;
-const classificationRank: Record<KnowledgeClassification, number> = { PUBLIC: 0, INTERNAL: 1, CONFIDENTIAL: 2, RESTRICTED: 3, SECRET: 4 };
 
 export function sha(value: string) { return createHash("sha256").update(value).digest("hex"); }
 export function normalize(text: string) { return text.replace(/\r\n/g, "\n").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200D\uFEFF]/g, " ").replace(/[ \t]+/g, " ").trim(); }
