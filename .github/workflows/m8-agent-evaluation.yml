@@ -1,0 +1,83 @@
+name: M8 Agent Evaluation
+
+on:
+  push:
+    branches: [main, 'feat/**', 'fix/**', 'chore/**']
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m8-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  m8:
+    name: M8 evaluation assurance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/web
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: tinlance_m8
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tinlance_m8"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres@localhost:5432/tinlance_m8?schema=public
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: 10.14.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile=true
+        working-directory: .
+      - name: Apply schema
+        run: pnpm prisma migrate deploy
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Lint
+        run: pnpm lint
+      - name: M8 deterministic and meta-tests
+        run: pnpm test -- tests/security/m8-evaluation.test.ts --passWithNoTests
+      - name: Build
+        run: pnpm build
+      - name: Dependency audit
+        run: pnpm audit --audit-level=high
+      - name: Secret scan current source tree
+        working-directory: .
+        run: |
+          rm -rf /tmp/m8-secret-scan
+          mkdir -p /tmp/m8-secret-scan
+          rsync -a --exclude='.git' --exclude='node_modules' --exclude='.next' ./ /tmp/m8-secret-scan/
+          set +e
+          docker run --rm -v "/tmp/m8-secret-scan:/repo" zricethezav/gitleaks:v8.28.0 dir /repo --config=/repo/.gitleaks.toml --no-banner --redact --report-format json --report-path /repo/gitleaks-report.json
+          status=$?
+          exit "$status"
+      - name: Upload secret scan report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m8-gitleaks-report
+          path: /tmp/m8-secret-scan/gitleaks-report.json
+          if-no-files-found: ignore
