@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
     if (!target[0]) return problem(requestId, 404, "evaluation_target_not_found", "Evaluation target not found");
     if (target[0].environment !== body.environment) return problem(requestId, 400, "redteam_environment_mismatch", "Campaign environment does not match target");
     if (new Date(body.authorization.expiresAt) <= new Date()) return problem(requestId, 400, "redteam_authorization_expired", "Authorization has expired");
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     await db.$executeRaw(Prisma.sql`INSERT INTO "RedTeamCampaign" ("id","organizationId","targetId","name","status","scope","attackProfile","authorization","limits","operatorUserId","approvedByUserId") VALUES (${id},${auth.principal.organizationId},${body.targetId},${body.name},'APPROVED',${JSON.stringify(body.scope)}::jsonb,${JSON.stringify(body.attackProfile)}::jsonb,${JSON.stringify(body.authorization)}::jsonb,${JSON.stringify(body.limits)}::jsonb,${auth.principal.userId},${auth.principal.userId})`);
     return ok(request, { campaignId: id, status: "APPROVED", execution: "CONTROLLED_ONLY" }, 201);
   } catch (error) {
