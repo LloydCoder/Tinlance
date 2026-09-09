@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { generateAssessmentReport } from "@/lib/workspace/report";
+import { authorizeWorkflowStep } from "@/lib/security-gateway/workflow";
 
 export type AutomationStatus = "PENDING" | "RUNNING" | "WAITING" | "PAUSED" | "WAITING_FOR_APPROVAL" | "RETRYING" | "COMPLETED" | "FAILED" | "CANCELLED" | "EXPIRED";
 export type StepStatus = "PENDING" | "RUNNING" | "WAITING" | "PAUSED" | "WAITING_FOR_APPROVAL" | "RETRYING" | "COMPLETED" | "FAILED" | "CANCELLED";
@@ -63,7 +64,23 @@ export async function startAutomation(input: { organizationId: string; projectId
 async function loadDefinition(run: RunRow): Promise<Definition> {
   const rows = await db.$queryRaw<Array<{ definition: Definition }>>(Prisma.sql`SELECT definition FROM "automation_playbook_versions" WHERE id=${run.playbook_version_id}`);
   if (!rows[0]) throw new Error("workflow definition missing");
-  return rows[0].definition;
+  const definition = rows[0].definition;
+  const step = definition.steps[run.current_step];
+  if (step && run.initiating_actor_user_id) {
+    const decision = await authorizeWorkflowStep({
+      organizationId: run.organization_id,
+      actorUserId: run.initiating_actor_user_id,
+      action: `workflow.step.${step.key}`,
+      resourceType: step.type === "FDE" ? "FDECapability" : "WorkflowStep",
+      resourceId: step.capabilityId ?? run.id,
+      requestId: run.request_id,
+      stepKey: step.key,
+    });
+    if (decision.decision !== "ALLOW") throw new Error(`M7_WORKFLOW_${decision.decision}:${decision.reasonCode}`);
+  } else if (step && !run.initiating_actor_user_id) {
+    throw new Error("M7_WORKFLOW_DENY:WORKFLOW_ACTOR_REQUIRED");
+  }
+  return definition;
 }
 
 async function fdeExecute(run: RunRow, step: StepRow, state: Record<string, unknown>, definitionStep: DefinitionStep) {
