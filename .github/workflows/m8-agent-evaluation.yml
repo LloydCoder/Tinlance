@@ -73,6 +73,11 @@ jobs:
           set +e
           docker run --rm -v "/tmp/m8-secret-scan:/repo:ro" zricethezav/gitleaks:v8.28.0 dir /repo --config=/repo/.gitleaks.toml --no-banner --redact --report-format json --report-path /repo/gitleaks-report.json
           status=$?
-          cat /tmp/m8-secret-scan/gitleaks-report.json
-          rm -f /tmp/m8-secret-scan/gitleaks-report.json
           exit "$status"
+      - name: Upload secret scan report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m8-gitleaks-report
+          path: /tmp/m8-secret-scan/gitleaks-report.json
+          if-no-files-found: ignore
