@@ -18,6 +18,8 @@ const createSchema = z.object({
   executions: z.record(z.string(), z.object({ decision: z.string().optional(), toolCalled: z.boolean().optional(), toolName: z.string().optional(), output: z.unknown().optional(), externalRequest: z.object({ attempted: z.boolean(), destination: z.string().optional() }).optional(), tenantId: z.string().optional(), principalTenantId: z.string().optional(), approvalPresent: z.boolean().optional(), m7Decision: z.string().optional(), policyVersion: z.string().optional(), durationMs: z.number().nonnegative().optional(), tokenUsage: z.number().nonnegative().optional(), costMinor: z.number().nonnegative().optional() })).default({}),
 });
 
+const normalizeCase = (testCase: Awaited<ReturnType<typeof listCases>>[number]) => ({ ...testCase, severity: testCase.severity as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO" });
+
 export async function GET(request: Request) {
   const auth = await authenticateApi(request);
   if ("response" in auth) return auth.response;
@@ -41,7 +43,7 @@ export async function POST(request: Request) {
     const projectId = body.projectId ?? (body.project ? await createEvaluationProject({ organizationId: auth.principal.organizationId, userId: auth.principal.userId, ...body.project }) : null);
     if (!projectId) return problem(requestId, 400, "evaluation_project_required", "projectId or project is required");
     const cases = await listCases(auth.principal.organizationId, body.datasetSlug, body.datasetVersion);
-    const selected = body.profile === "DEVELOPMENT" ? cases.slice(0, 6) : cases;
+    const selected = (body.profile === "DEVELOPMENT" ? cases.slice(0, 6) : cases).map(normalizeCase);
     const missing = selected.filter((testCase) => !body.executions[testCase.id]).map((testCase) => testCase.id);
     if (missing.length) return problem(requestId, 422, "evaluation_execution_incomplete", "Evaluation evidence is incomplete", `Missing executions for ${missing.length} required cases.`);
     const targetId = await createTarget({ organizationId: auth.principal.organizationId, projectId, userId: auth.principal.userId, ...body.target });
