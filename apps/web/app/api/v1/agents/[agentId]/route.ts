@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { authenticateApi, ok, problem } from "@/lib/api/v1";
 import { getRequestId } from "@/lib/security/request-id";
-import { createAgentVersion, getAgentDetails, setAgentStatus } from "@/lib/agent-runtime/store";
+import { createAgentVersion, setAgentStatus } from "@/lib/agent-runtime/store";
+import { getAgentDetails } from "@/lib/agent-runtime/details";
 import { authorizeAgentManagement } from "@/lib/agent-runtime/authorization";
 
 const versionSchema = z.object({
