@@ -3,6 +3,7 @@ import { createMcpHandler, McpServer, requireBearerAuth, type AuthInfo, type Ser
 import { getRequestId } from "@/lib/security/request-id";
 import { startAutomation } from "@/lib/automation/engine";
 import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
+import { buildPrincipal, evaluateSecurity, recordSecurityDecision, sanitizeOutput } from "@/lib/security-gateway";
 import { listMcpTools, type McpToolDefinition } from "@/lib/mcp/registry";
 import { verifyMcpAccessToken } from "@/lib/mcp/auth";
 import { authorizeMcpTool, auditMcpDecision, consumeApproval, createApproval, principalFromAuth } from "@/lib/mcp/policy";
@@ -16,12 +17,14 @@ type McpResult = ReturnType<typeof textResult>;
 type AuthorizationResult = { principal: NonNullable<ReturnType<typeof principalFromAuth>>; requestId: string } | { error: McpResult };
 
 function textResult(value: unknown, isError = false) {
-  const serialized = JSON.stringify(value);
+  const safe = sanitizeOutput(value);
+  const serialized = JSON.stringify(safe);
   if (Buffer.byteLength(serialized, "utf8") > MAX_RESULT_BYTES) return { content: [{ type: "text" as const, text: JSON.stringify({ code: "result_too_large", title: "Result exceeds MCP output limit" }) }], isError: true };
   return { content: [{ type: "text" as const, text: serialized }], isError };
 }
 function errorResult(code: string, title: string, detail?: string) { return textResult({ code, title, detail: detail ?? title }, true); }
 function requestId(ctx: ServerContext) { return ctx.http?.req ? getRequestId(ctx.http.req) : String(ctx.mcpReq.id || randomUUID()); }
+function m7Risk(tool: McpToolDefinition) { return tool.riskLevel === "DESTRUCTIVE" ? "CRITICAL" as const : tool.riskLevel === "HIGH_IMPACT" ? "HIGH" as const : tool.riskLevel === "MUTATE" || tool.riskLevel === "ANALYZE" ? "MEDIUM" as const : "LOW" as const; }
 
 async function authorize(ctx: ServerContext, tool: McpToolDefinition, args: ToolArgs): Promise<AuthorizationResult> {
   const authInfo = ctx.http?.authInfo as AuthInfo | undefined;
@@ -35,6 +38,12 @@ async function authorize(ctx: ServerContext, tool: McpToolDefinition, args: Tool
   } catch {
     return { error: errorResult("RATE_LIMIT_UNAVAILABLE", "Rate limiting is temporarily unavailable") };
   }
+  const securityPrincipal = buildPrincipal({ principalId: principal.agentId, principalType: "AI_AGENT", organizationId: principal.organizationId, userId: principal.ownerUserId, agentId: principal.agentId, clientId: principal.clientId, scopes: principal.scopes, permissions: [], delegationId: principal.ownerUserId, authenticationMethod: "mcp-bearer", authenticationStrength: "STRONG", environment: principal.environment });
+  const securityRequest = { principal: securityPrincipal, action: tool.name, resourceType: "McpTool", toolId: tool.toolId, dataClassification: tool.dataClassification === "CUSTOMER_CONFIDENTIAL" ? "CONFIDENTIAL" as const : tool.dataClassification as "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED" | "SECRET", requestedRisk: m7Risk(tool), approvalPresent: typeof args.approvalId === "string", context: { tenantId: principal.organizationId } };
+  const security = evaluateSecurity(securityRequest);
+  await recordSecurityDecision({ request: securityRequest, result: security, requestId: rid });
+  if (security.decision === "DENY" || security.decision === "BLOCKED") return { error: errorResult("POLICY_DENIED", "Tool invocation denied") };
+  if (security.decision === "REQUIRE_STEP_UP") return { error: errorResult("STEP_UP_REQUIRED", "Additional authentication is required") };
   const decision = await authorizeMcpTool({ principal, tool, args, requestId: rid });
   if (decision.decision === "DENY") return { error: errorResult("POLICY_DENIED", "Tool invocation denied", decision.reason) };
   if (decision.decision === "REQUIRE_APPROVAL") {
