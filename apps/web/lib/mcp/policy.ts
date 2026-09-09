@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { authorizeAgentPermission } from "@/lib/security-gateway/agent";
 import { type AuthInfo } from "@modelcontextprotocol/server";
 import { type McpToolDefinition } from "@/lib/mcp/registry";
+import type { WorkspacePermission } from "@/lib/workspace/authorization";
 
 export type McpDecision = "ALLOW" | "DENY" | "REQUIRE_APPROVAL";
 export type McpPrincipal = { organizationId: string; agentId: string; clientId: string; ownerUserId: string; environment: string; scopes: readonly string[]; issuer?: string };
@@ -27,10 +28,13 @@ export async function authorizeMcpTool(input: { principal: McpPrincipal; tool: M
   else if (!environmentAllowed) { decision = "DENY"; reason = "environment_denied"; }
   else {
     const risk = tool.riskLevel === "DESTRUCTIVE" ? "CRITICAL" : tool.riskLevel === "HIGH_IMPACT" ? "HIGH" : tool.riskLevel === "MUTATE" || tool.riskLevel === "ANALYZE" ? "MEDIUM" : "LOW";
-    const security = await authorizeAgentPermission({ organizationId: principal.organizationId, agentId: principal.agentId, clientId: principal.clientId, ownerUserId: principal.ownerUserId, scopes: principal.scopes, environment: principal.environment, permission: tool.requiredPermissions[0] as never, action: tool.name, resourceType: "McpTool", toolId: tool.toolId, requestId, risk, approvalPresent: typeof args.approvalId === "string" });
-    if (security.decision === "DENY" || security.decision === "BLOCKED") { decision = "DENY"; reason = security.reasonCode.toLowerCase(); }
+    if (!tool.requiredPermissions.length) { decision = "DENY"; reason = "tool_permission_missing"; }
     else if (tool.requiredPermissions.length > 1) { decision = "DENY"; reason = "multiple_permissions_require_explicit_policy"; }
-    else if (tool.approvalRequired) { decision = "REQUIRE_APPROVAL"; reason = "human_approval_required"; }
+    else {
+      const security = await authorizeAgentPermission({ organizationId: principal.organizationId, agentId: principal.agentId, clientId: principal.clientId, ownerUserId: principal.ownerUserId, scopes: principal.scopes, environment: principal.environment, permission: tool.requiredPermissions[0] as WorkspacePermission, action: tool.name, resourceType: "McpTool", toolId: tool.toolId, requestId, risk, approvalPresent: typeof args.approvalId === "string" });
+      if (security.decision === "DENY" || security.decision === "BLOCKED") { decision = "DENY"; reason = security.reasonCode.toLowerCase(); }
+      else if (tool.approvalRequired) { decision = "REQUIRE_APPROVAL"; reason = "human_approval_required"; }
+    }
   }
   await auditMcpDecision({ principal, tool, requestId, decision, reason, args });
   return { decision, reason, workspace };
