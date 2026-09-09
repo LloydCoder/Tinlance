@@ -14,7 +14,7 @@ export async function executeMcpTool(input: { principal: McpPrincipal; tool: Mcp
     case "tinlance.findings.list": return listFindings(principal.organizationId, args.projectId as string, args.limit as number | undefined, args.cursor as string | undefined);
     case "tinlance.reports.get": return getReport(principal.organizationId, args.reportId as string);
     case "tinlance.remediation.list": return listRemediation(principal.organizationId, args.projectId as string, args.limit as number | undefined, args.cursor as string | undefined);
-    case "tinlance.knowledge.search": return retrieveKnowledge({ principalId: principal.agentId, principalType: "AI_AGENT", organizationId: principal.organizationId, agentId: principal.agentId, requestId, query: args.query as string, projectId: args.projectId as string | undefined, assessmentId: args.assessmentId as string | undefined, maxResults: args.limit as number | undefined });
+    case "tinlance.knowledge.search": return retrieveKnowledge({ principalId: principal.agentId, principalType: "AI_AGENT", organizationId: principal.organizationId, agentId: principal.agentId, requestId, query: args.query as string, collectionId: args.collectionId as string | undefined, projectId: args.projectId as string | undefined, assessmentId: args.assessmentId as string | undefined, maxResults: args.limit as number | undefined });
     case "tinlance.assessments.execute": {
       const assessmentId = args.assessmentId as string;
       const projectId = args.projectId as string;
