@@ -43,11 +43,15 @@ export async function listCases(organizationId: string, datasetSlug = "m8-securi
   return db.$queryRaw<Array<{ id: string; category: string; subcategory: string; scenario: string; input: Record<string, unknown>; expectedBehavior: Record<string, unknown>; severity: string; attackTechnique: string | null; grader: string }>>(Prisma.sql`SELECT id,category,subcategory,scenario,input,"expectedBehavior",severity,"attackTechnique",grader FROM "EvaluationCase" WHERE ("organizationId" IS NULL OR "organizationId"=${organizationId}) AND "datasetSlug"=${datasetSlug} AND "datasetVersion"=${datasetVersion} ORDER BY id`);
 }
 
-export async function startRun(input: { organizationId: string; projectId: string; targetId: string; suiteId: string; suiteVersion: string; datasetSlug: string; datasetVersion: string; profile: EvaluationProfile; userId: string; commitSha?: string; model?: string }) {
+export async function startRun(input: { organizationId: string; projectId: string; targetId: string; assessmentId?: string; suiteId: string; suiteVersion: string; datasetSlug: string; datasetVersion: string; profile: EvaluationProfile; userId: string; commitSha?: string; model?: string }) {
   const target = await getTarget(input.organizationId, input.targetId);
   if (!target) throw new Error("evaluation_target_not_found");
+  if (input.assessmentId) {
+    const assessment = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "WorkspaceAssessment" WHERE id=${input.assessmentId} AND "organizationId"=${input.organizationId} AND "projectId"=${input.projectId} LIMIT 1`);
+    if (!assessment[0]) throw new Error("evaluation_assessment_not_found");
+  }
   const id = randomUUID();
-  await db.$executeRaw(Prisma.sql`INSERT INTO "EvaluationRun" ("id","organizationId","projectId","targetId","targetVersion","suiteId","suiteVersion","datasetSlug","datasetVersion","graderVersion","environment","commitSha","model","configurationHash","status","createdByUserId","startedAt") VALUES (${id},${input.organizationId},${input.projectId},${input.targetId},${target.version},${input.suiteId},${input.suiteVersion},${input.datasetSlug},${input.datasetVersion},'m8-deterministic-1',${target.environment},${input.commitSha ?? null},${input.model ?? null},${target.configurationHash},'RUNNING',${input.userId},CURRENT_TIMESTAMP)`);
+  await db.$executeRaw(Prisma.sql`INSERT INTO "EvaluationRun" ("id","organizationId","projectId","assessmentId","targetId","targetVersion","suiteId","suiteVersion","datasetSlug","datasetVersion","graderVersion","environment","commitSha","model","configurationHash","status","createdByUserId","startedAt") VALUES (${id},${input.organizationId},${input.projectId},${input.assessmentId ?? null},${input.targetId},${target.version},${input.suiteId},${input.suiteVersion},${input.datasetSlug},${input.datasetVersion},'m8-deterministic-1',${target.environment},${input.commitSha ?? null},${input.model ?? null},${target.configurationHash},'RUNNING',${input.userId},CURRENT_TIMESTAMP)`);
   return id;
 }
 
@@ -57,14 +61,10 @@ export async function recordResult(input: { organizationId: string; runId: strin
   const safeEvidence = { ...grade.evidence, inputHash: hashSensitive(input.testCase.input), executionHash: hashSensitive(input.execution), traceId: input.execution.traceId ?? null };
   await db.$executeRaw(Prisma.sql`INSERT INTO "EvaluationResult" ("id","organizationId","runId","caseId","attempt","status","classification","score","severity","reason","evidence","traceId") VALUES (${id},${input.organizationId},${input.runId},${input.testCase.id},${input.attempt ?? 1},${grade.status},${grade.classification ?? 'NONE'},${grade.score},${grade.severity},${grade.reason},${JSON.stringify(safeEvidence)}::jsonb,${input.execution.traceId ?? null}) ON CONFLICT ("runId","caseId","attempt") DO UPDATE SET "status"=EXCLUDED."status","classification"=EXCLUDED."classification","score"=EXCLUDED."score","severity"=EXCLUDED."severity","reason"=EXCLUDED."reason","evidence"=EXCLUDED."evidence","traceId"=EXCLUDED."traceId`);
   if (grade.status === "FAIL" && (grade.severity === "CRITICAL" || grade.severity === "HIGH")) {
-    const run = await db.$queryRaw<Array<{ targetId: string; targetVersion: string; projectId: string; assessmentId: string | null }>>(Prisma.sql`SELECT "targetId","targetVersion","projectId",(SELECT "assessmentId" FROM "AutomationWorkflowRun" WHERE false) AS "assessmentId" FROM "EvaluationRun" WHERE id=${input.runId} AND "organizationId"=${input.organizationId} LIMIT 1`);
-    if (run[0]) {
-      const assessment = await db.$queryRaw<Array<{ assessmentId: string }>>(Prisma.sql`SELECT "assessmentId" FROM "EvaluationRun" WHERE id=${input.runId} AND "organizationId"=${input.organizationId} LIMIT 1`);
-      const assessmentId = assessment[0]?.assessmentId;
-      if (assessmentId) {
-        const idempotencyKey = `m8:${input.runId}:${input.testCase.id}`;
-        await db.$executeRaw(Prisma.sql`INSERT INTO "WorkspaceFinding" ("id","organizationId","projectId","assessmentId","title","description","category","severity","status","recommendation","visibility","authorship","idempotencyKey") VALUES (${randomUUID()},${input.organizationId},${run[0].projectId},${assessmentId},${`M8 evaluation failure: ${input.testCase.category}`},${grade.reason},${input.testCase.category},${input.testCase.severity},'DRAFT_INTERNAL',${"Remediate the failed security invariant and rerun the M8 evaluation."},'TINLANCE_INTERNAL','AI_ASSISTED',${idempotencyKey}) ON CONFLICT ("idempotencyKey") DO NOTHING`);
-      }
+    const run = await db.$queryRaw<Array<{ targetId: string; targetVersion: string; projectId: string; assessmentId: string | null }>>(Prisma.sql`SELECT "targetId","targetVersion","projectId","assessmentId" FROM "EvaluationRun" WHERE id=${input.runId} AND "organizationId"=${input.organizationId} LIMIT 1`);
+    if (run[0]?.assessmentId) {
+      const idempotencyKey = `m8:${input.runId}:${input.testCase.id}`;
+      await db.$executeRaw(Prisma.sql`INSERT INTO "WorkspaceFinding" ("id","organizationId","projectId","assessmentId","title","description","category","severity","status","recommendation","visibility","authorship","idempotencyKey") VALUES (${randomUUID()},${input.organizationId},${run[0].projectId},${run[0].assessmentId},${`M8 evaluation failure: ${input.testCase.category}`},${grade.reason},${input.testCase.category},${input.testCase.severity},'DRAFT_INTERNAL',${"Remediate the failed security invariant and rerun the M8 evaluation."},'TINLANCE_INTERNAL','AI_ASSISTED',${idempotencyKey}) ON CONFLICT ("idempotencyKey") DO NOTHING`);
     }
   }
   return grade;
