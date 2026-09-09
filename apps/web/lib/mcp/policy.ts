@@ -21,24 +21,23 @@ export async function authorizeMcpTool(input: { principal: McpPrincipal; tool: M
   const scopeAllowed = tool.requiredScopes.every((scope) => principal.scopes.includes(scope) && grantedScopes.includes(scope));
   const toolAllowed = allowedTools.includes(tool.toolId);
   const environmentAllowed = tool.allowedEnvironments.includes(principal.environment);
-  const decision: McpDecision = "ALLOW"; let reason = "authorized"; const workspace = null;
-  if (!agent || agent.status !== "ACTIVE" || agent.organizationId !== principal.organizationId || agent.ownerUserId !== principal.ownerUserId || agent.clientId !== principal.clientId) { reason = "agent_identity_invalid"; }
-  else if (!toolAllowed) { reason = "tool_not_granted"; }
-  else if (!scopeAllowed) { reason = "scope_denied"; }
-  else if (!environmentAllowed) { reason = "environment_denied"; }
+  let decision: McpDecision = "ALLOW"; let reason = "authorized"; const workspace = null;
+  if (!agent || agent.status !== "ACTIVE" || agent.organizationId !== principal.organizationId || agent.ownerUserId !== principal.ownerUserId || agent.clientId !== principal.clientId) { decision = "DENY"; reason = "agent_identity_invalid"; }
+  else if (!toolAllowed) { decision = "DENY"; reason = "tool_not_granted"; }
+  else if (!scopeAllowed) { decision = "DENY"; reason = "scope_denied"; }
+  else if (!environmentAllowed) { decision = "DENY"; reason = "environment_denied"; }
   else {
     const risk = tool.riskLevel === "DESTRUCTIVE" ? "CRITICAL" : tool.riskLevel === "HIGH_IMPACT" ? "HIGH" : tool.riskLevel === "MUTATE" || tool.riskLevel === "ANALYZE" ? "MEDIUM" : "LOW";
-    if (!tool.requiredPermissions.length) reason = "tool_permission_missing";
-    else if (tool.requiredPermissions.length > 1) reason = "multiple_permissions_require_explicit_policy";
+    if (!tool.requiredPermissions.length) { decision = "DENY"; reason = "tool_permission_missing"; }
+    else if (tool.requiredPermissions.length > 1) { decision = "DENY"; reason = "multiple_permissions_require_explicit_policy"; }
     else {
       const security = await authorizeAgentPermission({ organizationId: principal.organizationId, agentId: principal.agentId, clientId: principal.clientId, ownerUserId: principal.ownerUserId, scopes: principal.scopes, environment: principal.environment, permission: tool.requiredPermissions[0] as WorkspacePermission, action: tool.name, resourceType: "McpTool", toolId: tool.toolId, requestId, risk, approvalPresent: typeof args.approvalId === "string" });
-      if (security.decision === "DENY" || security.decision === "BLOCKED") reason = security.reasonCode.toLowerCase();
-      else if (tool.approvalRequired) reason = "human_approval_required";
+      if (security.decision === "DENY" || security.decision === "BLOCKED") { decision = "DENY"; reason = security.reasonCode.toLowerCase(); }
+      else if (tool.approvalRequired) { decision = "REQUIRE_APPROVAL"; reason = "human_approval_required"; }
     }
   }
-  const finalDecision = reason === "authorized" ? decision : reason === "human_approval_required" ? "REQUIRE_APPROVAL" : "DENY";
-  await auditMcpDecision({ principal, tool, requestId, decision: finalDecision, reason, args });
-  return { decision: finalDecision, reason, workspace };
+  await auditMcpDecision({ principal, tool, requestId, decision, reason, args });
+  return { decision, reason, workspace };
 }
 
 export async function createApproval(input: { principal: McpPrincipal; tool: McpToolDefinition; args: Record<string, unknown>; requestId: string }) {
