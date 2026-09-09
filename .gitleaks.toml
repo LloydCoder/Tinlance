@@ -1,0 +1,7 @@
+title = "Tinlance Gitleaks policy"
+
+[allowlist]
+description = "CI workflow fixtures and configuration are not application credentials; runtime source and tracked secret material remain scanned."
+paths = [
+  '''^\\.github/workflows/.*$'''
+]
