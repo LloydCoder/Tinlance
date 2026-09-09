@@ -6,6 +6,7 @@ import { enforcePersistedSecurity } from "@/lib/security-gateway/runtime";
 import { hasWorkspacePermission, isPrivilegedRole, type WorkspacePermission } from "@/lib/workspace/permissions";
 
 export type { WorkspacePermission } from "@/lib/workspace/permissions";
+export { hasWorkspacePermission } from "@/lib/workspace/permissions";
 export type WorkspacePrincipal = Readonly<{ userId: string; organizationId: string; memberRole: string; globalRole: string | null; isPrivileged: boolean }>;
 
 async function m7Authorize(principal: WorkspacePrincipal, permission: WorkspacePermission, resourceType: string, resourceId?: string) {
