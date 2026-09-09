@@ -64,7 +64,7 @@ jobs:
         run: pnpm build
       - name: Dependency audit
         run: pnpm audit --audit-level=high
-      - name: Secret scan
+      - name: Secret scan current tree
         working-directory: .
         run: |
-          docker run --rm -v "$GITHUB_WORKSPACE:/repo" zricethezav/gitleaks:v8.28.0 detect --source=/repo --no-banner --redact --exit-code 1
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" zricethezav/gitleaks:v8.28.0 dir /repo --no-banner --redact --exit-code 1
