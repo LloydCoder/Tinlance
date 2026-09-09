@@ -71,7 +71,7 @@ jobs:
           mkdir -p /tmp/m8-secret-scan
           rsync -a --exclude='.git' --exclude='node_modules' --exclude='.next' ./ /tmp/m8-secret-scan/
           set +e
-          docker run --rm -v "/tmp/m8-secret-scan:/repo:ro" zricethezav/gitleaks:v8.28.0 dir /repo --config=/repo/.gitleaks.toml --no-banner --redact --report-format json --report-path /repo/gitleaks-report.json
+          docker run --rm -v "/tmp/m8-secret-scan:/repo" zricethezav/gitleaks:v8.28.0 dir /repo --config=/repo/.gitleaks.toml --no-banner --redact --report-format json --report-path /repo/gitleaks-report.json
           status=$?
           exit "$status"
       - name: Upload secret scan report
