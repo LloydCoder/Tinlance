@@ -139,6 +139,7 @@ See [`docs/BILLING-WEBHOOKS.md`](./docs/BILLING-WEBHOOKS.md).
 - Dependency and software-supply-chain security as blocking CI controls.
 - AI security regression and domain-agent validation in CI.
 - M7 deterministic authorization/risk tests and persisted security-control migration validation.
+- Security dependency overrides are lockfile-pinned and verified by frozen CI installs.
 
 The security verification baseline is OWASP ASVS 5.0, with additional AI/agent security controls appropriate to the execution paths.
 
