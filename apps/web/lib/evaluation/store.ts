@@ -17,7 +17,7 @@ export async function authorizeEvaluation(input: { organizationId: string; userI
   const allowed = hasWorkspacePermission(workspace, permission);
   const principal = buildPrincipal({ principalId: input.userId, principalType: "HUMAN", organizationId: input.organizationId, userId: input.userId, permissions: allowed ? [permission] : [], authenticationMethod: "better-auth-session", authenticationStrength: "MFA" });
   const requestedRisk = input.permission === "evaluation:execute" || input.permission === "evaluation:manage" ? "MEDIUM" : "LOW";
-  return enforcePersistedSecurity({ principal, action: input.action, resourceType: input.resourceType, resourceId: input.resourceId, context: { tenantId: input.organizationId, requiredPermission: permission }, requestedRisk, requestId });
+  return enforcePersistedSecurity({ principal, action: input.action, resourceType: input.resourceType, resourceId: input.resourceId, context: { tenantId: input.organizationId, requiredPermission: permission }, requestedRisk, requestId: input.requestId });
 }
 
 export async function createEvaluationProject(input: { organizationId: string; userId: string; name: string; description?: string }) {
