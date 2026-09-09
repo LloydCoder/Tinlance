@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -9,18 +10,9 @@ export type WorkspacePrincipal = Readonly<{ userId: string; organizationId: stri
 
 async function m7Authorize(principal: WorkspacePrincipal, permission: WorkspacePermission, resourceType: string, resourceId?: string) {
   const requestHeaders = await headers();
-  const requestId = requestHeaders.get("x-request-id") ?? crypto.randomUUID();
+  const requestId = requestHeaders.get("x-request-id") ?? randomUUID();
   return enforcePersistedSecurity({
-    principal: {
-      principalId: principal.userId,
-      principalType: "HUMAN",
-      organizationId: principal.organizationId,
-      userId: principal.userId,
-      scopes: [],
-      permissions: hasWorkspacePermission(principal, permission) ? [permission] : [],
-      authenticationMethod: "better-auth-session",
-      authenticationStrength: "MFA",
-    },
+    principal: { principalId: principal.userId, principalType: "HUMAN", organizationId: principal.organizationId, userId: principal.userId, scopes: [], permissions: hasWorkspacePermission(principal, permission) ? [permission] : [], authenticationMethod: "better-auth-session", authenticationStrength: "MFA" },
     action: "workspace.authorization",
     resourceType,
     resourceId,
