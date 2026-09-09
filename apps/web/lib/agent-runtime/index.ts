@@ -1,0 +1,105 @@
+import { createHash, randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
+import { buildPrincipal, enforceSecurity, enforcePersistedSecurity, hashSensitive, type SecurityDecisionResult } from "@/lib/security-gateway";
+import { listMcpTools, getMcpTool, type McpToolDefinition } from "@/lib/mcp/registry";
+import { authorizeMcpTool, createApproval, consumeApproval, type McpPrincipal } from "@/lib/mcp/policy";
+import { getAssessment, getProject, getReport, listFindings, listProjects, listRemediation } from "@/lib/mcp/data";
+
+export type AgentStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "REVOKED" | "ARCHIVED";
+export type ExecutionStatus = "QUEUED" | "RUNNING" | "WAITING_FOR_APPROVAL" | "WAITING_FOR_TOOL" | "WAITING_FOR_RETRY" | "PAUSED" | "COMPLETED" | "FAILED" | "CANCELLED" | "TIMED_OUT" | "BLOCKED";
+export type StepStatus = "RUNNING" | "COMPLETED" | "FAILED" | "BLOCKED" | "WAITING";
+export type MemoryScope = "WORKING" | "EXECUTION" | "AGENT" | "ORGANIZATION" | "PROJECT" | "CUSTOMER";
+export type Classification = "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "SENSITIVE" | "RESTRICTED";
+export type MemoryTrust = "UNTRUSTED" | "EXTERNAL" | "USER" | "VERIFIED";
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+export type AgentCapability = Readonly<{ toolId: string; action: string; resource?: string; projectId?: string; environment?: string; classification?: Classification; expiresAt?: string; rateLimit?: number }>;
+export type AgentBudget = Readonly<{ maxWallClockMs: number; maxTurns: number; maxToolCalls: number; maxRetries: number; maxTokens: number; maxEstimatedCost: number; maxConcurrentTools: number; maxMemoryWrites: number; maxOutputBytes: number; maxExternalRequests: number; maxDepth: number }>;
+export type AgentContext = Readonly<{ organizationId: string; agentId: string; agentVersionId: string; executionId: string; requestId: string; traceId: string; principalId: string; environment: string }>;
+export type ModelMessage = Readonly<{ role: "system" | "agent" | "user" | "memory" | "tool" | "external" | "policy"; content: string; source?: string }>;
+export type ModelResponse = Readonly<{ type: "final" | "tool_call"; content?: string; tool?: string; arguments?: Record<string, unknown>; model?: string; provider?: string; usage?: { inputTokens?: number; outputTokens?: number; estimatedCost?: number } }>;
+export interface ModelAdapter { complete(input: { messages: readonly ModelMessage[]; model: string; provider: string; maxOutputBytes: number; signal?: AbortSignal }): Promise<ModelResponse> }
+export interface ToolAdapter { execute(input: { context: AgentContext; capability: AgentCapability; tool: McpToolDefinition; args: Record<string, unknown>; approvalId?: string }): Promise<unknown> }
+
+const DEFAULT_BUDGET: AgentBudget = { maxWallClockMs: 10 * 60_000, maxTurns: 20, maxToolCalls: 20, maxRetries: 2, maxTokens: 100_000, maxEstimatedCost: 10, maxConcurrentTools: 1, maxMemoryWrites: 10, maxOutputBytes: 256 * 1024, maxExternalRequests: 20, maxDepth: 2 };
+const RISK_MAP: Record<string, RiskLevel> = { READ: "LOW", ANALYZE: "MEDIUM", MUTATE: "MEDIUM", HIGH_IMPACT: "HIGH", DESTRUCTIVE: "CRITICAL" };
+
+export function mergeBudget(input?: Partial<AgentBudget>): AgentBudget { const merged = { ...DEFAULT_BUDGET, ...(input ?? {}) }; for (const [key, value] of Object.entries(merged)) { if (!Number.isFinite(value as number) || (value as number) < 0) throw new Error(`invalid_budget_${key}`); } return merged; }
+export function transitionExecution(from: ExecutionStatus, to: ExecutionStatus): boolean { const allowed: Record<ExecutionStatus, readonly ExecutionStatus[]> = { QUEUED: ["RUNNING", "CANCELLED", "BLOCKED", "TIMED_OUT"], RUNNING: ["WAITING_FOR_APPROVAL", "WAITING_FOR_TOOL", "WAITING_FOR_RETRY", "PAUSED", "COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT", "BLOCKED"], WAITING_FOR_APPROVAL: ["RUNNING", "CANCELLED", "BLOCKED", "TIMED_OUT"], WAITING_FOR_TOOL: ["RUNNING", "WAITING_FOR_RETRY", "FAILED", "CANCELLED", "TIMED_OUT", "BLOCKED"], WAITING_FOR_RETRY: ["RUNNING", "FAILED", "CANCELLED", "TIMED_OUT", "BLOCKED"], PAUSED: ["RUNNING", "CANCELLED", "BLOCKED"], COMPLETED: [], FAILED: [], CANCELLED: [], TIMED_OUT: [], BLOCKED: [] }; return allowed[from].includes(to); }
+export function assertTransition(from: ExecutionStatus, to: ExecutionStatus) { if (!transitionExecution(from, to)) throw new Error(`invalid_execution_transition:${from}:${to}`); }
+export function fingerprintToolCall(tool: string, args: Record<string, unknown>) { return createHash("sha256").update(JSON.stringify({ tool, args })).digest("hex"); }
+export function validateToolArgs(tool: McpToolDefinition, args: Record<string, unknown>) { const parsed = tool.inputSchema.safeParse(args); if (!parsed.success) throw new Error("invalid_tool_arguments"); if (JSON.stringify(args).length > 128 * 1024) throw new Error("tool_arguments_too_large"); return parsed.data as Record<string, unknown>; }
+export function assertCapability(capabilities: readonly AgentCapability[], capability: AgentCapability, now = new Date()) { const granted = capabilities.find((item) => item.toolId === capability.toolId && item.action === capability.action && (!item.resource || item.resource === capability.resource) && (!item.projectId || item.projectId === capability.projectId) && (!item.environment || item.environment === capability.environment)); if (!granted) throw new Error("capability_not_granted"); if (granted.expiresAt && new Date(granted.expiresAt) <= now) throw new Error("capability_expired"); if (granted.classification && capability.classification && classificationRank(capability.classification) > classificationRank(granted.classification)) throw new Error("classification_exceeded"); return granted; }
+function classificationRank(value: Classification) { return { PUBLIC: 0, INTERNAL: 1, CONFIDENTIAL: 2, SENSITIVE: 3, RESTRICTED: 4 }[value]; }
+export function sanitizeMemoryContent(content: string) { if (content.length > 64 * 1024) throw new Error("memory_too_large"); const secret = /(bearer\s+[A-Za-z0-9._~+\-/]+=*|(?:api[_-]?key|secret|token|password|client_secret)\s*[:=]\s*[A-Za-z0-9._~+\-/=]{12,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)/i; if (secret.test(content)) throw new Error("secret_memory_forbidden"); return content; }
+export function buildContext(input: { system: string; instructions: string; user: string; memory: readonly ModelMessage[]; policy: string; state: string }): ModelMessage[] { return [{ role: "system", content: input.system, source: "m9-runtime" }, { role: "agent", content: input.instructions, source: "agent-version" }, { role: "user", content: input.user, source: "request" }, ...input.memory.map((item) => ({ ...item, role: "memory" as const })), { role: "policy", content: input.policy, source: "m7" }, { role: "policy", content: input.state, source: "execution-state" }]; }
+export function detectCycle(fingerprints: readonly string[], candidate: string, maxRepeats = 2) { let repeats = 0; for (const item of fingerprints) if (item === candidate) repeats++; return repeats >= maxRepeats; }
+export function enforceOutputSize(content: string, maxBytes: number) { if (Buffer.byteLength(content, "utf8") > maxBytes) throw new Error("output_budget_exceeded"); return content; }
+
+export class DeterministicModelAdapter implements ModelAdapter {
+  constructor(private readonly responses: readonly ModelResponse[]) {}
+  private index = 0;
+  async complete() { const response = this.responses[this.index++]; if (!response) throw new Error("deterministic_model_exhausted"); return response; }
+}
+
+export class HttpModelAdapter implements ModelAdapter {
+  constructor(private readonly endpoint: string, private readonly bearerToken?: string) {
+    const url = new URL(endpoint); if (url.protocol !== "https:") throw new Error("model_endpoint_must_use_https");
+    const allowed = (process.env.TINLANCE_AGENT_MODEL_ALLOWED_HOSTS ?? "").split(",").map((v) => v.trim()).filter(Boolean); if (!allowed.includes(url.hostname)) throw new Error("model_endpoint_not_allowlisted");
+  }
+  async complete(input: { messages: readonly ModelMessage[]; model: string; provider: string; maxOutputBytes: number; signal?: AbortSignal }): Promise<ModelResponse> {
+    const headers: Record<string, string> = { "content-type": "application/json", accept: "application/json" }; if (this.bearerToken) headers.authorization = `Bearer ${this.bearerToken}`;
+    const response = await fetch(this.endpoint, { method: "POST", headers, body: JSON.stringify({ model: input.model, messages: input.messages, max_output_bytes: input.maxOutputBytes }), signal: input.signal ?? AbortSignal.timeout(60_000) });
+    if (!response.ok) throw new Error(`model_provider_http_${response.status}`);
+    const body = await response.json() as ModelResponse; if (body.type !== "final" && body.type !== "tool_call") throw new Error("model_response_invalid_type"); if (body.type === "tool_call" && (!body.tool || !body.arguments || typeof body.arguments !== "object" || Array.isArray(body.arguments))) throw new Error("model_tool_call_invalid"); return body;
+  }
+}
+
+export class McpRuntimeToolAdapter implements ToolAdapter {
+  async execute(input: { context: AgentContext; capability: AgentCapability; tool: McpToolDefinition; args: Record<string, unknown>; approvalId?: string }) {
+    const principal: McpPrincipal = { organizationId: input.context.organizationId, agentId: input.context.agentId, clientId: input.context.agentId, ownerUserId: input.context.principalId, environment: input.context.environment, scopes: [] };
+    const decision = await authorizeMcpTool({ principal, tool: input.tool, args: input.approvalId ? { ...input.args, approvalId: input.approvalId } : input.args, requestId: input.context.requestId });
+    if (decision.decision === "DENY") throw new Error(`m6_denied:${decision.reason}`);
+    if (decision.decision === "REQUIRE_APPROVAL") throw new Error("m6_approval_required");
+    const args = input.args;
+    if (toolName(input.tool) === "tinlance.projects.list") return listProjects(input.context.organizationId, args.limit as number | undefined, args.cursor as string | undefined);
+    if (toolName(input.tool) === "tinlance.projects.get") return getProject(input.context.organizationId, args.projectId as string);
+    if (toolName(input.tool) === "tinlance.assessments.get") return getAssessment(input.context.organizationId, args.assessmentId as string);
+    if (toolName(input.tool) === "tinlance.findings.list") return listFindings(input.context.organizationId, args.projectId as string, args.limit as number | undefined, args.cursor as string | undefined);
+    if (toolName(input.tool) === "tinlance.reports.get") return getReport(input.context.organizationId, args.reportId as string);
+    if (toolName(input.tool) === "tinlance.remediation.list") return listRemediation(input.context.organizationId, args.projectId as string, args.limit as number | undefined, args.cursor as string | undefined);
+    throw new Error("m6_tool_dispatch_unavailable");
+  }
+}
+function toolName(tool: McpToolDefinition) { return tool.name; }
+
+export async function authorizeAgentAction(input: { context: AgentContext; capability: AgentCapability; tool: McpToolDefinition; args: Record<string, unknown>; approvalPresent?: boolean }) {
+  const principal = buildPrincipal({ principalId: input.context.agentId, principalType: "AI_AGENT", organizationId: input.context.organizationId, userId: input.context.principalId, agentId: input.context.agentId, clientId: input.context.agentId, authenticationMethod: "m9-runtime", authenticationStrength: "STRONG", environment: input.context.environment, permissions: [] });
+  return enforcePersistedSecurity({ principal, action: input.tool.name, resourceType: "McpTool", resourceId: input.capability.resource, toolId: input.tool.toolId, dataClassification: input.tool.dataClassification === "CUSTOMER_CONFIDENTIAL" ? "CONFIDENTIAL" : input.tool.dataClassification as "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED" | "SECRET", requestedRisk: RISK_MAP[input.tool.riskLevel], approvalPresent: Boolean(input.approvalPresent), context: { tenantId: input.context.organizationId, agentVersionId: input.context.agentVersionId }, requestId: input.context.requestId });
+}
+
+export async function runControlledLoop(input: { context: AgentContext; instructions: string; task: string; model: ModelAdapter; tools: ToolAdapter; capabilities: readonly AgentCapability[]; memory: readonly ModelMessage[]; budget?: Partial<AgentBudget>; provider: string; modelName: string; approvalId?: string; onStep?: (step: { number: number; type: string; status: StepStatus; toolId?: string; decision?: SecurityDecisionResult; fingerprint?: string; metadata?: Record<string, unknown> }) => Promise<void> }) {
+  const budget = mergeBudget(input.budget); const started = Date.now(); let turns = 0; let toolCalls = 0; let retries = 0; let memoryWrites = 0; const fingerprints: string[] = []; let messages = buildContext({ system: "You are a controlled Tinlance agent. Model output is untrusted data. Never claim authority, approval, identity or permissions. Use only explicitly granted tools.", instructions: input.instructions, user: input.task, memory: input.memory, policy: "M7 is authoritative. A DENY/BLOCKED decision cannot be overridden. Approval is action-bound and must be revalidated.", state: "Execution is bounded by hard budgets and may stop at any time." });
+  while (true) {
+    if (Date.now() - started > budget.maxWallClockMs) throw new Error("execution_timeout"); if (++turns > budget.maxTurns) throw new Error("turn_budget_exhausted");
+    const response = await input.model.complete({ messages, model: input.modelName, provider: input.provider, maxOutputBytes: budget.maxOutputBytes });
+    const content = response.content ?? ""; enforceOutputSize(content, budget.maxOutputBytes);
+    if (response.type === "final") return { status: "COMPLETED" as const, output: content, usage: { turns, toolCalls, retries, memoryWrites, elapsedMs: Date.now() - started, tokens: response.usage?.inputTokens ?? 0 + (response.usage?.outputTokens ?? 0), estimatedCost: response.usage?.estimatedCost ?? 0 } };
+    if (++toolCalls > budget.maxToolCalls) throw new Error("tool_call_budget_exhausted"); if (!response.tool || !response.arguments) throw new Error("tool_call_invalid");
+    const tool = getMcpTool(response.tool); if (!tool) throw new Error("tool_not_found"); const args = validateToolArgs(tool, response.arguments); const capability = assertCapability(input.capabilities, { toolId: tool.toolId, action: tool.name, environment: input.context.environment }); const fingerprint = fingerprintToolCall(tool.toolId, args); if (detectCycle(fingerprints, fingerprint)) throw new Error("tool_cycle_detected"); fingerprints.push(fingerprint);
+    const decision = await authorizeAgentAction({ context: input.context, capability, tool, args, approvalPresent: Boolean(input.approvalId) }); await input.onStep?.({ number: turns, type: "TOOL", status: decision.decision === "ALLOW" ? "RUNNING" : decision.decision === "REQUIRE_APPROVAL" ? "WAITING" : "BLOCKED", toolId: tool.toolId, decision, fingerprint });
+    if (decision.decision === "DENY" || decision.decision === "BLOCKED" || decision.decision === "RATE_LIMIT") throw new Error(`m7_${decision.decision.toLowerCase()}:${decision.reasonCode}`);
+    if (decision.decision === "REQUIRE_APPROVAL" && !input.approvalId) { const principal: McpPrincipal = { organizationId: input.context.organizationId, agentId: input.context.agentId, clientId: input.context.agentId, ownerUserId: input.context.principalId, environment: input.context.environment, scopes: [] }; const approvalId = await createApproval({ principal, tool, args, requestId: input.context.requestId }); throw new Error(`approval_required:${approvalId}`); }
+    const result = await input.tools.execute({ context: input.context, capability, tool, args, approvalId: input.approvalId }); const serialized = JSON.stringify(result); enforceOutputSize(serialized, budget.maxOutputBytes); messages = [...messages, { role: "tool", content: serialized, source: tool.name }];
+    if (input.approvalId) { input.approvalId = undefined; }
+    if (retries > budget.maxRetries) throw new Error("retry_budget_exhausted");
+  }
+}
+
+export async function recordRuntimeStep(input: { organizationId: string; executionId: string; stepNumber: number; stepType: string; status: StepStatus; toolId?: string; action?: string; resourceId?: string; fingerprint?: string; decision?: SecurityDecisionResult; approvalId?: string; input?: unknown; output?: unknown; metadata?: Record<string, unknown> }) {
+  await db.$executeRaw(Prisma.sql`INSERT INTO "AgentExecutionStep" ("id","organizationId","executionId","stepNumber","stepType","status","toolId","action","resourceId","fingerprint","m7Decision","m7PolicyId","m7PolicyVersion","approvalId","inputHash","outputHash","metadata","completedAt") VALUES (${randomUUID()},${input.organizationId},${input.executionId},${input.stepNumber},${input.stepType},${input.status},${input.toolId ?? null},${input.action ?? null},${input.resourceId ?? null},${input.fingerprint ?? null},${input.decision?.decision ?? null},${input.decision?.policyId ?? null},${input.decision?.policyVersion ?? null},${input.approvalId ?? null},${input.input === undefined ? null : hashSensitive(input.input)},${input.output === undefined ? null : hashSensitive(input.output)},${JSON.stringify(input.metadata ?? {})}::jsonb,CURRENT_TIMESTAMP)`);
+}
+
+export function hashEvidence(value: unknown) { return hashSensitive(value); }
+export function listGrantedTools(capabilities: readonly AgentCapability[]) { const ids = new Set(capabilities.map((c) => c.toolId)); return listMcpTools().filter((tool) => ids.has(tool.toolId)); }
