@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { hasWorkspacePermission, type WorkspacePermission, type WorkspacePrincipal } from "@/lib/workspace/authorization";
+import { authorizeAgentPermission } from "@/lib/security-gateway/agent";
 import { type AuthInfo } from "@modelcontextprotocol/server";
 import { type McpToolDefinition } from "@/lib/mcp/registry";
 
@@ -13,27 +13,25 @@ export function parameterHash(args: Record<string, unknown>) { const copy = { ..
 
 export async function authorizeMcpTool(input: { principal: McpPrincipal; tool: McpToolDefinition; args: Record<string, unknown>; requestId: string }) {
   const { principal, tool, args, requestId } = input;
-  const [agentRows, member, user] = await Promise.all([
-    db.$queryRaw<Array<{ status: string; allowedTools: unknown; scopes: unknown; environment: string; organizationId: string; ownerUserId: string; clientId: string }>>(Prisma.sql`SELECT "status","allowedTools","scopes","environment","organizationId","ownerUserId","clientId" FROM "McpAgent" WHERE "id"=${principal.agentId} AND "organizationId"=${principal.organizationId} LIMIT 1`),
-    db.member.findUnique({ where: { organizationId_userId: { organizationId: principal.organizationId, userId: principal.ownerUserId } }, select: { role: true } }),
-    db.user.findUnique({ where: { id: principal.ownerUserId }, select: { role: true } }),
-  ]);
+  const agentRows = await db.$queryRaw<Array<{ status: string; allowedTools: unknown; scopes: unknown; environment: string; organizationId: string; ownerUserId: string; clientId: string }>>(Prisma.sql`SELECT "status","allowedTools","scopes","environment","organizationId","ownerUserId","clientId" FROM "McpAgent" WHERE "id"=${principal.agentId} AND "organizationId"=${principal.organizationId} LIMIT 1`);
   const agent = agentRows[0];
   const allowedTools = Array.isArray(agent?.allowedTools) ? agent.allowedTools.filter((value): value is string => typeof value === "string") : [];
   const grantedScopes = Array.isArray(agent?.scopes) ? agent.scopes.filter((value): value is string => typeof value === "string") : [];
-  const actorScopes = new Set(principal.scopes);
-  const workspace: WorkspacePrincipal | null = member ? { userId: principal.ownerUserId, organizationId: principal.organizationId, memberRole: member.role, globalRole: user?.role ?? null, isPrivileged: Boolean(user?.role && ["admin", "super-admin"].includes(user.role)) } : null;
-  const scopeAllowed = tool.requiredScopes.every((scope) => actorScopes.has(scope) && grantedScopes.includes(scope));
+  const scopeAllowed = tool.requiredScopes.every((scope) => principal.scopes.includes(scope) && grantedScopes.includes(scope));
   const toolAllowed = allowedTools.includes(tool.toolId);
   const environmentAllowed = tool.allowedEnvironments.includes(principal.environment);
-  const permissionsAllowed = workspace !== null && tool.requiredPermissions.every((permission) => hasWorkspacePermission(workspace, permission as WorkspacePermission));
-  let decision: McpDecision = "ALLOW"; let reason = "authorized";
+  let decision: McpDecision = "ALLOW"; let reason = "authorized"; let workspace = null;
   if (!agent || agent.status !== "ACTIVE" || agent.organizationId !== principal.organizationId || agent.ownerUserId !== principal.ownerUserId || agent.clientId !== principal.clientId) { decision = "DENY"; reason = "agent_identity_invalid"; }
   else if (!toolAllowed) { decision = "DENY"; reason = "tool_not_granted"; }
   else if (!scopeAllowed) { decision = "DENY"; reason = "scope_denied"; }
   else if (!environmentAllowed) { decision = "DENY"; reason = "environment_denied"; }
-  else if (!permissionsAllowed) { decision = "DENY"; reason = "workspace_permission_denied"; }
-  else if (tool.approvalRequired) { decision = "REQUIRE_APPROVAL"; reason = "human_approval_required"; }
+  else {
+    const risk = tool.riskLevel === "DESTRUCTIVE" ? "CRITICAL" : tool.riskLevel === "HIGH_IMPACT" ? "HIGH" : tool.riskLevel === "MUTATE" || tool.riskLevel === "ANALYZE" ? "MEDIUM" : "LOW";
+    const security = await authorizeAgentPermission({ organizationId: principal.organizationId, agentId: principal.agentId, clientId: principal.clientId, ownerUserId: principal.ownerUserId, scopes: principal.scopes, environment: principal.environment, permission: tool.requiredPermissions[0] as never, action: tool.name, resourceType: "McpTool", toolId: tool.toolId, requestId, risk, approvalPresent: typeof args.approvalId === "string" });
+    if (security.decision === "DENY" || security.decision === "BLOCKED") { decision = "DENY"; reason = security.reasonCode.toLowerCase(); }
+    else if (tool.requiredPermissions.length > 1) { decision = "DENY"; reason = "multiple_permissions_require_explicit_policy"; }
+    else if (tool.approvalRequired) { decision = "REQUIRE_APPROVAL"; reason = "human_approval_required"; }
+  }
   await auditMcpDecision({ principal, tool, requestId, decision, reason, args });
   return { decision, reason, workspace };
 }
