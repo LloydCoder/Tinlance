@@ -171,9 +171,13 @@ jobs:
       - run: pnpm build
       - run: pnpm audit --audit-level=high
         working-directory: .
-      - name: Secret scan current tree
+      - name: Secret scan current source tree
         working-directory: .
-        run: docker run --rm -v "$GITHUB_WORKSPACE:/repo" zricethezav/gitleaks:v8.28.0 dir /repo --no-banner --redact --exit-code 1 --exclude='**/node_modules/**' --exclude='**/.next/**' --exclude='**/.git/**'
+        run: |
+          rm -rf /tmp/m8-secret-scan
+          mkdir -p /tmp/m8-secret-scan
+          rsync -a --exclude='.git' --exclude='node_modules' --exclude='.next' ./ /tmp/m8-secret-scan/
+          docker run --rm -v "/tmp/m8-secret-scan:/repo:ro" zricethezav/gitleaks:v8.28.0 dir /repo --no-banner --redact --exit-code 1
 
   container-validation:
     name: Container validation
