@@ -21,10 +21,29 @@ Lead → qualification → booking → proposal → engagement
 Next.js / Vercel → Better Auth → PostgreSQL / Prisma / Neon
   │
   ▼
-Tinlance FDE API → fde-mastery
+M7 AI Security Gateway
+  │
+  ├── M5 API Platform
+  └── M6 MCP Gateway
+          │
+          ▼
+     M4 Automation → Tinlance FDE API → fde-mastery
 ```
 
 The public authority layer includes services, research, insights, guides, case studies, documentation and resources. It feeds the existing assessment/commercial workflow; it does not replace the commercial engine.
+
+## M7 AI Security Gateway
+
+M7 is Tinlance's cross-cutting AI security control plane for identity, tenant context, permissions, policy, deterministic risk, approvals/step-up, revocation, rate/resource controls, output filtering and auditability.
+
+```text
+Identity → Tenant → Principal → Permission → Policy → Risk
+       → Approval/Step-up → Execution → Output → Audit
+```
+
+M7 extends existing Better Auth, workspace authorization, M5 API authentication, M6 MCP authorization and the existing `AuditEvent` ledger rather than introducing parallel identity or audit systems. Policy failure is fail-closed. AI prompts, retrieved documents, MCP metadata and tool descriptions are untrusted data and never become authorization decisions.
+
+See [`docs/security/m7-ai-security-gateway.md`](./docs/security/m7-ai-security-gateway.md) and [`docs/security/m7-threat-model.md`](./docs/security/m7-threat-model.md).
 
 ## Repository layout
 
@@ -119,18 +138,20 @@ See [`docs/BILLING-WEBHOOKS.md`](./docs/BILLING-WEBHOOKS.md).
 - Health and readiness endpoints.
 - Dependency and software-supply-chain security as blocking CI controls.
 - AI security regression and domain-agent validation in CI.
+- M7 deterministic authorization/risk tests and persisted security-control migration validation.
+- Security dependency overrides are lockfile-pinned and verified by frozen CI installs.
 
 The security verification baseline is OWASP ASVS 5.0, with additional AI/agent security controls appropriate to the execution paths.
 
 ## Current delivery status
 
-M0 legacy-site discovery/migration and M1 commercial engine implementation are merged. M2 Authority Engine is the current implementation phase until its dedicated certificate is merged and main CI is green.
-
-Production readiness is not inferred from source code alone. Deployment-specific checks that remain outside M2 include live Better Auth flows, live Paystack processing, and a live authenticated Tinlance → FDE API → `fde-mastery` execution.
+M0–M6 implementation remains the compatibility baseline. M7 is being implemented as the security control plane beneath the existing M5/M6 surfaces. Production deployment verification remains separate from repository/CI verification; the current Vercel deployment limit is a temporary external constraint and is not bypassed by the M7 work.
 
 ## Documentation
 
 - [`docs/architecture/tinlance-architecture.md`](./docs/architecture/tinlance-architecture.md) — canonical current architecture.
+- [`docs/security/m7-ai-security-gateway.md`](./docs/security/m7-ai-security-gateway.md) — M7 control-plane implementation.
+- [`docs/security/m7-threat-model.md`](./docs/security/m7-threat-model.md) — M7 threat model and residual risks.
 - [`docs/authority/authority-engine.md`](./docs/authority/authority-engine.md) — Authority Engine architecture.
 - [`docs/authority/content-model.md`](./docs/authority/content-model.md) — content and evidence model.
 - [`docs/authority/content-governance.md`](./docs/authority/content-governance.md) — publishing and evidence gate.

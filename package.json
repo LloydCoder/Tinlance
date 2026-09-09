@@ -9,11 +9,13 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "security:audit": "pnpm audit --audit-level=high"
   },
   "pnpm": {
     "overrides": {
-      "sharp": ">=0.35.0",
+      "sharp": ">=0.35.4",
+      "js-yaml": ">=4.3.2",
       "postcss": ">=8.5.18",
       "deepmerge-ts": ">=8.0.0"
     }
