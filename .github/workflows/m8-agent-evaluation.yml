@@ -28,7 +28,7 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: tinlance_m8
         ports:
           - 5432:5432
@@ -38,7 +38,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_m8?schema=public
+      DATABASE_URL: postgresql://postgres@localhost:5432/tinlance_m8?schema=public
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
