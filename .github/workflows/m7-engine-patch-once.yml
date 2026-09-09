@@ -2,11 +2,14 @@ name: M7 engine patch helper
 on:
   push:
     branches: [feat/m7-ai-security-gateway]
+  pull_request:
+    branches: [main]
+    types: [synchronize]
 permissions:
   contents: write
 jobs:
   patch:
-    if: ${{ github.event.head_commit.message != 'chore(m7): apply workflow authorization patch' }}
+    if: ${{ github.event_name == 'pull_request' || github.event.head_commit.message != 'chore(m7): apply workflow authorization patch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,10 +31,6 @@ jobs:
           if old_fn not in s:
               raise SystemExit('expected loadDefinition function not found')
           s = s.replace(old_fn, new_fn, 1)
-          marker = 'M7_WORKFLOW_AUTHORIZED'
-          if marker not in s:
-              s = s.replace('const decision = await authorizeWorkflowStep({', 'const decision = await authorizeWorkflowStep({', 1)
-              s = s.replace('      stepKey: step.key,\n    });', '      stepKey: step.key,\n    });\n    // M7_WORKFLOW_AUTHORIZED: every runnable workflow step is mediated before execution.', 1)
           p.write_text(s)
       - name: Commit patch and remove helper
         run: |
