@@ -6,7 +6,6 @@ permissions:
   contents: write
 jobs:
   refresh:
-    if: ${{ github.event.head_commit.message != 'chore(ci): refresh dependency lockfile' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,9 +20,12 @@ jobs:
           node-version: 22
           cache: pnpm
       - name: Refresh lockfile
-        run: pnpm install --lockfile-only
+        run: |
+          if [ "$(git log -1 --pretty=%B)" = "chore(ci): refresh dependency lockfile" ]; then exit 0; fi
+          pnpm install --lockfile-only
       - name: Commit refreshed lockfile and remove helper
         run: |
+          if [ "$(git log -1 --pretty=%B)" = "chore(ci): refresh dependency lockfile" ]; then exit 0; fi
           rm -f .github/workflows/m7-lock-refresh-once.yml
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
