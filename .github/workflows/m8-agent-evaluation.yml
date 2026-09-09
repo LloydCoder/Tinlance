@@ -70,4 +70,9 @@ jobs:
           rm -rf /tmp/m8-secret-scan
           mkdir -p /tmp/m8-secret-scan
           rsync -a --exclude='.git' --exclude='node_modules' --exclude='.next' ./ /tmp/m8-secret-scan/
-          docker run --rm -v "/tmp/m8-secret-scan:/repo:ro" zricethezav/gitleaks:v8.28.0 dir /repo --no-banner --redact --exit-code 1
+          set +e
+          docker run --rm -v "/tmp/m8-secret-scan:/repo:ro" zricethezav/gitleaks:v8.28.0 dir /repo --no-banner --redact --report-format json --report-path /repo/gitleaks-report.json
+          status=$?
+          cat /tmp/m8-secret-scan/gitleaks-report.json
+          rm -f /tmp/m8-secret-scan/gitleaks-report.json
+          exit "$status"
