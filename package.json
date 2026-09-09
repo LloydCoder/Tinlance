@@ -9,7 +9,8 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "security:audit": "pnpm audit --audit-level=high"
   },
   "pnpm": {
     "overrides": {
