@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { hasWorkspacePermission, type WorkspacePermission, type WorkspacePrincipal } from "@/lib/workspace/authorization";
 import { buildPrincipal } from "@/lib/security-gateway";
