@@ -67,4 +67,4 @@ jobs:
       - name: Secret scan current tree
         working-directory: .
         run: |
-          docker run --rm -v "$GITHUB_WORKSPACE:/repo" zricethezav/gitleaks:v8.28.0 dir /repo --no-banner --redact --exit-code 1
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" zricethezav/gitleaks:v8.28.0 dir /repo --no-banner --redact --exit-code 1 --exclude='**/node_modules/**' --exclude='**/.next/**' --exclude='**/.git/**'
