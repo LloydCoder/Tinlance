@@ -4,10 +4,19 @@ import { db } from "@/lib/db";
 import { enforcePersistedSecurity } from "@/lib/security-gateway/runtime";
 import { buildPrincipal, hashSensitive } from "@/lib/security-gateway";
 import { compareBaseline, createTrace, evaluateGate, gradeCase, type EvaluationCase, type EvaluationExecution, type EvaluationProfile } from "@/lib/evaluation";
+import { hasWorkspacePermission, type WorkspacePermission } from "@/lib/workspace/permissions";
 
 export async function authorizeEvaluation(input: { organizationId: string; userId: string; permission: "evaluation:read" | "evaluation:create" | "evaluation:execute" | "evaluation:manage"; action: string; resourceType: string; resourceId?: string; requestId: string }) {
-  const principal = buildPrincipal({ principalId: input.userId, principalType: "HUMAN", organizationId: input.organizationId, userId: input.userId, permissions: [input.permission], authenticationMethod: "better-auth-session", authenticationStrength: "MFA" });
-  return enforcePersistedSecurity({ principal, action: input.action, resourceType: input.resourceType, resourceId: input.resourceId, context: { tenantId: input.organizationId, requiredPermission: input.permission }, requestedRisk: input.permission === "evaluation:execute" || input.permission === "evaluation:manage" ? "HIGH" : "LOW", requestId: input.requestId });
+  const [membership, user] = await Promise.all([
+    db.member.findUnique({ where: { organizationId_userId: { organizationId: input.organizationId, userId: input.userId } }, select: { role: true } }),
+    db.user.findUnique({ where: { id: input.userId }, select: { role: true } }),
+  ]);
+  if (!membership) throw new Error("evaluation_membership_required");
+  const workspace = { memberRole: membership.role, isPrivileged: Boolean(user?.role && ["admin", "super-admin"].includes(user.role)) };
+  const permission = input.permission as WorkspacePermission;
+  const allowed = hasWorkspacePermission(workspace, permission);
+  const principal = buildPrincipal({ principalId: input.userId, principalType: "HUMAN", organizationId: input.organizationId, userId: input.userId, permissions: allowed ? [permission] : [], authenticationMethod: "better-auth-session", authenticationStrength: "MFA" });
+  return enforcePersistedSecurity({ principal, action: input.action, resourceType: input.resourceType, resourceId: input.resourceId, context: { tenantId: input.organizationId, requiredPermission: permission }, requestedRisk: input.permission === "evaluation:execute" || input.permission === "evaluation:manage" ? "HIGH" : "LOW", requestId: input.requestId });
 }
 
 export async function createEvaluationProject(input: { organizationId: string; userId: string; name: string; description?: string }) {
@@ -19,6 +28,8 @@ export async function createEvaluationProject(input: { organizationId: string; u
 export async function createTarget(input: { organizationId: string; projectId: string; userId: string; name: string; targetType: string; version: string; environment?: string; metadata?: Record<string, unknown> }) {
   const id = randomUUID();
   const configurationHash = hashSensitive({ name: input.name, targetType: input.targetType, version: input.version, environment: input.environment ?? "sandbox", metadata: input.metadata ?? {} });
+  const project = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "EvaluationProject" WHERE id=${input.projectId} AND "organizationId"=${input.organizationId} LIMIT 1`);
+  if (!project[0]) throw new Error("evaluation_project_not_found");
   await db.$executeRaw(Prisma.sql`INSERT INTO "EvaluationTarget" ("id","organizationId","projectId","name","targetType","version","environment","configurationHash","metadata","createdByUserId") VALUES (${id},${input.organizationId},${input.projectId},${input.name},${input.targetType},${input.version},${input.environment ?? "sandbox"},${configurationHash},${JSON.stringify(input.metadata ?? {})}::jsonb,${input.userId})`);
   return id;
 }
@@ -36,7 +47,7 @@ export async function startRun(input: { organizationId: string; projectId: strin
   const target = await getTarget(input.organizationId, input.targetId);
   if (!target) throw new Error("evaluation_target_not_found");
   const id = randomUUID();
-  await db.$executeRaw(Prisma.sql`INSERT INTO "EvaluationRun" ("id","organizationId","projectId","targetId","targetVersion","suiteId","suiteVersion","datasetSlug","datasetVersion","graderVersion","environment","commitSha","model","configurationHash","status","createdByUserId") VALUES (${id},${input.organizationId},${input.projectId},${input.targetId},${target.version},${input.suiteId},${input.suiteVersion},${input.datasetSlug},${input.datasetVersion},'m8-deterministic-1',${target.environment},${input.commitSha ?? null},${input.model ?? null},${target.configurationHash},'RUNNING',${input.userId})`);
+  await db.$executeRaw(Prisma.sql`INSERT INTO "EvaluationRun" ("id","organizationId","projectId","targetId","targetVersion","suiteId","suiteVersion","datasetSlug","datasetVersion","graderVersion","environment","commitSha","model","configurationHash","status","createdByUserId","startedAt") VALUES (${id},${input.organizationId},${input.projectId},${input.targetId},${target.version},${input.suiteId},${input.suiteVersion},${input.datasetSlug},${input.datasetVersion},'m8-deterministic-1',${target.environment},${input.commitSha ?? null},${input.model ?? null},${target.configurationHash},'RUNNING',${input.userId},CURRENT_TIMESTAMP)`);
   return id;
 }
 
@@ -55,7 +66,7 @@ export async function completeRun(input: { organizationId: string; runId: string
   const rows = await db.$queryRaw<Array<{ id: string; targetId: string; status: string }>>(Prisma.sql`SELECT id,"targetId",status FROM "EvaluationRun" WHERE id=${input.runId} AND "organizationId"=${input.organizationId} LIMIT 1`);
   if (!rows[0]) throw new Error("evaluation_run_not_found");
   const results = await db.$queryRaw<Array<{ caseId: string; status: string; classification: string; severity: string }>>(Prisma.sql`SELECT "caseId",status,classification,severity FROM "EvaluationResult" WHERE "runId"=${input.runId} AND "organizationId"=${input.organizationId}`);
-  const gradeResults = results.map((r) => ({ status: r.status as "PASS" | "FAIL" | "INCONCLUSIVE" | "ERROR" | "SKIPPED", classification: r.classification === "NONE" ? null : r.classification as any, score: null, reason: "persisted", severity: r.severity as any, confidence: 1, evidence: {}, graderVersion: "m8-deterministic-1" }));
+  const gradeResults = results.map((r) => ({ status: r.status as "PASS" | "FAIL" | "INCONCLUSIVE" | "ERROR" | "SKIPPED", classification: r.classification === "NONE" ? null : (r.classification as "MODEL_FAILURE" | "SECURITY_FAILURE" | "POLICY_FAILURE" | "TEST_FAILURE" | "INFRASTRUCTURE_FAILURE" | "TIMEOUT" | "COST_LIMIT" | "CONFIGURATION_ERROR" | "INCONCLUSIVE"), score: null, reason: "persisted", severity: r.severity as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO", confidence: 1, evidence: {}, graderVersion: "m8-deterministic-1" }));
   const gate = evaluateGate({ results: gradeResults, regressions: 0 });
   await db.$executeRaw(Prisma.sql`UPDATE "EvaluationRun" SET status=${gate.deploymentAllowed ? "COMPLETED" : "BLOCKED"},"completedAt"=CURRENT_TIMESTAMP,summary=${JSON.stringify(gate)}::jsonb WHERE id=${input.runId} AND "organizationId"=${input.organizationId}`);
   return gate;
