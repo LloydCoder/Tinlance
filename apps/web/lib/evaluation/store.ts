@@ -72,9 +72,18 @@ export async function recordResult(input: { organizationId: string; runId: strin
 }
 
 export async function completeRun(input: { organizationId: string; runId: string }) {
-  const rows = await db.$queryRaw<Array<{ id: string; targetId: string; status: string }>>(Prisma.sql`SELECT id,"targetId",status FROM "EvaluationRun" WHERE id=${input.runId} AND "organizationId"=${input.organizationId} LIMIT 1`);
-  if (!rows[0]) throw new Error("evaluation_run_not_found");
-  const results = await db.$queryRaw<Array<{ caseId: string; status: string; classification: string; severity: string }>>(Prisma.sql`SELECT "caseId",status,classification,severity FROM "EvaluationResult" WHERE "runId"=${input.runId} AND "organizationId"=${input.organizationId}`);
+  const runs = await db.$queryRaw<Array<{ id: string; targetId: string; status: string; datasetSlug: string; datasetVersion: string }>>(Prisma.sql`SELECT id,"targetId",status,"datasetSlug","datasetVersion" FROM "EvaluationRun" WHERE id=${input.runId} AND "organizationId"=${input.organizationId} LIMIT 1`);
+  if (!runs[0]) throw new Error("evaluation_run_not_found");
+  const [results, expected] = await Promise.all([
+    db.$queryRaw<Array<{ caseId: string; status: string; classification: string; severity: string }>>(Prisma.sql`SELECT "caseId",status,classification,severity FROM "EvaluationResult" WHERE "runId"=${input.runId} AND "organizationId"=${input.organizationId}`),
+    db.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`SELECT COUNT(*)::bigint AS count FROM "EvaluationCase" WHERE ("organizationId" IS NULL OR "organizationId"=${input.organizationId}) AND "datasetSlug"=${runs[0].datasetSlug} AND "datasetVersion"=${runs[0].datasetVersion}`),
+  ]);
+  const expectedCount = Number(expected[0]?.count ?? 0);
+  if (results.length !== expectedCount) {
+    const incompleteGate = evaluateGate({ results: [{ status: "ERROR", classification: "CONFIGURATION_ERROR", score: null, reason: `Incomplete evaluation evidence: ${results.length}/${expectedCount} cases`, severity: "CRITICAL", confidence: 1, evidence: { expectedCount, actualCount: results.length }, graderVersion: "m8-deterministic-1" }], regressions: 0 });
+    await db.$executeRaw(Prisma.sql`UPDATE "EvaluationRun" SET status='INCONCLUSIVE',"completedAt"=CURRENT_TIMESTAMP,summary=${JSON.stringify(incompleteGate)}::jsonb WHERE id=${input.runId} AND "organizationId"=${input.organizationId}`);
+    return incompleteGate;
+  }
   const gradeResults = results.map((r) => ({ status: r.status as "PASS" | "FAIL" | "INCONCLUSIVE" | "ERROR" | "SKIPPED", classification: r.classification === "NONE" ? null : (r.classification as "MODEL_FAILURE" | "SECURITY_FAILURE" | "POLICY_FAILURE" | "TEST_FAILURE" | "INFRASTRUCTURE_FAILURE" | "TIMEOUT" | "COST_LIMIT" | "CONFIGURATION_ERROR" | "INCONCLUSIVE"), score: null, reason: "persisted", severity: r.severity as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO", confidence: 1, evidence: {}, graderVersion: "m8-deterministic-1" }));
   const gate = evaluateGate({ results: gradeResults, regressions: 0 });
   await db.$executeRaw(Prisma.sql`UPDATE "EvaluationRun" SET status=${gate.deploymentAllowed ? "COMPLETED" : "BLOCKED"},"completedAt"=CURRENT_TIMESTAMP,summary=${JSON.stringify(gate)}::jsonb WHERE id=${input.runId} AND "organizationId"=${input.organizationId}`);
