@@ -22,9 +22,7 @@ export async function POST(request: Request) {
       await tx.auditEvent.create({ data: { organizationId: opportunity.organizationId, actorUserId: actor.userId, action: "opportunity.transitioned", resourceType: "opportunity", resourceId: opportunity.id, requestId, metadata: { from: opportunity.stage, to: parsed.data.to, reason: parsed.data.reason ?? null } } });
       return result;
     });
-    const growthByStage: Partial<Record<string, "lead_qualified" | "opportunity_created" | "proposal_created" | "deal_won" | "deal_lost">> = {
-      QUALIFIED: "lead_qualified", PROPOSAL_DRAFT: "proposal_created", ACCEPTED: "deal_won", ACTIVE: "deal_won", COMPLETED: "deal_won", DISQUALIFIED: "deal_lost", DECLINED: "deal_lost",
-    };
+    const growthByStage: Partial<Record<string, "lead_qualified" | "opportunity_created" | "proposal_created" | "deal_won" | "deal_lost">> = { QUALIFIED: "lead_qualified", PROPOSAL_DRAFT: "proposal_created", ACCEPTED: "deal_won", DISQUALIFIED: "deal_lost", DECLINED: "deal_lost" };
     const eventName = growthByStage[parsed.data.to];
     if (eventName) { try { await recordGrowthEvent({ eventName, source: "crm", organizationId: opportunity.organizationId ?? undefined, entityId: opportunity.id, privacyClass: "INTERNAL", properties: { fromStage: opportunity.stage, toStage: parsed.data.to } }); } catch (error) { console.error("growth_event_record_failed", { requestId, eventName, error }); } }
     return NextResponse.json({ status: "updated", requestId, opportunityId: opportunity.id, stage: parsed.data.to, updated: updated.count === 1 }, { status: 200, headers: { "cache-control": "no-store", "x-request-id": requestId } });
