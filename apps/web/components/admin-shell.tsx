@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, BriefcaseBusiness, CreditCard, FileSignature, FileText, Handshake, LayoutDashboard, Settings2, Users } from "lucide-react";
+import { BarChart3, BriefcaseBusiness, CreditCard, FileSignature, FileText, Handshake, LayoutDashboard, LineChart, Settings2, Users } from "lucide-react";
 import Link from "next/link";
 import { PortalAuthControls } from "./portal-auth-controls";
 
@@ -13,6 +13,7 @@ const links = [
   ["clients", "/admin/clients", "Clients", BriefcaseBusiness],
   ["projects", "/admin/projects", "Projects", BarChart3],
   ["billing", "/admin/billing", "Billing", CreditCard],
+  ["revenue", "/admin/revenue", "Revenue", LineChart],
   ["content", "/admin/content", "Content", FileText],
   ["controls", "/admin/controls", "Controls", Settings2],
 ] as const;
