@@ -1,14 +1,15 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { enforceSecurity, buildPrincipal } from "@/lib/security-gateway";
+import { enforceSecurity, buildPrincipal, type DataClassification } from "@/lib/security-gateway";
 
 export const M13_POLICY_VERSION = "m13-policy-v1";
 export const M13_TRANSFORMATION_VERSION = "m13-deterministic-deid-v1";
 const MIN_PUBLIC_COHORT = 5;
 const MAX_SOURCE_TEXT = 200_000;
 
-export type M13Classification = "PUBLIC" | "INTERNAL" | "CUSTOMER_CONFIDENTIAL" | "CUSTOMER_RESTRICTED" | "PERSONAL_DATA" | "SENSITIVE_PERSONAL_DATA" | "SECRET" | "CREDENTIAL" | "SECURITY_SENSITIVE" | "LEGALLY_RESTRICTED" | "DERIVED_INTELLIGENCE" | "APPROVED_PUBLIC_INTELLIGENCE";
+export type M13Classification = DataClassification;
+export type M13StoredClassification = "PUBLIC" | "INTERNAL" | "CUSTOMER_CONFIDENTIAL" | "CUSTOMER_RESTRICTED" | "PERSONAL_DATA" | "SENSITIVE_PERSONAL_DATA" | "SECRET" | "CREDENTIAL" | "SECURITY_SENSITIVE" | "LEGALLY_RESTRICTED" | "DERIVED_INTELLIGENCE" | "APPROVED_PUBLIC_INTELLIGENCE";
 export type M13Status = "CANDIDATE" | "ELIGIBILITY_REVIEW" | "MINIMIZATION_REQUIRED" | "DE_IDENTIFICATION" | "RISK_REVIEW" | "HUMAN_REVIEW" | "APPROVED_INTERNAL" | "APPROVED_LIMITED" | "APPROVED_PUBLIC" | "PUBLISHED" | "REJECTED" | "REVOKED" | "EXPIRED" | "SUPERSEDED" | "REQUIRES_REVIEW";
 export type M13Scope = "INTERNAL" | "LIMITED" | "PUBLIC" | "CUSTOMER_SAFE";
 
@@ -82,22 +83,22 @@ function riskFor(content: string, sourceCount = 1) {
 
 async function m7(principal: Principal, action: string, classification: M13Classification) {
   const decision = await enforceSecurity({
-    principal: buildPrincipal({ principalId: principal.userId, principalType: "HUMAN", organizationId: principal.organizationId, userId: principal.userId }),
+    principal: buildPrincipal({ principalId: principal.userId, principalType: "HUMAN", organizationId: principal.organizationId, userId: principal.userId, permissions: ["project:update"] }),
     action,
     resourceType: "M13Intelligence",
     dataClassification: classification,
-    context: { tenantId: principal.organizationId, m13PolicyVersion: M13_POLICY_VERSION },
+    context: { tenantId: principal.organizationId, requiredPermission: "projects:write", m13PolicyVersion: M13_POLICY_VERSION },
     requestId: principal.requestId,
   });
   if (decision.decision !== "ALLOW") throw new Error("m13_policy_denied");
 }
 
-async function audit(principal: Principal, action: string, resourceId: string, metadata: Record<string, unknown> = {}) {
+async function audit(principal: Principal, action: string, resourceId: string, metadata: Prisma.InputJsonValue = {}) {
   await db.auditEvent.create({ data: { organizationId: principal.organizationId, actorUserId: principal.userId, action, resourceType: "M13Intelligence", resourceId, requestId: principal.requestId, metadata } });
 }
 
 export async function createCandidate(principal: Principal & { engagementId: string; category: string; content: string; purpose?: string; contractualBasis?: string; aggregationAllowed?: boolean; commercialReuseAllowed?: boolean }) {
-  await m7(principal, "m13.source.create", "CUSTOMER_RESTRICTED");
+  await m7(principal, "m13.source.create", "RESTRICTED");
   const engagement = await db.$queryRaw<Array<{ id: string; organizationId: string }>>(Prisma.sql`SELECT id,"organizationId" FROM "Engagement" WHERE id=${principal.engagementId} AND "organizationId"=${principal.organizationId} LIMIT 1`);
   if (!engagement[0]) throw new Error("m13_source_not_found");
   if (!principal.contractualBasis || !principal.purpose) throw new Error("m13_permission_required");
@@ -115,7 +116,7 @@ export async function createCandidate(principal: Principal & { engagementId: str
 }
 
 export async function reviewCandidate(principal: Principal & { candidateId: string; decision: "APPROVE" | "REJECT"; scope?: M13Scope; purpose?: string; destination?: string[] }) {
-  await m7(principal, "m13.review", "DERIVED_INTELLIGENCE");
+  await m7(principal, "m13.review", "INTERNAL");
   const rows = await db.$queryRaw<Array<{ id: string; organizationId: string; version: number; content: string; contentHash: string; status: M13Status; riskLevel: string; sourceId: string }>>(Prisma.sql`SELECT id,"organizationId",version,"minimizedContent" AS content,"contentHash",status,"riskLevel","sourceId" FROM "IntelligenceCandidate" WHERE id=${principal.candidateId} AND "organizationId"=${principal.organizationId} LIMIT 1`);
   const candidate = rows[0];
   if (!candidate) throw new Error("m13_candidate_not_found");
@@ -125,8 +126,8 @@ export async function reviewCandidate(principal: Principal & { candidateId: stri
     if (candidate.riskLevel === "HIGH" || candidate.riskLevel === "CRITICAL") throw new Error("m13_public_risk_blocked");
     const source = await db.$queryRaw<Array<{ contractualBasis: string | null; commercialReuseAllowed: boolean; customerApprovalRequired: boolean }>>(Prisma.sql`SELECT "contractualBasis","commercialReuseAllowed","customerApprovalRequired" FROM "IntelligenceSource" WHERE id=${candidate.sourceId} AND "organizationId"=${principal.organizationId} LIMIT 1`);
     if (!source[0]?.contractualBasis || !source[0].commercialReuseAllowed) throw new Error("m13_public_permission_denied");
-    const evidence = await db.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`SELECT COUNT(*)::bigint AS count FROM "IntelligenceEvidence" WHERE "candidateId"=${candidate.id} AND "organizationId"=${principal.organizationId}`);
-    if (Number(evidence[0]?.count ?? 0) < MIN_PUBLIC_COHORT) throw new Error("m13_public_cohort_too_small");
+    const cohort = await db.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`SELECT COUNT(DISTINCT s."organizationId")::bigint AS count FROM "IntelligenceCandidate" c JOIN "IntelligenceSource" s ON s.id=c."sourceId" WHERE c.category=(SELECT category FROM "IntelligenceCandidate" WHERE id=${candidate.id}) AND c.status IN ('APPROVED_INTERNAL','APPROVED_LIMITED','APPROVED_PUBLIC','PUBLISHED') AND c."contentHash"=${candidate.contentHash}`);
+    if (Number(cohort[0]?.count ?? 0) < MIN_PUBLIC_COHORT) throw new Error("m13_public_cohort_too_small");
   }
   const decision = principal.decision === "APPROVE" ? (scope === "PUBLIC" ? "APPROVED_PUBLIC" : scope === "LIMITED" || scope === "CUSTOMER_SAFE" ? "APPROVED_LIMITED" : "APPROVED_INTERNAL") : "REJECTED";
   const approvalId = `mia_${randomUUID().replaceAll("-", "")}`;
@@ -139,7 +140,6 @@ export async function reviewCandidate(principal: Principal & { candidateId: stri
 }
 
 export async function publishCandidate(principal: Principal & { candidateId: string; destination: "M10" | "M11" | "M12" }) {
-  await m7(principal, "m13.publish", "DERIVED_INTELLIGENCE");
   const rows = await db.$queryRaw<Array<{ id: string; version: number; contentHash: string; status: M13Status; riskLevel: string }>>(Prisma.sql`SELECT id,version,"contentHash",status,"riskLevel" FROM "IntelligenceCandidate" WHERE id=${principal.candidateId} AND "organizationId"=${principal.organizationId} LIMIT 1`);
   const candidate = rows[0];
   if (!candidate) throw new Error("m13_candidate_not_found");
@@ -149,6 +149,7 @@ export async function publishCandidate(principal: Principal & { candidateId: str
   if (candidate.riskLevel === "HIGH" || candidate.riskLevel === "CRITICAL") throw new Error("m13_high_risk_publish_blocked");
   const approval = await db.$queryRaw<Array<{ id: string; candidateVersion: number; contentHash: string; decision: string; scope: string; expiresAt: Date | null }>>(Prisma.sql`SELECT id,"candidateVersion","contentHash",decision,scope,"expiresAt" FROM "IntelligenceApproval" WHERE "candidateId"=${candidate.id} AND "organizationId"=${principal.organizationId} ORDER BY "createdAt" DESC LIMIT 1`);
   if (!approval[0] || approval[0].decision !== "APPROVED" || approval[0].candidateVersion !== candidate.version || approval[0].contentHash !== candidate.contentHash || approval[0].scope !== scope || (approval[0].expiresAt && approval[0].expiresAt <= new Date())) throw new Error("m13_approval_invalid");
+  await m7(principal, "m13.publication", "INTERNAL");
   const publicationId = `mip_${randomUUID().replaceAll("-", "")}`;
   await db.$executeRaw(Prisma.sql`INSERT INTO "IntelligencePublication" ("id","organizationId","candidateId","candidateVersion","contentHash","destination","visibility","publishedVersion","approvalId") VALUES (${publicationId},${principal.organizationId},${candidate.id},${candidate.version},${candidate.contentHash},${principal.destination},${scope},${candidate.version},${approval[0].id})`);
   await audit(principal, "M13_PUBLISHED", candidate.id, { publicationId, destination: principal.destination, version: candidate.version, scope });
@@ -156,7 +157,9 @@ export async function publishCandidate(principal: Principal & { candidateId: str
 }
 
 export async function revokeCandidate(principal: Principal & { candidateId: string; reason: string }) {
-  await m7(principal, "m13.revoke", "DERIVED_INTELLIGENCE");
+  const rows = await db.$queryRaw<Array<{ id: string; status: M13Status }>>(Prisma.sql`SELECT id,status FROM "IntelligenceCandidate" WHERE id=${principal.candidateId} AND "organizationId"=${principal.organizationId} LIMIT 1`);
+  if (!rows[0]) throw new Error("m13_candidate_not_found");
+  await m7(principal, "m13.revocation", "INTERNAL");
   await db.$transaction(async (tx) => {
     await tx.$executeRaw(Prisma.sql`UPDATE "IntelligenceCandidate" SET status='REVOKED',"updatedAt"=CURRENT_TIMESTAMP WHERE id=${principal.candidateId} AND "organizationId"=${principal.organizationId}`);
     await tx.$executeRaw(Prisma.sql`UPDATE "IntelligencePublication" SET "revokedAt"=CURRENT_TIMESTAMP WHERE "candidateId"=${principal.candidateId} AND "organizationId"=${principal.organizationId} AND "revokedAt" IS NULL`);
