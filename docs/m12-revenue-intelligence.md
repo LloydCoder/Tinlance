@@ -42,3 +42,7 @@ The ingestion endpoint is rate limited, size limited, origin checked when an Ori
 ## Primary business metric
 
 **Revenue per qualified visitor**. The implementation only calculates this when a single currency is present; otherwise it returns `null` rather than producing a mathematically invalid cross-currency number.
+
+## Deployment verification
+
+The first Vercel preview for this branch returned a platform-side `BUILD_FAILED / Resource provisioning failed` state without build-error events. This was treated as infrastructure/transient deployment state rather than a code failure. The next branch revision is intentionally used to force a fresh Vercel deployment; CI remains the authoritative source for source/test/build validation.
