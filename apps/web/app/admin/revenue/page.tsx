@@ -5,6 +5,9 @@ import { AdminShell } from "../../../components/admin-shell";
 import { getAuthorizationContext } from "../../../lib/auth/authorization";
 import { getRevenueIntelligence } from "../../../lib/revenue-intelligence";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function money(minor: number | null, currency: string | null) { if (minor === null || !currency) return "—"; return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(minor / 100); }
 function pct(value: number) { return `${(value * 100).toFixed(1)}%`; }
 
