@@ -1,21 +1,11 @@
 "use client";
 
-import { BarChart3, BriefcaseBusiness, CreditCard, FileSignature, FileText, Handshake, LayoutDashboard, LineChart, Settings2, Users } from "lucide-react";
+import { BarChart3, BriefcaseBusiness, CreditCard, FileSignature, FileText, Handshake, LayoutDashboard, LineChart, Settings2, Users, Workflow } from "lucide-react";
 import Link from "next/link";
 import { PortalAuthControls } from "./portal-auth-controls";
 
 const links = [
-  ["overview", "/admin", "Overview", LayoutDashboard],
-  ["leads", "/admin/leads", "Leads", Users],
-  ["opportunities", "/admin/opportunities", "Pipeline", BriefcaseBusiness],
-  ["proposals", "/admin/proposals", "Proposals", FileSignature],
-  ["engagements", "/admin/engagements", "Engagements", Handshake],
-  ["clients", "/admin/clients", "Clients", BriefcaseBusiness],
-  ["projects", "/admin/projects", "Projects", BarChart3],
-  ["billing", "/admin/billing", "Billing", CreditCard],
-  ["revenue", "/admin/revenue", "Revenue", LineChart],
-  ["content", "/admin/content", "Content", FileText],
-  ["controls", "/admin/controls", "Controls", Settings2],
+  ["overview", "/admin", "Overview", LayoutDashboard], ["leads", "/admin/leads", "Leads", Users], ["opportunities", "/admin/opportunities", "Pipeline", BriefcaseBusiness], ["proposals", "/admin/proposals", "Proposals", FileSignature], ["engagements", "/admin/engagements", "Engagements", Handshake], ["clients", "/admin/clients", "Clients", BriefcaseBusiness], ["projects", "/admin/projects", "Projects", BarChart3], ["billing", "/admin/billing", "Billing", CreditCard], ["revenue", "/admin/revenue", "Revenue", LineChart], ["productization", "/admin/productization", "Productization", Workflow], ["content", "/admin/content", "Content", FileText], ["controls", "/admin/controls", "Controls", Settings2],
 ] as const;
 
 type AdminShellProps = Readonly<{ active: (typeof links)[number][0]; children: React.ReactNode }>;
