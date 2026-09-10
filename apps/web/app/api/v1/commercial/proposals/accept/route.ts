@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { getRequestId } from "@/lib/security/request-id";
 import { getClientIp } from "@/lib/security/client-ip";
 import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
+import { recordGrowthEvent } from "@/lib/growth/events";
 
 const MAX_BODY_BYTES = 8_192;
 function slugify(value: string) { return value.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70) || `org-${Date.now()}`; }
@@ -54,6 +55,8 @@ export async function POST(request: Request) {
       ] });
       return { ...created, onboardingToken, onboardingCreated: true };
     });
+    try { await recordGrowthEvent({ eventName: "proposal_accepted", source: "proposal", entityId: proposal.id, privacyClass: "FINANCIAL", properties: { engagementId: result.id, commercialValueMinor: undefined } }); } catch (error) { console.error("growth_event_record_failed", { requestId, eventName: "proposal_accepted", error }); }
+    try { await recordGrowthEvent({ eventName: "deal_won", source: "proposal", entityId: proposal.id, privacyClass: "FINANCIAL" }); } catch (error) { console.error("growth_event_record_failed", { requestId, eventName: "deal_won", error }); }
     const onboardingUrl = new URL(`/client-onboarding/${result.onboardingToken}`, request.url).toString();
     const email = await sendCommercialEmail({ action: "proposal.accepted", resourceId: proposal.id, to: proposal.lead.email, subject: `Tinlance engagement created — ${proposal.title}`, html: `<p>Thank you. Your proposal <strong>${proposal.proposalNumber}</strong> has been accepted.</p><p>Your secure client workspace is ready to activate. <a href="${onboardingUrl}">Complete client access setup</a>.</p>`, requestId, organizationId: result.organizationId }).catch((error) => { console.error("acceptance_notification_failed", { requestId, error }); return { sent: false, duplicate: false, configured: false }; });
     return NextResponse.json({ status: "accepted", requestId, engagementId: result.id, organizationId: result.organizationId, clientId: result.clientId, onboardingUrl, notification: email }, { status: 201, headers: { "cache-control": "no-store", "x-request-id": requestId } });
