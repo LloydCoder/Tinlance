@@ -14,7 +14,12 @@ Public authority → M1 Commercial Engine → M3 Customer Workspace
                                   ▼
                          M5 API Platform
                                   │
-                                  ▼
+                 ┌────────────────┴────────────────┐
+                 ▼                                 ▼
+        M13 governed intelligence       M14 productization flywheel
+                 │                                 │
+                 └──────────────┬──────────────────┘
+                                ▼
                          M9 Agent Runtime
                          │      │      │
                          │      │      └── Controlled memory
@@ -34,7 +39,21 @@ Public authority → M1 Commercial Engine → M3 Customer Workspace
                                        fde-mastery
 
 M8 Agent Evaluation Platform observes and evaluates the runtime/control path.
+M12 remains the canonical commercial/revenue intelligence source of truth.
 ```
+
+## M14 Consulting → Software Flywheel
+
+M14 turns authorized delivery evidence into a controlled productization workflow:
+
+```text
+Observation → Pattern → Recurrence → Opportunity → Playbook → Experiment
+     → Evaluation/Security → Productization decision → Reusable capability
+```
+
+M14 does not create a parallel CRM, analytics, knowledge store, workflow engine, authorization layer or agent runtime. Customer records remain in M3; cross-customer intelligence remains governed by M13; commercial truth remains in M12; M4 executes workflows; M7 authorizes sensitive actions; M8 evaluates automated/AI behavior.
+
+See [`docs/m14-consulting-software-flywheel.md`](./docs/m14-consulting-software-flywheel.md).
 
 ## M9 Agent Runtime
 
@@ -123,6 +142,7 @@ The security verification baseline is OWASP ASVS 5.0, with additional AI/agent s
 ## Documentation
 
 - [`docs/architecture/tinlance-architecture.md`](./docs/architecture/tinlance-architecture.md) — canonical architecture.
+- [`docs/m14-consulting-software-flywheel.md`](./docs/m14-consulting-software-flywheel.md) — M14 productization boundaries, lifecycle and controls.
 - [`apps/web/docs/security/M9_AGENT_RUNTIME.md`](./apps/web/docs/security/M9_AGENT_RUNTIME.md) — M9 runtime architecture and controls.
 - [`apps/web/docs/security/M7_AGENT_SECURITY_GATEWAY.md`](./apps/web/docs/security/M7_AGENT_SECURITY_GATEWAY.md) — M7 control plane.
 - [`apps/web/docs/security/M8_AGENT_EVALUATION_PLATFORM.md`](./apps/web/docs/security/M8_AGENT_EVALUATION_PLATFORM.md) — M8 assurance plane.
