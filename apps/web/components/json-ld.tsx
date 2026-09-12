@@ -1,3 +1,5 @@
+import { absoluteUrl } from "../lib/site";
+
 type JsonLdProps = { data: Record<string, unknown> | Record<string, unknown>[] };
 
 export function JsonLd({ data }: JsonLdProps) {
@@ -8,9 +10,9 @@ export function JsonLd({ data }: JsonLdProps) {
 export const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  "@id": "https://tinlance.com/#organization",
+  "@id": absoluteUrl("/#organization"),
   name: "Tinlance",
-  url: "https://tinlance.com",
+  url: absoluteUrl("/"),
   description:
     "Production-oriented AI engineering, Forward-Deployed Engineering, AI security, and enterprise automation.",
   sameAs: ["https://github.com/LloydCoder/Tinlance"],
@@ -19,10 +21,10 @@ export const organizationSchema = {
 export const websiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  "@id": "https://tinlance.com/#website",
+  "@id": absoluteUrl("/#website"),
   name: "Tinlance",
-  url: "https://tinlance.com",
-  publisher: { "@id": "https://tinlance.com/#organization" },
+  url: absoluteUrl("/"),
+  publisher: { "@id": absoluteUrl("/#organization") },
 };
 
 export function breadcrumbSchema(items: Array<{ name: string; path: string }>) {
@@ -33,7 +35,7 @@ export function breadcrumbSchema(items: Array<{ name: string; path: string }>) {
       "@type": "ListItem",
       position: index + 1,
       name: item.name,
-      item: `https://tinlance.com${item.path}`,
+      item: absoluteUrl(item.path),
     })),
   };
 }
