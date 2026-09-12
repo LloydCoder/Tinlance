@@ -42,7 +42,6 @@ export async function POST(request: Request) {
       status: "accepted", requestId, duplicate: result.duplicate,
       qualification: {
         status: result.qualification.status,
-        nextAction: result.qualification.nextAction,
         message: result.qualification.status === "QUALIFIED" ? "Your assessment has enough signal for technical discovery." : "Your assessment has been received and needs additional qualification before technical discovery.",
       },
     }, 202, requestId, { "x-ratelimit-remaining": String(limit.remaining) });
