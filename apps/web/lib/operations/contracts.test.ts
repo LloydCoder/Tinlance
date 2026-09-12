@@ -7,6 +7,7 @@ const validBooking = {
   email: "jane@example.com",
   startsAt: "2026-09-01T10:00:00+01:00",
   timezone: "Africa/Lagos",
+  assessmentReference: "b8d7c6e5-4f32-41a0-9b87-6c5d4e3f2a10",
 };
 
 describe("operations contracts", () => {
