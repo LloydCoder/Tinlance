@@ -22,15 +22,10 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function MobileNav() {
-  const pathname = usePathname();
+function MobileNavMenu({ pathname }: { pathname: string }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -139,4 +134,9 @@ export function MobileNav() {
       )}
     </div>
   );
+}
+
+export function MobileNav() {
+  const pathname = usePathname();
+  return <MobileNavMenu key={pathname} pathname={pathname} />;
 }
