@@ -1,4 +1,4 @@
-import type { EvidenceRecord, EvidenceStatus, EvidenceType } from "./taxonomy";
+import type { EvidenceStatus, EvidenceType } from "./taxonomy";
 
 export type ArchitectureModule = {
   id: string;
@@ -108,12 +108,6 @@ export const caseStudies: CaseStudyRecord[] = [
     sourceUrl: "https://github.com/LloydCoder/fde-mastery",
   },
 ];
-
-export const publicEvidence = Object.values({
-  threatfade: {
-    ...({} as EvidenceRecord),
-  },
-});
 
 export const evidenceTypeLabel: Record<EvidenceType, string> = {
   SOURCE_CODE: "Source code",
