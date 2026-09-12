@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { absoluteUrl } from "../lib/site";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -7,14 +8,10 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: "Bingbot", allow: "/", disallow: ["/admin/", "/portal/"] },
       { userAgent: "OAI-SearchBot", allow: "/", disallow: ["/admin/", "/portal/"] },
       { userAgent: "GPTBot", allow: "/", disallow: ["/admin/", "/portal/"] },
-      {
-        userAgent: "Google-Extended",
-        allow: "/",
-        disallow: ["/admin/", "/portal/"],
-      },
+      { userAgent: "Google-Extended", allow: "/", disallow: ["/admin/", "/portal/"] },
       { userAgent: "*", allow: "/", disallow: ["/admin/", "/portal/"] },
     ],
-    sitemap: "https://tinlance.com/sitemap.xml",
-    host: "https://tinlance.com",
+    sitemap: absoluteUrl("/sitemap.xml"),
+    host: absoluteUrl("/"),
   };
 }
