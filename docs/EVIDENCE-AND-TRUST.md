@@ -54,7 +54,7 @@ Private repositories, credentials and internal infrastructure are never linked a
 
 ## ThreatFade relationship
 
-Tinlance and ThreatFade are separate public properties. Tinlance describes ThreatFade as a Tinlance-developed security product; ThreatFade maintains its own product identity and public repository. The ThreatFade web property links back to `https://tinlance.com` from its shared footer.
+Tinlance and ThreatFade are separate public properties. Tinlance describes ThreatFade as a Tinlance-developed security product; ThreatFade maintains its own product identity and public repository. Public ThreatFade product/case-study material identifies Tinlance Limited and links to `https://tinlance.com`; Tinlance links back to the ThreatFade product and repository from its public product, work and engineering surfaces.
 
 ThreatFade evidence such as the early Merlin QUIC result is scoped to its documented historical test population. The public site does not convert that evidence into a universal accuracy, certification or customer-deployment claim.
 
