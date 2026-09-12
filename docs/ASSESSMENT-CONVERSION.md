@@ -69,6 +69,10 @@ The public UI records only non-sensitive funnel metadata through the existing an
 
 Server-side commercial events use the existing growth-event architecture after persistence.
 
+## Testing boundary
+
+The repository does not currently contain a Playwright/browser test harness for `/assessment`. Sprint C therefore keeps the automated browser boundary explicit rather than claiming an E2E suite that does not exist. The implemented validation and M1 persistence paths are covered by the repository's existing CI typecheck/lint/test/build/security gates plus focused contract tests for valid, malformed, unknown-field, bounded-input, and consent cases.
+
 ## Security boundary
 
 The public result intentionally reveals only a safe next-step message. Qualification scores, internal reasons, missing-signal analysis, CRM identifiers, sales ownership, and routing details remain internal.
