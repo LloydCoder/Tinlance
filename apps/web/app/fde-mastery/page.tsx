@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight, Check } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { JsonLd, breadcrumbSchema } from "../../components/json-ld";
 
 export const metadata: Metadata = {
