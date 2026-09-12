@@ -60,7 +60,7 @@ export default function HomePage() {
               We design, build, secure, and deploy production AI systems around the way your organization actually operates — not the way a demo looks.
             </p>
             <div className="hero-actions">
-              <Link className="button button-accent button-large" href="/contact">
+              <Link className="button button-accent button-large" href="/assessment">
                 Start an assessment <ArrowUpRight size={17} />
               </Link>
               <Link className="text-link" href="/sales-engineer">
@@ -98,7 +98,7 @@ export default function HomePage() {
             <div className="visual-footer">
               <span>01</span>
               <span>Context → Intelligence → Action</span>
-              <span>LIVE</span>
+              <span>SYSTEM MAP</span>
             </div>
           </div>
         </div>
@@ -160,12 +160,12 @@ export default function HomePage() {
               <p className="kicker">THREATFADE / SECURITY ENGINEERING</p>
               <h3>Engineering security systems that can operate at the edge of real-world risk.</h3>
               <p>Threat intelligence, security automation, and practical engineering built around adversarial environments.</p>
-              <Link className="text-link" href="/work">View the work <ArrowUpRight size={16} /></Link>
+              <Link className="text-link" href="/threatfade">View ThreatFade <ArrowUpRight size={16} /></Link>
             </div>
             <div className="proof-metrics">
-              <div><strong>01</strong><span>Open-source security contributions</span></div>
-              <div><strong>24/7</strong><span>Production-minded observability</span></div>
-              <div><strong>∞</strong><span>Continuous improvement loop</span></div>
+              <div><strong>01</strong><span>Public security product</span></div>
+              <div><strong>OSS</strong><span>Open-source engineering evidence</span></div>
+              <div><strong>FDE</strong><span>Forward-deployed engineering practice</span></div>
             </div>
           </div>
         </div>
@@ -179,7 +179,7 @@ export default function HomePage() {
             <p>Tell us what is manual, blocked, expensive, risky, or ready for AI. We&apos;ll turn the ambiguity into an executable engineering path.</p>
           </div>
           <div className="assessment-action">
-            <Link className="button button-accent button-large" href="/contact">Book a technical assessment <ArrowUpRight size={18} /></Link>
+            <Link className="button button-accent button-large" href="/assessment">Book a technical assessment <ArrowUpRight size={18} /></Link>
             <span>Initial conversation · No slide deck required</span>
           </div>
         </div>
