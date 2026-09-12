@@ -49,6 +49,8 @@ The public assessment endpoint applies:
 
 Invalid input is logged only with correlation metadata and field count; assessment free text is not dumped into logs.
 
+The assessment idempotency reference is generated client-side as a UUID and validated server-side as a bounded opaque reference. It is not a CRM identifier and is never used as an authorization credential.
+
 ## M1 qualification
 
 `apps/web/lib/commercial/assessment-intake.ts` is the server-side intake boundary. It reuses the existing `qualifyAssessment` implementation and persists the resulting qualification state to the existing Lead and Opportunity models.
