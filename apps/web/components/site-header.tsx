@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { MobileNav } from "./mobile-nav";
 
 const navigation = [
   { href: "/services", label: "Services" },
-  { href: "/work", label: "Work" },
+  { href: "/products", label: "Products" },
+  { href: "/engineering", label: "Engineering" },
   { href: "/insights", label: "Insights" },
   { href: "/about", label: "About" },
 ];
@@ -23,10 +25,14 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          <Link href="/security" className="nav-link">Security</Link>
         </nav>
-        <Link className="button button-small button-dark" href="/assessment">
-          Technical assessment
-        </Link>
+        <div className="header-actions">
+          <Link className="button button-small button-dark header-assessment" href="/assessment">
+            Technical assessment
+          </Link>
+          <MobileNav />
+        </div>
       </div>
     </header>
   );

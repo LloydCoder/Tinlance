@@ -4,6 +4,23 @@
 
 Tinlance is a production-oriented engineering platform with an explicit public authority layer, tenant-aware authorization, persistent data, authenticated service-to-service execution, automated security validation, and a separate FDE execution layer.
 
+## Public foundation
+
+The public site uses a canonical assessment funnel and exposes the engineering architecture without publishing private runtime details.
+
+Primary public routes:
+
+- `/assessment` — canonical technical assessment funnel.
+- `/products` — public product ecosystem, with evidence/status boundaries.
+- `/fde-mastery` — public FDE Mastery explanation and domain contracts.
+- `/engineering` — current architecture and public engineering evidence.
+- `/security` — security architecture, controls and verification baseline.
+- `/about` — company, FDE philosophy and ecosystem context.
+
+Production canonical URLs resolve to `https://tinlance.com`. Preview environments use their Vercel URL when no explicit `NEXT_PUBLIC_SITE_URL` is configured; local development falls back to `http://localhost:3000`. Canonical metadata, Open Graph URLs, structured data, sitemap and robots all use the same site URL resolver.
+
+Public claims distinguish implementation and repository evidence from customer-production validation. ThreatFade is presented as a separate product, FDE Mastery is presented as an eight-domain engineering platform rather than eight customer deployments, and the private Agent Platform is explicitly identified as M0 foundation work in progress.
+
 ## Current architecture
 
 The canonical current architecture is [`docs/architecture/tinlance-architecture.md`](./docs/architecture/tinlance-architecture.md).
@@ -67,7 +84,7 @@ Agent → M9 Runtime → M7 authorization → M6 MCP boundary → M5/Core
 
 Model output, memory and tool output are untrusted. M7 remains the authorization authority; M6 remains the MCP/tool boundary; M8 remains the evaluation and regression authority.
 
-See [`docs/security/M9_AGENT_RUNTIME.md`](./apps/web/docs/security/M9_AGENT_RUNTIME.md).
+See [`apps/web/docs/security/M9_AGENT_RUNTIME.md`](./apps/web/docs/security/M9_AGENT_RUNTIME.md).
 
 ## M7 AI Security Gateway
 
