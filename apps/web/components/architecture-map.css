@@ -1,0 +1,15 @@
+.architecture-module-list { display: grid; gap: 12px; }
+.architecture-module { position: relative; min-height: auto; padding: 24px; display: grid; grid-template-columns: 90px minmax(0, 1fr) auto; gap: 20px; align-items: center; }
+.architecture-flow-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+
+@media (max-width: 920px) {
+  .architecture-module { grid-template-columns: 64px minmax(0, 1fr); align-items: start; }
+  .architecture-module .evidence-status { grid-column: 2; justify-self: start; }
+  .architecture-flow-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  .architecture-module { grid-template-columns: 1fr; gap: 12px; }
+  .architecture-module .evidence-status { grid-column: auto; }
+  .architecture-module > [aria-hidden="true"] { display: none; }
+}

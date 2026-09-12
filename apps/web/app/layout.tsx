@@ -4,6 +4,7 @@ import { GrowthTracker } from "../components/growth-tracker";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
 import { getSiteUrl } from "../lib/site";
+import "../components/architecture-map.css";
 import "../components/mobile-nav.css";
 import "./globals.css";
 
@@ -11,29 +12,13 @@ const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: {
-    default: "Tinlance — AI Engineering & Forward-Deployed Engineering",
-    template: "%s | Tinlance",
-  },
-  description:
-    "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation for organizations building and securing intelligent systems.",
+  title: { default: "Tinlance — AI Engineering & Forward-Deployed Engineering", template: "%s | Tinlance" },
+  description: "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation for organizations building and securing intelligent systems.",
   applicationName: "Tinlance",
   robots: { index: true, follow: true },
   icons: { icon: "/icon.svg" },
-  openGraph: {
-    title: "Tinlance — AI Engineering & Forward-Deployed Engineering",
-    description:
-      "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation.",
-    type: "website",
-    url: siteUrl,
-    siteName: "Tinlance",
-  },
-  twitter: {
-    card: "summary",
-    title: "Tinlance — AI Engineering & Forward-Deployed Engineering",
-    description:
-      "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation.",
-  },
+  openGraph: { title: "Tinlance — AI Engineering & Forward-Deployed Engineering", description: "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation.", type: "website", url: siteUrl, siteName: "Tinlance" },
+  twitter: { card: "summary", title: "Tinlance — AI Engineering & Forward-Deployed Engineering", description: "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation." },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -16,48 +16,69 @@ Primary public routes:
 - `/engineering` — current architecture and public engineering evidence.
 - `/security` — security architecture, controls and verification baseline.
 - `/about` — company, FDE philosophy and ecosystem context.
+- `/work` — typed public engineering/open-source evidence and case-study taxonomy.
 
 Production canonical URLs resolve to `https://tinlance.com`. Preview environments use their Vercel URL when no explicit `NEXT_PUBLIC_SITE_URL` is configured; local development falls back to `http://localhost:3000`. Canonical metadata, Open Graph URLs, structured data, sitemap and robots all use the same site URL resolver.
 
-Public claims distinguish implementation and repository evidence from customer-production validation. ThreatFade is presented as a separate product, FDE Mastery is presented as an eight-domain engineering platform rather than eight customer deployments, and the private Agent Platform is explicitly identified as M0 foundation work in progress.
+## Evidence & trust
+
+Tinlance uses one public evidence vocabulary across engineering, products, security, FDE Mastery and work:
+
+- **IMPLEMENTED** — exists in the current implementation; not automatically production validated.
+- **TESTED** — covered by automated or reproducible tests demonstrating the stated behavior.
+- **VALIDATED** — supported by documented validation beyond ordinary implementation/testing, with scope stated.
+- **EXPERIMENTAL** — implemented for research/evaluation; production suitability has not been established.
+- **PLANNED** — intentionally identified for future implementation and not currently implemented.
+
+The authoritative implementation is `apps/web/lib/evidence/taxonomy.ts`, with public records in `apps/web/lib/evidence/registry.ts` and accessible rendering in `apps/web/components/evidence-status.tsx`.
+
+Public claims follow this discipline:
+
+```text
+Claim → Evidence Status → Evidence Metadata → Source/Repository
+      → Methodology → Result → Scope → Limitations
+```
+
+The public/private boundary is explicit. Private repositories, credentials, customer PII, internal endpoints and sensitive infrastructure are not published as evidence.
+
+Case studies are typed as customer case study, engineering case study, open-source validation, research validation, synthetic evaluation or architecture case study. Customer proof is never inferred from repository tests, synthetic datasets or engineering history.
+
+See [`docs/EVIDENCE-AND-TRUST.md`](./docs/EVIDENCE-AND-TRUST.md).
 
 ## Current architecture
 
 The canonical current architecture is [`docs/architecture/tinlance-architecture.md`](./docs/architecture/tinlance-architecture.md).
 
-```text
-Public authority → M1 Commercial Engine → M3 Customer Workspace
-                                  │
-                                  ▼
-                         M5 API Platform
-                                  │
-                 ┌────────────────┴────────────────┐
-                 ▼                                 ▼
-        M13 governed intelligence       M14 productization flywheel
-                 │                                 │
-                 └──────────────┬──────────────────┘
-                                ▼
-                         M9 Agent Runtime
-                         │      │      │
-                         │      │      └── Controlled memory
-                         │      └───────── Human approvals
-                         └──────────────── M7 Security Gateway
-                                            │
-                                            ▼
-                                     M6 MCP Gateway
-                                            │
-                                            ▼
-                                   M4 Automation / Core
-                                            │
-                                            ▼
-                                     Tinlance FDE API
-                                            │
-                                            ▼
-                                       fde-mastery
+The public `/engineering` map represents M1, M3, M4, M5, M6, M7, M8, M9, M10, M11, M12, M13 and M14. It is a public responsibility/control abstraction, not a linear infrastructure diagram or production topology. M4 Automation and M6 MCP are shown as cross-cutting relationships; FDE API/FDE Mastery form the FDE execution boundary; ThreatFade is a distinct product and evidence source.
 
-M8 Agent Evaluation Platform observes and evaluates the runtime/control path.
-M12 remains the canonical commercial/revenue intelligence source of truth.
+```text
+M1 Commercial Engine → M3 Customer Workspace → M5 API Platform
+                                      │
+                     ┌────────────────┴────────────────┐
+                     ▼                                 ▼
+               M7 Security                         M4 Automation
+                     │                                 │
+              M6 MCP / tools ────────────────→ M5 / Core
+                     │
+                     ▼
+               M8 Evaluation → M9 Agent Runtime ↔ M10 Knowledge/RAG
+                     │                              │
+                     └──────────→ M11 Sales Engineer
+                                                   │
+                                                   ▼
+                                           M12 Revenue Intelligence
+                                                   │
+                                                   ▼
+                                           M13 Knowledge Moat
+                                                   │
+                                                   ▼
+                                           M14 Productization
+
+M5 → FDE API → FDE Mastery
+ThreatFade = distinct security product / public engineering evidence
 ```
+
+The arrows describe public control/data relationships and reading order, not a claim that every node is a hard runtime dependency of the next.
 
 ## M14 Consulting → Software Flywheel
 
@@ -158,6 +179,7 @@ The security verification baseline is OWASP ASVS 5.0, with additional AI/agent s
 
 ## Documentation
 
+- [`docs/EVIDENCE-AND-TRUST.md`](./docs/EVIDENCE-AND-TRUST.md) — public evidence taxonomy, provenance and case-study rules.
 - [`docs/architecture/tinlance-architecture.md`](./docs/architecture/tinlance-architecture.md) — canonical architecture.
 - [`docs/m14-consulting-software-flywheel.md`](./docs/m14-consulting-software-flywheel.md) — M14 productization boundaries, lifecycle and controls.
 - [`apps/web/docs/security/M9_AGENT_RUNTIME.md`](./apps/web/docs/security/M9_AGENT_RUNTIME.md) — M9 runtime architecture and controls.
@@ -166,11 +188,19 @@ The security verification baseline is OWASP ASVS 5.0, with additional AI/agent s
 - [`docs/FDE-INTEGRATION.md`](./docs/FDE-INTEGRATION.md) — FDE boundary.
 - [`docs/ENTERPRISE-CI-GATES.md`](./docs/ENTERPRISE-CI-GATES.md) — blocking CI/security controls.
 
+## Public product relationships
+
+ThreatFade remains a distinct Tinlance-developed security product with its own public property and repository. Tinlance links to `https://threatfade.com` and the public ThreatFade repository from appropriate product/engineering surfaces. The ThreatFade web property links back to `https://tinlance.com` from its shared footer.
+
+ThreatFade evidence is scoped to its documented methodology and test population. The public Tinlance site does not convert historical experimental results into universal accuracy, customer-deployment or certification claims.
+
+## Homepage system map
+
+The homepage visual labelled `FDE / SYSTEM MAP` is an architectural presentation only. It is **not live telemetry** and contains no simulated counters, events or operational data. The term `LIVE` should not be used for this visual unless a genuine telemetry source and update semantics are implemented.
+
 ## Release posture
 
 M9 capabilities remain explicitly bounded. Unrestricted shell, arbitrary filesystem, arbitrary HTTP, direct business-database mutation, unrestricted internet access and autonomous red-team execution are not enabled by this runtime.
-
-Vercel deployment verification is intentionally separate while the current deployment quota is exhausted; it is not bypassed by CI.
 
 ## Security
 
