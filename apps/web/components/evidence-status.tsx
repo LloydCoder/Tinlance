@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import {
   EVIDENCE_STATUS_META,
   type EvidenceStatus,
@@ -8,7 +9,7 @@ type EvidenceStatusProps = {
   className?: string;
 };
 
-const statusStyle: Record<EvidenceStatus, React.CSSProperties> = {
+const statusStyle: Record<EvidenceStatus, CSSProperties> = {
   IMPLEMENTED: { borderColor: "#b8c6aa", background: "#f2f6ec" },
   TESTED: { borderColor: "#aebfd1", background: "#eff4f8" },
   VALIDATED: { borderColor: "#9ebca8", background: "#edf6ef" },
