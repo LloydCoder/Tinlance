@@ -3,13 +3,14 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 
 const root = process.cwd();
+const repoRoot = path.resolve(root, "../..");
 const capabilities = JSON.parse(fs.readFileSync(path.join(root, "content/capabilities.json"), "utf8"));
 const evidence = JSON.parse(fs.readFileSync(path.join(root, "content/evidence-registry.json"), "utf8"));
 const claims = JSON.parse(fs.readFileSync(path.join(root, "content/claim-registry.json"), "utf8"));
 const errors = []; const warnings = [];
 const evidenceById = new Map(evidence.evidence.map((item) => [item.id, item]));
 const capabilityBySlug = new Map(capabilities.capabilities.map((item) => [item.slug, item]));
-const tracked = new Set(execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter(Boolean));
+const tracked = new Set(execFileSync("git", ["-C", repoRoot, "ls-files"], { encoding: "utf8" }).split("\n").filter(Boolean));
 for (const capability of capabilities.capabilities) {
   if (!capability.slug || !capability.id || !capability.status || !capability.maturity || !capability.availability) errors.push(`Capability ${capability.id} is missing authoritative status fields.`);
   if (capability.repository === "LloydCoder/Tinlance" && !tracked.has(capability.repositoryPath)) errors.push(`Capability ${capability.slug} points at a missing repository path: ${capability.repositoryPath}`);
@@ -32,12 +33,12 @@ for (const claim of claims.claims) {
 const base = process.env.BASE_SHA;
 if (base) {
   try {
-    const changed = execFileSync("git", ["diff", "--name-only", base, "HEAD"], { encoding: "utf8" }).split("\n").filter(Boolean);
+    const changed = execFileSync("git", ["-C", repoRoot, "diff", "--name-only", base, "HEAD"], { encoding: "utf8" }).split("\n").filter(Boolean);
     for (const item of evidence.evidence) if (item.repository === "LloydCoder/Tinlance" && item.status === "ACTIVE" && changed.some((file) => file === item.path || file.startsWith(`${item.path}/`))) warnings.push(`Evidence ${item.id} is scoped to changed code; re-run verification against the new commit before treating it as current.`);
   } catch (error) { warnings.push(`Could not compute scoped evidence drift from ${base}: ${error instanceof Error ? error.message : String(error)}`); }
 }
 let publicSource = "";
-try { publicSource = execFileSync("git", ["grep", "-IlE", "SOC 2 certified|SOC 2 certification|ISO 27001 certified|ISO 27001 certification|PCI DSS certified", "--", "apps/web"], { encoding: "utf8" }).trim(); } catch { publicSource = ""; }
+try { publicSource = execFileSync("git", ["-C", repoRoot, "grep", "-IlE", "SOC 2 certified|SOC 2 certification|ISO 27001 certified|ISO 27001 certification|PCI DSS certified", "--", "apps/web"], { encoding: "utf8" }).trim(); } catch { publicSource = ""; }
 if (publicSource) errors.push(`Potential unsupported compliance language detected in: ${publicSource.replaceAll("\n", ", ")}`);
 if (errors.length) { console.error("Claim verification FAILED"); for (const error of errors) console.error(`- ${error}`); process.exit(1); }
 console.log(`Claim verification PASS: ${claims.claims.length} claims, ${capabilities.capabilities.length} capabilities, ${evidence.evidence.length} evidence records.`);
