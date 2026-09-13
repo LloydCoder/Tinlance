@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "claims": [
+    {"id":"claim_customer_workspace","text":"Tinlance provides a tenant-scoped customer workspace.","claimClass":"CAPABILITY","capability":"customer-workspace","evidence":["ev_workspace_tests"],"status":"PASS","scope":"Repository implementation","limitations":"Authorization requires authenticated organization membership and applicable entitlement.","critical":true},
+    {"id":"claim_technical_assessment","text":"Tinlance provides structured technical assessments.","claimClass":"CAPABILITY","capability":"technical-assessment","evidence":["ev_assessment_contracts"],"status":"PASS","scope":"Repository implementation","limitations":"Assessment execution depends on configured services.","critical":true},
+    {"id":"claim_fde_automation","text":"Tinlance implements governed FDE automation workflows.","claimClass":"CAPABILITY","capability":"fde-automation","evidence":["ev_fde_automation_ci"],"status":"PASS","scope":"Repository implementation and CI","limitations":"External FDE providers remain dependencies.","critical":true},
+    {"id":"claim_api_platform","text":"Tinlance exposes a tenant-aware API surface.","claimClass":"CAPABILITY","capability":"api-platform","evidence":["ev_api_idempotency"],"status":"PASS","scope":"Implemented API routes","limitations":"Only documented endpoints are public.","critical":true},
+    {"id":"claim_mcp_gateway","text":"Tinlance has an implemented MCP gateway boundary.","claimClass":"CAPABILITY","capability":"mcp-gateway","evidence":["ev_mcp_ci"],"status":"PASS","scope":"Internal platform","limitations":"Not a generally available standalone product.","critical":false},
+    {"id":"claim_agent_evaluation","text":"Tinlance maintains deterministic agent evaluation suites.","claimClass":"VALIDATION","capability":"agent-evaluation","evidence":["ev_agent_evaluation_ci"],"status":"PASS","scope":"Repository evaluation suite","limitations":"Not independent third-party validation.","critical":false},
+    {"id":"claim_no_compliance_certification","text":"Tinlance does not claim SOC 2, ISO 27001, PCI DSS or similar certification without a verified compliance record.","claimClass":"COMPLIANCE","capability":null,"evidence":[],"status":"PASS","scope":"Public claim policy","limitations":"Certification status must be represented by a dedicated verified record before publication.","critical":true}
+  ]
+}
