@@ -13,13 +13,11 @@ type PaystackPayload = { event?: string; data?: { id?: number | string; referenc
 function canTransition(current: string, next: string) { if (current === next) return true; if (current === "refunded") return false; if (current === "paid") return next === "refunded"; if (next === "refunded") return current === "paid"; if (next === "paid") return ["draft", "sent", "overdue", "failed"].includes(current); if (next === "failed") return ["draft", "sent", "overdue", "failed"].includes(current); return false; }
 
 export async function POST(request: Request) {
-  const requestId = getRequestId(request);
-  const jsonHeaders = { "cache-control": "no-store", "x-request-id": requestId } as const;
+  const requestId = getRequestId(request); const jsonHeaders = { "cache-control": "no-store", "x-request-id": requestId } as const;
   try { validateProductionEnv({ billing: true }); } catch { return NextResponse.json({ error: "billing_not_configured", requestId }, { status: 503, headers: jsonHeaders }); }
   const payload = await request.text();
   if (new TextEncoder().encode(payload).byteLength > MAX_BODY_BYTES) return NextResponse.json({ error: "payload_too_large", requestId }, { status: 413, headers: jsonHeaders });
-  const signature = request.headers.get("x-paystack-signature") ?? "";
-  const secret = process.env.PAYSTACK_SECRET_KEY ?? "";
+  const signature = request.headers.get("x-paystack-signature") ?? ""; const secret = process.env.PAYSTACK_SECRET_KEY ?? "";
   if (!verifyPaystackSignature(payload, signature, secret)) return NextResponse.json({ error: "invalid_signature", requestId }, { status: 401, headers: jsonHeaders });
   let body: PaystackPayload | null; try { body = JSON.parse(payload) as PaystackPayload; } catch { body = null; }
   if (!body || typeof body.event !== "string" || !body.data) return NextResponse.json({ error: "invalid_payload", requestId }, { status: 400, headers: jsonHeaders });
@@ -27,8 +25,7 @@ export async function POST(request: Request) {
 
   try {
     await db.$transaction(async (tx) => {
-      try { await tx.webhookEvent.create({ data: { provider: "paystack", eventId, eventType } }); }
-      catch (error) { if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new Error("duplicate_webhook"); throw error; }
+      try { await tx.webhookEvent.create({ data: { provider: "paystack", eventId, eventType } }); } catch (error) { if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new Error("duplicate_webhook"); throw error; }
       if (!nextStatus || !reference) { await tx.auditEvent.create({ data: { action: `paystack.${eventType}`, resourceType: "webhook", resourceId: eventId, requestId, metadata: { reference, eventType } } }); return; }
       const invoices = await tx.invoice.findMany({ where: { externalId: reference }, take: 2, select: { id: true, organizationId: true, status: true, amountMinor: true, currency: true } });
       if (invoices.length !== 1) { await tx.auditEvent.create({ data: { action: `paystack.${eventType}.unmatched`, resourceType: "webhook", resourceId: eventId, requestId, metadata: { reference, eventType, matchCount: invoices.length } } }); return; }
@@ -43,22 +40,25 @@ export async function POST(request: Request) {
       if (!canTransition(invoice.status, nextStatus)) { await tx.auditEvent.create({ data: { organizationId: invoice.organizationId, action: `paystack.${eventType}.invalid_transition`, resourceType: "invoice", resourceId: invoice.id, requestId, metadata: { eventId, reference, eventType, previousStatus: invoice.status, nextStatus } } }); return; }
       const providerTransactionId = data.id == null ? null : String(data.id);
       const paymentRows = await tx.$queryRaw<Array<{ id: string; status: string }>>`SELECT "id", "status" FROM "Payment" WHERE "provider" = 'paystack' AND "providerReference" = ${reference} LIMIT 1`;
+      if (invoice.status === "paid" && nextStatus === "paid" && paymentRows[0]?.status === "SUCCEEDED") { await tx.auditEvent.create({ data: { organizationId: invoice.organizationId, action: "paystack.charge.success.replay", resourceType: "payment", resourceId: paymentRows[0].id, requestId, metadata: { eventId, reference } } }); return; }
       let paymentId = paymentRows[0]?.id ?? null;
       const paymentStatus = nextStatus === "paid" ? "SUCCEEDED" : nextStatus === "refunded" ? "REFUNDED" : "FAILED";
-      if (!paymentId) { paymentId = newId(); await tx.$executeRaw`INSERT INTO "Payment" ("id", "invoiceId", "organizationId", "provider", "providerReference", "providerTransactionId", "status", "amountMinor", "currency", "lastProviderEventId") VALUES (${paymentId}, ${invoice.id}, ${invoice.organizationId}, 'paystack', ${reference}, ${providerTransactionId}, ${paymentStatus}, ${invoice.amountMinor}, ${invoice.currency}, ${eventId}) ON CONFLICT ("providerReference") DO UPDATE SET "providerTransactionId" = EXCLUDED."providerTransactionId", "status" = EXCLUDED."status", "lastProviderEventId" = EXCLUDED."lastProviderEventId", "updatedAt" = NOW()`; }
-      else await tx.$executeRaw`UPDATE "Payment" SET "status" = ${paymentStatus}, "providerTransactionId" = COALESCE(${providerTransactionId}, "providerTransactionId"), "lastProviderEventId" = ${eventId}, "updatedAt" = NOW() WHERE "id" = ${paymentId}`;
+      if (!paymentId) { paymentId = newId(); await tx.$executeRaw`INSERT INTO "Payment" ("id", "invoiceId", "organizationId", "provider", "providerReference", "providerTransactionId", "status", "amountMinor", "currency", "lastProviderEventId") VALUES (${paymentId}, ${invoice.id}, ${invoice.organizationId}, 'paystack', ${reference}, ${providerTransactionId}, ${paymentStatus}, ${invoice.amountMinor}, ${invoice.currency}, ${eventId}) ON CONFLICT ("providerReference") DO UPDATE SET "providerTransactionId" = EXCLUDED."providerTransactionId", "status" = EXCLUDED."status", "lastProviderEventId" = EXCLUDED."lastProviderEventId", "updatedAt" = NOW()`; } else await tx.$executeRaw`UPDATE "Payment" SET "status" = ${paymentStatus}, "providerTransactionId" = COALESCE(${providerTransactionId}, "providerTransactionId"), "lastProviderEventId" = ${eventId}, "updatedAt" = NOW() WHERE "id" = ${paymentId}`;
       if (invoice.status !== nextStatus) await tx.invoice.update({ where: { id: invoice.id }, data: { status: nextStatus } });
       if (nextStatus === "paid") await tx.$executeRaw`UPDATE "Invoice" SET "paidAt" = NOW() WHERE "id" = ${invoice.id}`;
       await auditCommercialTransition({ organizationId: invoice.organizationId, action: `payment.${nextStatus === "paid" ? "succeeded" : nextStatus}`, resourceType: "payment", resourceId: paymentId, requestId, previousState: paymentRows[0]?.status ?? "CREATED", newState: paymentStatus, metadata: { provider: "paystack", reference, providerTransactionId }, tx });
       await auditCommercialTransition({ organizationId: invoice.organizationId, action: `invoice.${nextStatus}`, resourceType: "invoice", resourceId: invoice.id, requestId, previousState: invoice.status, newState: nextStatus, metadata: { reference, eventId }, tx });
+
       if (nextStatus === "paid") {
         const commercial = await tx.$queryRaw<Array<{ proposalId: string | null; title: string; pricing: unknown }>>`SELECT i."proposalId", p."title", pv."pricing" FROM "Invoice" i LEFT JOIN "Proposal" p ON p."id" = i."proposalId" LEFT JOIN "ProposalVersion" pv ON pv."proposalId" = p."id" AND pv."version" = p."currentVersion" WHERE i."id" = ${invoice.id} LIMIT 1`;
         const proposalId = commercial[0]?.proposalId ?? null; const pricing = commercial[0]?.pricing && typeof commercial[0]?.pricing === "object" ? commercial[0].pricing as Record<string, unknown> : {};
-        const product = typeof pricing.product === "string" ? pricing.product : "FDE engagement"; const capability = typeof pricing.capability === "string" ? pricing.capability : "fde-engagement"; const entitlementId = newId();
-        await tx.$executeRaw`INSERT INTO "Entitlement" ("id", "organizationId", "product", "capability", "sourceType", "sourceId", "proposalId", "invoiceId", "paymentId", "status") VALUES (${entitlementId}, ${invoice.organizationId}, ${product}, ${capability}, 'PAYMENT', ${paymentId}, ${proposalId}, ${invoice.id}, ${paymentId}, 'ACTIVE') ON CONFLICT ("organizationId", "product", "capability", "sourceType", "sourceId") DO UPDATE SET "status" = 'ACTIVE', "paymentId" = EXCLUDED."paymentId", "updatedAt" = NOW()`;
+        const product = typeof pricing.product === "string" ? pricing.product : "FDE engagement"; const capability = typeof pricing.capability === "string" ? pricing.capability : "fde-engagement";
+        const entitlementRows = await tx.$queryRaw<Array<{ id: string }>>`INSERT INTO "Entitlement" ("id", "organizationId", "product", "capability", "sourceType", "sourceId", "proposalId", "invoiceId", "paymentId", "status") VALUES (${newId()}, ${invoice.organizationId}, ${product}, ${capability}, 'PAYMENT', ${paymentId}, ${proposalId}, ${invoice.id}, ${paymentId}, 'ACTIVE') ON CONFLICT ("organizationId", "product", "capability", "sourceType", "sourceId") DO UPDATE SET "status" = 'ACTIVE', "paymentId" = EXCLUDED."paymentId", "updatedAt" = NOW() RETURNING "id"`;
+        const entitlementId = entitlementRows[0].id;
         const client = await tx.client.upsert({ where: { organizationId: invoice.organizationId }, update: { status: "active" }, create: { organizationId: invoice.organizationId, status: "active" }, select: { id: true } });
         const existingEngagement = proposalId ? await tx.engagement.findUnique({ where: { proposalId }, select: { id: true } }) : null;
         const engagement = existingEngagement ?? await tx.engagement.create({ data: { organizationId: invoice.organizationId, clientId: client.id, proposalId, name: commercial[0]?.title ?? product, scope: `Commercial fulfillment for invoice ${invoice.id}`, commercialValueMinor: invoice.amountMinor, currency: invoice.currency, deliveryModel: "PROJECT", status: "ACTIVE" }, select: { id: true } });
+        await tx.$executeRaw`UPDATE "Invoice" SET "engagementId" = ${engagement.id} WHERE "id" = ${invoice.id}`;
         const existingProject = await tx.project.findFirst({ where: { organizationId: invoice.organizationId, engagementId: engagement.id }, select: { id: true } });
         const project = existingProject ?? await tx.project.create({ data: { organizationId: invoice.organizationId, engagementId: engagement.id, name: commercial[0]?.title ?? product, type: "commercial-engagement", status: "active", progress: 0 }, select: { id: true } });
         const existingWorkspace = await tx.projectWorkspaceState.findUnique({ where: { projectId: project.id }, select: { id: true } }); if (!existingWorkspace) await tx.projectWorkspaceState.create({ data: { projectId: project.id, organizationId: invoice.organizationId, status: "ACTIVE", ownerUserId: null } });
