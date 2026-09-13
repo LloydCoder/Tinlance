@@ -2,18 +2,18 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Technical Assessment",
-  description: "Start a Tinlance technical assessment for AI engineering, FDE, security, automation, and production AI systems work.",
+  description: "Submit the technical, workflow, business and security context Tinlance needs to determine fit and the right engineering next step.",
   alternates: { canonical: "/assessment" },
   openGraph: {
     title: "Technical Assessment | Tinlance",
-    description: "Describe the workflow, architecture, constraints and desired outcome so Tinlance can determine technical fit.",
+    description: "Provide the context Tinlance needs to assess an AI engineering or FDE opportunity.",
     url: "/assessment",
     type: "website",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Technical Assessment | Tinlance",
-    description: "Start a technical assessment with Tinlance.",
+    description: "Provide the context Tinlance needs to assess an AI engineering or FDE opportunity.",
   },
 };
 
