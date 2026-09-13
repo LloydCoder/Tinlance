@@ -36,7 +36,8 @@ const staticRoutes = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticEntries: MetadataRoute.Sitemap = staticRoutes.map((route) => ({
+  const uniqueStaticRoutes = [...new Set(staticRoutes)];
+  const staticEntries: MetadataRoute.Sitemap = uniqueStaticRoutes.map((route) => ({
     url: absoluteUrl(route),
     changeFrequency: route === "/" ? "weekly" : "monthly",
     priority:
@@ -65,5 +66,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.75,
   }));
 
-  return [...staticEntries, ...insightEntries, ...researchEntries];
+  const allEntries = [...staticEntries, ...insightEntries, ...researchEntries];
+  const seen = new Set<string>();
+  return allEntries.filter((entry) => {
+    if (seen.has(entry.url)) return false;
+    seen.add(entry.url);
+    return true;
+  });
 }
