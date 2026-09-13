@@ -13,7 +13,7 @@ describe("authority SEO contract", () => {
 
     for (const rule of [openAi, google, bing, extended]) {
       expect(rule?.allow).toBe("/");
-      expect(rule?.disallow).toEqual(["/admin/", "/portal/"]);
+      expect(rule?.disallow).toEqual(["/admin/", "/portal/", "/api/"]);
     }
   });
 
@@ -28,11 +28,13 @@ describe("authority SEO contract", () => {
       "/documentation",
       "/insights/building-production-ai-systems",
       "/assessment",
+      "/sales-engineer",
     ]) {
       expect(urls).toContain(`https://tinlance.com${path}`);
     }
     expect(urls.some((url) => url.includes("/admin"))).toBe(false);
     expect(urls.some((url) => url.includes("/portal"))).toBe(false);
+    expect(urls.some((url) => url.includes("/api/"))).toBe(false);
     expect(urls.some((url) => url.includes("?"))).toBe(false);
   });
 });
