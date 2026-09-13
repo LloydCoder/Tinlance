@@ -19,34 +19,27 @@ for (const capability of capabilities.capabilities) {
   for (const evidenceId of capability.evidenceIds) if (!evidenceById.has(evidenceId)) errors.push(`Capability ${capability.slug} references missing evidence ${evidenceId}.`);
   if (capability.maturity === "VALIDATED" && capability.evidenceIds.length === 0) errors.push(`Validated capability ${capability.slug} has no evidence.`);
 }
-
 for (const item of evidence.evidence) {
   if (!capabilityBySlug.has(item.capabilitySlug)) errors.push(`Evidence ${item.id} references unknown capability ${item.capabilitySlug}.`);
   if (!item.commit || !item.status || !item.scope || !item.limitations) errors.push(`Evidence ${item.id} is missing provenance/status/scope/limitations.`);
   if (item.repository === "LloydCoder/Tinlance" && !tracked.has(item.path)) errors.push(`Evidence ${item.id} points at a missing repository path: ${item.path}`);
 }
-
 for (const claim of claims.claims) {
   if (!claim.id || !claim.claimClass || !claim.status || !claim.scope || !claim.limitations) errors.push(`Claim ${claim.id} is incomplete.`);
   if (claim.capability && !capabilityBySlug.has(claim.capability)) errors.push(`Claim ${claim.id} references unknown capability ${claim.capability}.`);
   for (const evidenceId of claim.evidence) if (!evidenceById.has(evidenceId)) errors.push(`Claim ${claim.id} references missing evidence ${evidenceId}.`);
   if (claim.critical && claim.status !== "PASS") errors.push(`Critical claim ${claim.id} is not PASS.`);
-  if (claim.claimClass === "COMPLIANCE" && claim.status === "PASS" && claim.evidence.length > 0 === false && /certif|compliant/i.test(claim.text) && !/does not claim|without/i.test(claim.text)) errors.push(`Compliance claim ${claim.id} requires explicit verified compliance evidence.`);
+  if (claim.claimClass === "COMPLIANCE" && claim.status === "PASS" && claim.evidence.length === 0 && /certif|compliant/i.test(claim.text) && !/does not claim|without/i.test(claim.text)) errors.push(`Compliance claim ${claim.id} requires explicit verified compliance evidence.`);
 }
-
 const base = process.env.BASE_SHA;
 const head = process.env.HEAD_SHA || "HEAD";
 if (base) {
   const changed = execFileSync("git", ["diff", "--name-only", `${base}...${head}`], { encoding: "utf8" }).split("\n").filter(Boolean);
-  for (const item of evidence.evidence) {
-    if (item.repository !== "LloydCoder/Tinlance" || item.status !== "ACTIVE") continue;
-    if (changed.some((file) => file === item.path || file.startsWith(`${item.path}/`))) warnings.push(`Evidence ${item.id} is scoped to changed code; re-run verification against the new commit before treating it as current.`);
-  }
+  for (const item of evidence.evidence) if (item.repository === "LloydCoder/Tinlance" && item.status === "ACTIVE" && changed.some((file) => file === item.path || file.startsWith(`${item.path}/`))) warnings.push(`Evidence ${item.id} is scoped to changed code; re-run verification against the new commit before treating it as current.`);
 }
-
-const publicSource = execFileSync("git", ["grep", "-IlE", "SOC 2 certified|SOC 2 certification|ISO 27001 certified|ISO 27001 certification|PCI DSS certified", "--", "apps/web"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+let publicSource = "";
+try { publicSource = execFileSync("git", ["grep", "-IlE", "SOC 2 certified|SOC 2 certification|ISO 27001 certified|ISO 27001 certification|PCI DSS certified", "--", "apps/web"], { encoding: "utf8" }).trim(); } catch { publicSource = ""; }
 if (publicSource) errors.push(`Potential unsupported compliance language detected in: ${publicSource.replaceAll("\n", ", ")}`);
-
 if (errors.length) { console.error("Claim verification FAILED"); for (const error of errors) console.error(`- ${error}`); process.exit(1); }
 console.log(`Claim verification PASS: ${claims.claims.length} claims, ${capabilities.capabilities.length} capabilities, ${evidence.evidence.length} evidence records.`);
 for (const warning of warnings) console.warn(`WARN: ${warning}`);
