@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import { SalesEngineer } from "@/components/sales-engineer";
+import { socialImageUrl, socialImages } from "@/lib/metadata";
 
-export const metadata = {
-  title: "AI Sales Engineer | Tinlance",
+export const metadata: Metadata = {
+  title: "AI Sales Engineer",
   description: "Ask Tinlance's public AI Sales Engineer about AI engineering, FDE, AI security, automation, and technical assessments.",
+  alternates: { canonical: "/sales-engineer" },
+  openGraph: { title: "AI Sales Engineer | Tinlance", description: "Explore Tinlance's public technical capabilities and determine whether a technical assessment is the right next step.", url: "/sales-engineer", type: "website", images: socialImages },
+  twitter: { card: "summary_large_image", title: "AI Sales Engineer | Tinlance", description: "Explore Tinlance's public technical capabilities and determine whether a technical assessment is the right next step.", images: [socialImageUrl] },
 };
 
 export default function SalesEngineerPage() {
@@ -11,12 +16,8 @@ export default function SalesEngineerPage() {
       <div className="container" style={{ maxWidth: "980px", paddingTop: "6rem", paddingBottom: "6rem" }}>
         <p className="kicker">TINLANCE / AI SALES ENGINEER</p>
         <h1 style={{ maxWidth: "850px", marginTop: "1rem" }}>Talk through the technical problem before the sales call.</h1>
-        <p style={{ maxWidth: "720px", fontSize: "1.15rem", color: "var(--muted)", marginTop: "1.25rem" }}>
-          Ask about Tinlance&apos;s public capabilities, technical approach, security work, FDE model, or whether a technical assessment is the right next step. Answers are grounded in approved public evidence.
-        </p>
-        <div style={{ marginTop: "2.5rem" }}>
-          <SalesEngineer />
-        </div>
+        <p style={{ maxWidth: "720px", fontSize: "1.15rem", color: "var(--muted)", marginTop: "1.25rem" }}>Ask about Tinlance&apos;s public capabilities, technical approach, security work, FDE model, or whether a technical assessment is the right next step. Answers are grounded in approved public evidence.</p>
+        <div style={{ marginTop: "2.5rem" }}><SalesEngineer /></div>
       </div>
     </main>
   );
