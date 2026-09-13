@@ -6,12 +6,10 @@ const root = process.cwd();
 const capabilities = JSON.parse(fs.readFileSync(path.join(root, "content/capabilities.json"), "utf8"));
 const evidence = JSON.parse(fs.readFileSync(path.join(root, "content/evidence-registry.json"), "utf8"));
 const claims = JSON.parse(fs.readFileSync(path.join(root, "content/claim-registry.json"), "utf8"));
-const errors = [];
-const warnings = [];
+const errors = []; const warnings = [];
 const evidenceById = new Map(evidence.evidence.map((item) => [item.id, item]));
 const capabilityBySlug = new Map(capabilities.capabilities.map((item) => [item.slug, item]));
 const tracked = new Set(execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter(Boolean));
-
 for (const capability of capabilities.capabilities) {
   if (!capability.slug || !capability.id || !capability.status || !capability.maturity || !capability.availability) errors.push(`Capability ${capability.id} is missing authoritative status fields.`);
   if (capability.repository === "LloydCoder/Tinlance" && !tracked.has(capability.repositoryPath)) errors.push(`Capability ${capability.slug} points at a missing repository path: ${capability.repositoryPath}`);
@@ -32,10 +30,11 @@ for (const claim of claims.claims) {
   if (claim.claimClass === "COMPLIANCE" && claim.status === "PASS" && claim.evidence.length === 0 && /certif|compliant/i.test(claim.text) && !/does not claim|without/i.test(claim.text)) errors.push(`Compliance claim ${claim.id} requires explicit verified compliance evidence.`);
 }
 const base = process.env.BASE_SHA;
-const head = process.env.HEAD_SHA || "HEAD";
 if (base) {
-  const changed = execFileSync("git", ["diff", "--name-only", `${base}...${head}`], { encoding: "utf8" }).split("\n").filter(Boolean);
-  for (const item of evidence.evidence) if (item.repository === "LloydCoder/Tinlance" && item.status === "ACTIVE" && changed.some((file) => file === item.path || file.startsWith(`${item.path}/`))) warnings.push(`Evidence ${item.id} is scoped to changed code; re-run verification against the new commit before treating it as current.`);
+  try {
+    const changed = execFileSync("git", ["diff", "--name-only", base, "HEAD"], { encoding: "utf8" }).split("\n").filter(Boolean);
+    for (const item of evidence.evidence) if (item.repository === "LloydCoder/Tinlance" && item.status === "ACTIVE" && changed.some((file) => file === item.path || file.startsWith(`${item.path}/`))) warnings.push(`Evidence ${item.id} is scoped to changed code; re-run verification against the new commit before treating it as current.`);
+  } catch (error) { warnings.push(`Could not compute scoped evidence drift from ${base}: ${error instanceof Error ? error.message : String(error)}`); }
 }
 let publicSource = "";
 try { publicSource = execFileSync("git", ["grep", "-IlE", "SOC 2 certified|SOC 2 certification|ISO 27001 certified|ISO 27001 certification|PCI DSS certified", "--", "apps/web"], { encoding: "utf8" }).trim(); } catch { publicSource = ""; }
