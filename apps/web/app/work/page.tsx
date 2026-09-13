@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   title: "Work & Engineering Proof",
   description: "Explore Tinlance engineering case studies, open-source validation and public technical evidence without fabricated customer proof.",
   alternates: { canonical: "/work" },
+  openGraph: { title: "Work & Engineering Proof | Tinlance", description: "Scoped engineering, research and open-source evidence from Tinlance.", url: "/work", type: "website" },
+  twitter: { card: "summary_large_image", title: "Work & Engineering Proof | Tinlance", description: "Scoped engineering, research and open-source evidence from Tinlance." },
 };
 
 const categoryLabel: Record<(typeof caseStudies)[number]["category"], string> = {
@@ -35,7 +37,7 @@ export default function WorkPage() {
         <div className="container">
           <div className="proof-feature">
             <div className="proof-feature-main">
-              <div className="proof-icon"><ShieldCheck size={24} /></div>
+              <div className="proof-icon"><ShieldCheck size={24} aria-hidden="true" /></div>
               <p className="kicker">CASE-STUDY TAXONOMY</p>
               <h2>Different evidence types should look different.</h2>
               <p>Every study identifies its type, status, product, problem, approach, evidence, result and limitations. Synthetic evaluation is never presented as customer success.</p>
@@ -53,27 +55,13 @@ export default function WorkPage() {
           <div className="capability-grid">
             {caseStudies.filter((study) => study.public).map((study) => (
               <article className="capability-card" key={study.id} style={{ minHeight: "430px" }}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
-                  <span className="capability-index">{categoryLabel[study.category].toUpperCase()}</span>
-                  <EvidenceStatusBadge status={study.status} />
-                </div>
-                <div className="capability-card-body" style={{ marginTop: "28px" }}>
-                  <h2>{study.title}</h2>
-                  <p><strong>Product:</strong> {study.product}{study.domain ? ` · ${study.domain}` : ""}</p>
-                  <p style={{ marginTop: "1rem" }}><strong>Problem:</strong> {study.problem}</p>
-                  <p style={{ marginTop: "1rem" }}><strong>Approach:</strong> {study.approach}</p>
-                  <p style={{ marginTop: "1rem" }}><strong>Evidence:</strong> {study.evidence}</p>
-                  <p style={{ marginTop: "1rem" }}><strong>Result:</strong> {study.result}</p>
-                  <p style={{ marginTop: "1rem" }}><strong>Scope / limitations:</strong> {study.scope} {study.limitations}</p>
-                </div>
-                {study.sourceUrl && <a className="text-link" href={study.sourceUrl} target="_blank" rel="noreferrer" aria-label={`${study.title} public source`} style={{ marginTop: "18px" }}>View source <ExternalLink size={16} /></a>}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}><span className="capability-index">{categoryLabel[study.category].toUpperCase()}</span><EvidenceStatusBadge status={study.status} /></div>
+                <div className="capability-card-body" style={{ marginTop: "28px" }}><h2>{study.title}</h2><p><strong>Product:</strong> {study.product}{study.domain ? ` · ${study.domain}` : ""}</p><p style={{ marginTop: "1rem" }}><strong>Problem:</strong> {study.problem}</p><p style={{ marginTop: "1rem" }}><strong>Approach:</strong> {study.approach}</p><p style={{ marginTop: "1rem" }}><strong>Evidence:</strong> {study.evidence}</p><p style={{ marginTop: "1rem" }}><strong>Result:</strong> {study.result}</p><p style={{ marginTop: "1rem" }}><strong>Scope / limitations:</strong> {study.scope} {study.limitations}</p></div>
+                {study.sourceUrl && <a className="text-link" href={study.sourceUrl} target="_blank" rel="noreferrer" aria-label={`${study.title} public source`} style={{ marginTop: "18px" }}>View source <ExternalLink size={16} aria-hidden="true" /></a>}
               </article>
             ))}
           </div>
-          <div className="assessment-card" style={{ marginTop: "4rem" }}>
-            <div><p className="kicker">NEXT STEP</p><h2>Validate your own <span>system.</span></h2><p>Move from public engineering evidence to an environment-specific technical assessment.</p></div>
-            <Link className="button button-accent button-large" href="/assessment">Book an assessment <ArrowUpRight size={18} /></Link>
-          </div>
+          <div className="assessment-card" style={{ marginTop: "4rem" }}><div><p className="kicker">NEXT STEP</p><h2>Validate your own <span>system.</span></h2><p>Move from public engineering evidence to an environment-specific technical assessment.</p></div><Link className="button button-accent button-large" href="/assessment">Book an assessment <ArrowUpRight size={18} aria-hidden="true" /></Link></div>
         </div>
       </section>
     </main>
