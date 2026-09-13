@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { getRequestId } from "@/lib/security/request-id";
 import { newId, recordOutboxEvent } from "@/lib/platform/lifecycle";
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     const body = JSON.parse(bodyText) as { token?: unknown };
     if (typeof body.token !== "string" || body.token.length < 32 || body.token.length > 256) return NextResponse.json({ error: "invalid_request", requestId }, { status: 400 });
 
-    const tokenHash = (await import("node:crypto")).createHash("sha256").update(body.token).digest("hex");
+    const tokenHash = createHash("sha256").update(body.token).digest("hex");
     const token = await db.$queryRaw<Array<{ entityId: string; expiresAt: Date; consumedAt: Date | null }>>`
       SELECT "entityId", "expiresAt", "consumedAt" FROM "CommercialToken"
       WHERE "kind" = 'payment' AND "tokenHash" = ${tokenHash} LIMIT 1
@@ -37,7 +38,6 @@ export async function POST(request: Request) {
       SELECT "id", "status", "providerReference" FROM "Payment" WHERE "invoiceId" = ${invoice.id} AND "provider" = 'paystack' ORDER BY "createdAt" DESC LIMIT 1
     `;
     const reference = existing[0]?.providerReference ?? invoice.externalId;
-
     if (!existing[0]) {
       await db.$executeRaw`
         INSERT INTO "Payment" ("id", "invoiceId", "organizationId", "provider", "providerReference", "status", "amountMinor", "currency")
@@ -48,7 +48,6 @@ export async function POST(request: Request) {
 
     const secret = process.env.PAYSTACK_SECRET_KEY;
     if (!secret) return NextResponse.json({ error: "billing_not_configured", requestId }, { status: 503 });
-
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
       headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json", "Idempotency-Key": `paystack-init:${invoice.id}` },
@@ -63,6 +62,9 @@ export async function POST(request: Request) {
 
     await db.$executeRaw`UPDATE "Payment" SET "status" = 'PENDING', "updatedAt" = NOW() WHERE "providerReference" = ${reference}`;
     await recordOutboxEvent({ eventKey: `payment.initialized:${invoice.id}:${reference}`, eventType: "payment.initialized", aggregateType: "payment", aggregateId: invoice.id, organizationId: invoice.organizationId, payload: { invoiceId: invoice.id, provider: "paystack", reference } });
+
+    const acceptHtml = request.headers.get("accept")?.includes("text/html");
+    if (acceptHtml) return NextResponse.redirect(payload.data.authorization_url, 303);
     return NextResponse.json({ authorizationUrl: payload.data.authorization_url, reference, requestId }, { headers: { "cache-control": "no-store", "x-request-id": requestId } });
   } catch (error) {
     if (error instanceof SyntaxError) return NextResponse.json({ error: "invalid_json", requestId }, { status: 400 });
