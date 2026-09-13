@@ -6,12 +6,11 @@ import { SiteHeader } from "../components/site-header";
 import { getSiteUrl, isVercelPreview } from "../lib/site";
 import "../components/architecture-map.css";
 import "../components/mobile-nav.css";
+import "../components/public-quality.css";
 import "./globals.css";
 
 const siteUrl = getSiteUrl();
-const previewRobots: Metadata["robots"] = isVercelPreview()
-  ? { index: false, follow: false }
-  : { index: true, follow: true };
+const previewRobots: Metadata["robots"] = isVercelPreview() ? { index: false, follow: false } : { index: true, follow: true };
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -29,12 +28,7 @@ export const metadata: Metadata = {
     siteName: "Tinlance",
     images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Tinlance — AI Engineering and Forward-Deployed Engineering" }],
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "Tinlance — AI Engineering & Forward-Deployed Engineering",
-    description: "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation.",
-    images: ["/twitter-image"],
-  },
+  twitter: { card: "summary_large_image", title: "Tinlance — AI Engineering & Forward-Deployed Engineering", description: "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation.", images: ["/twitter-image"] },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
