@@ -13,8 +13,8 @@ export const organizationSchema = {
   "@id": absoluteUrl("/#organization"),
   name: "Tinlance",
   url: absoluteUrl("/"),
-  description:
-    "Production-oriented AI engineering, Forward-Deployed Engineering, AI security, and enterprise automation.",
+  logo: absoluteUrl("/icon.svg"),
+  description: "Production-oriented AI engineering, Forward-Deployed Engineering, AI security, and enterprise automation.",
   sameAs: ["https://github.com/LloydCoder/Tinlance"],
 };
 

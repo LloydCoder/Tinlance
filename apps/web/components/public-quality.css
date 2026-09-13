@@ -1,0 +1,99 @@
+/* Sprint D: shared keyboard, touch, motion and footer quality rules. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #7aa51f;
+  outline-offset: 3px;
+}
+
+.nav-link,
+.footer-column a,
+.footer-open-source a,
+.text-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mobile-menu-trigger {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.footer-grid {
+  align-items: start;
+}
+
+.footer-brand-block {
+  min-width: 0;
+}
+
+.footer-open-source {
+  display: grid;
+  gap: 8px;
+  margin-top: 28px;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.footer-open-source > span,
+.footer-column h2 {
+  margin: 0 0 8px;
+  color: #737b75;
+  font: 700 .68rem/1.2 monospace;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.footer-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(110px, 1fr));
+  gap: 34px;
+}
+
+.footer-column {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.footer-column a,
+.footer-open-source a {
+  color: var(--ink);
+  font-size: .86rem;
+  font-weight: 700;
+}
+
+.footer-column a:hover,
+.footer-open-source a:hover {
+  color: #67716a;
+}
+
+@media (max-width: 920px) {
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer-columns {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    gap: 30px 22px;
+  }
+}
+
+@media (max-width: 620px) {
+  .footer-columns {
+    grid-template-columns: 1fr 1fr;
+    gap: 26px 18px;
+  }
+
+  .footer-column a,
+  .footer-open-source a {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button:hover,
+  .capability-card:hover,
+  .capability-card:hover .capability-arrow {
+    transform: none;
+  }
+}
