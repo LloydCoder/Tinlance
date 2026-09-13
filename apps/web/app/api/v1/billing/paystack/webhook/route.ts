@@ -1,10 +1,11 @@
 import { Prisma } from "@prisma/client";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { paystackEventId, verifyPaystackSignature } from "@/lib/operations/paystack";
 import { getRequestId } from "@/lib/security/request-id";
 import { validateProductionEnv } from "@/lib/security/env";
 import { auditCommercialTransition, createOnboarding, newId, recordOutboxEvent, requestProvisioning } from "@/lib/platform/lifecycle";
+import { processOutboxBatch } from "@/lib/platform/outbox";
 
 const MAX_BODY_BYTES = 65_536;
 const STATUS_BY_EVENT: Record<string, string> = { "charge.success": "paid", "charge.failed": "failed", "refund.processed": "refunded", "invoice.payment_failed": "failed" };
@@ -50,24 +51,18 @@ export async function POST(request: Request) {
       if (nextStatus === "paid") await tx.$executeRaw`UPDATE "Invoice" SET "paidAt" = NOW() WHERE "id" = ${invoice.id}`;
       await auditCommercialTransition({ organizationId: invoice.organizationId, action: `payment.${nextStatus === "paid" ? "succeeded" : nextStatus}`, resourceType: "payment", resourceId: paymentId, requestId, previousState: paymentRows[0]?.status ?? "CREATED", newState: paymentStatus, metadata: { provider: "paystack", reference, providerTransactionId }, tx });
       await auditCommercialTransition({ organizationId: invoice.organizationId, action: `invoice.${nextStatus}`, resourceType: "invoice", resourceId: invoice.id, requestId, previousState: invoice.status, newState: nextStatus, metadata: { reference, eventId }, tx });
-
       if (nextStatus === "paid") {
         const commercial = await tx.$queryRaw<Array<{ proposalId: string | null; title: string; pricing: unknown }>>`SELECT i."proposalId", p."title", pv."pricing" FROM "Invoice" i LEFT JOIN "Proposal" p ON p."id" = i."proposalId" LEFT JOIN "ProposalVersion" pv ON pv."proposalId" = p."id" AND pv."version" = p."currentVersion" WHERE i."id" = ${invoice.id} LIMIT 1`;
-        const proposalId = commercial[0]?.proposalId ?? null;
-        const pricing = commercial[0]?.pricing && typeof commercial[0]?.pricing === "object" ? commercial[0].pricing as Record<string, unknown> : {};
-        const product = typeof pricing.product === "string" ? pricing.product : "FDE engagement";
-        const capability = typeof pricing.capability === "string" ? pricing.capability : "fde-engagement";
-        const entitlementId = newId();
+        const proposalId = commercial[0]?.proposalId ?? null; const pricing = commercial[0]?.pricing && typeof commercial[0]?.pricing === "object" ? commercial[0].pricing as Record<string, unknown> : {};
+        const product = typeof pricing.product === "string" ? pricing.product : "FDE engagement"; const capability = typeof pricing.capability === "string" ? pricing.capability : "fde-engagement"; const entitlementId = newId();
         await tx.$executeRaw`INSERT INTO "Entitlement" ("id", "organizationId", "product", "capability", "sourceType", "sourceId", "proposalId", "invoiceId", "paymentId", "status") VALUES (${entitlementId}, ${invoice.organizationId}, ${product}, ${capability}, 'PAYMENT', ${paymentId}, ${proposalId}, ${invoice.id}, ${paymentId}, 'ACTIVE') ON CONFLICT ("organizationId", "product", "capability", "sourceType", "sourceId") DO UPDATE SET "status" = 'ACTIVE', "paymentId" = EXCLUDED."paymentId", "updatedAt" = NOW()`;
         const client = await tx.client.upsert({ where: { organizationId: invoice.organizationId }, update: { status: "active" }, create: { organizationId: invoice.organizationId, status: "active" }, select: { id: true } });
         const existingEngagement = proposalId ? await tx.engagement.findUnique({ where: { proposalId }, select: { id: true } }) : null;
         const engagement = existingEngagement ?? await tx.engagement.create({ data: { organizationId: invoice.organizationId, clientId: client.id, proposalId, name: commercial[0]?.title ?? product, scope: `Commercial fulfillment for invoice ${invoice.id}`, commercialValueMinor: invoice.amountMinor, currency: invoice.currency, deliveryModel: "PROJECT", status: "ACTIVE" }, select: { id: true } });
         const existingProject = await tx.project.findFirst({ where: { organizationId: invoice.organizationId, engagementId: engagement.id }, select: { id: true } });
         const project = existingProject ?? await tx.project.create({ data: { organizationId: invoice.organizationId, engagementId: engagement.id, name: commercial[0]?.title ?? product, type: "commercial-engagement", status: "active", progress: 0 }, select: { id: true } });
-        const existingWorkspace = await tx.projectWorkspaceState.findUnique({ where: { projectId: project.id }, select: { id: true } });
-        if (!existingWorkspace) await tx.projectWorkspaceState.create({ data: { projectId: project.id, organizationId: invoice.organizationId, status: "ACTIVE", ownerUserId: null } });
-        const onboardingRows = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Onboarding" WHERE "entitlementId" = ${entitlementId} LIMIT 1`;
-        if (!onboardingRows[0]) await createOnboarding({ organizationId: invoice.organizationId, entitlementId, engagementId: engagement.id, tx });
+        const existingWorkspace = await tx.projectWorkspaceState.findUnique({ where: { projectId: project.id }, select: { id: true } }); if (!existingWorkspace) await tx.projectWorkspaceState.create({ data: { projectId: project.id, organizationId: invoice.organizationId, status: "ACTIVE", ownerUserId: null } });
+        const onboardingRows = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Onboarding" WHERE "entitlementId" = ${entitlementId} LIMIT 1`; if (!onboardingRows[0]) await createOnboarding({ organizationId: invoice.organizationId, entitlementId, engagementId: engagement.id, tx });
         await requestProvisioning({ organizationId: invoice.organizationId, entitlementId, product: "Tinlance Workspace", tx });
         await tx.$executeRaw`UPDATE "ProvisioningJob" SET "status" = 'COMPLETED', "attempts" = 1, "startedAt" = NOW(), "completedAt" = NOW(), "updatedAt" = NOW() WHERE "entitlementId" = ${entitlementId} AND "idempotencyKey" = ${`provision:${entitlementId}`}`;
         await tx.$executeRaw`UPDATE "Onboarding" SET "status" = 'ACTIVE', "startedAt" = COALESCE("startedAt", NOW()), "updatedAt" = NOW() WHERE "entitlementId" = ${entitlementId}`;
@@ -89,5 +84,6 @@ export async function POST(request: Request) {
     console.error("paystack_webhook_processing_failed", { requestId, error });
     return NextResponse.json({ error: "service_unavailable", requestId }, { status: 503, headers: jsonHeaders });
   }
+  after(() => processOutboxBatch().catch((error) => console.error("outbox_after_failed", { requestId, error })));
   return NextResponse.json({ received: true, requestId }, { headers: jsonHeaders });
 }
