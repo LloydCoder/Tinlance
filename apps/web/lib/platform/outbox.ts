@@ -1,0 +1,111 @@
+import { db } from "@/lib/db";
+import { sendCommercialEmail } from "@/lib/commercial/notifications";
+
+const BATCH_SIZE = 20;
+
+type OutboxRow = {
+  id: string;
+  eventKey: string;
+  eventType: string;
+  aggregateType: string;
+  aggregateId: string;
+  organizationId: string | null;
+  payload: Record<string, unknown>;
+  attempts: number;
+};
+
+async function claimBatch() {
+  return db.$transaction(async (tx) => tx.$queryRaw<OutboxRow[]>`
+    WITH candidates AS (
+      SELECT "id" FROM "OutboxEvent"
+      WHERE "status" = 'PENDING' AND "availableAt" <= NOW()
+      ORDER BY "createdAt"
+      LIMIT ${BATCH_SIZE}
+      FOR UPDATE SKIP LOCKED
+    )
+    UPDATE "OutboxEvent" e
+    SET "status" = 'PROCESSING', "attempts" = e."attempts" + 1, "updatedAt" = NOW()
+    FROM candidates c
+    WHERE e."id" = c."id"
+    RETURNING e."id", e."eventKey", e."eventType", e."aggregateType", e."aggregateId", e."organizationId", e."payload", e."attempts"
+  `);
+}
+
+async function markSuccess(event: OutboxRow) {
+  await db.$executeRaw`UPDATE "OutboxEvent" SET "status" = 'PROCESSED', "processedAt" = NOW(), "updatedAt" = NOW(), "lastError" = NULL WHERE "id" = ${event.id}`;
+}
+
+async function markFailure(event: OutboxRow, error: unknown) {
+  const message = String(error instanceof Error ? error.message : error).slice(0, 1000);
+  const delaySeconds = Math.min(3600, 2 ** Math.min(event.attempts, 10));
+  await db.$executeRaw`
+    UPDATE "OutboxEvent"
+    SET "status" = CASE WHEN "attempts" >= 10 THEN 'FAILED' ELSE 'PENDING' END,
+        "availableAt" = NOW() + (${delaySeconds} * INTERVAL '1 second'),
+        "lastError" = ${message},
+        "updatedAt" = NOW()
+    WHERE "id" = ${event.id}
+  `;
+}
+
+async function processEmail(event: OutboxRow) {
+  const payload = event.payload;
+  const recipient = typeof payload.recipient === "string" ? payload.recipient : null;
+  if (!recipient) throw new Error("email_recipient_missing");
+
+  let subject = "Tinlance notification";
+  let html = "";
+  let template = event.eventType;
+  if (event.eventType === "email.proposal.accepted") {
+    const proposalNumber = String(payload.proposalNumber ?? "proposal");
+    const proposalTitle = String(payload.proposalTitle ?? "your engagement");
+    const invoiceId = String(payload.invoiceId ?? "");
+    const paymentUrl = String(payload.paymentUrl ?? "");
+    subject = `Proposal accepted — ${proposalTitle}`;
+    html = `<p>Thank you. Your proposal <strong>${proposalNumber}</strong> has been accepted.</p><p>Invoice <strong>${invoiceId}</strong> is ready for payment.</p><p><a href="${paymentUrl}">Continue to secure payment</a>.</p>`;
+  } else if (event.eventType === "email.payment.succeeded") {
+    subject = "Payment received — Tinlance";
+    html = `<p>We have received your payment for invoice <strong>${String(payload.invoiceId ?? "")}</strong>.</p><p>Your Tinlance workspace is now being activated.</p>`;
+  } else {
+    throw new Error(`unsupported_email_event:${event.eventType}`);
+  }
+
+  const existing = await db.$queryRaw<Array<{ status: string }>>`SELECT "status" FROM "EmailDelivery" WHERE "eventKey" = ${event.eventKey} LIMIT 1`;
+  if (existing[0]?.status === "SENT") return;
+  await db.$executeRaw`
+    INSERT INTO "EmailDelivery" ("id", "eventKey", "organizationId", "entityType", "entityId", "recipient", "template", "correlationId", "status", "attempts")
+    VALUES (${crypto.randomUUID()}, ${event.eventKey}, ${event.organizationId}, ${event.aggregateType}, ${event.aggregateId}, ${recipient}, ${template}, ${event.eventKey}, 'SENDING', 1)
+    ON CONFLICT ("eventKey") DO UPDATE SET "attempts" = "EmailDelivery"."attempts" + 1, "status" = 'SENDING', "updatedAt" = NOW()
+  `;
+
+  const result = await sendCommercialEmail({ action: event.eventType, resourceId: event.aggregateId, to: recipient, subject, html, requestId: event.eventKey, organizationId: event.organizationId });
+  if (!result.sent && !result.duplicate) throw new Error("email_delivery_failed");
+  await db.$executeRaw`UPDATE "EmailDelivery" SET "status" = 'SENT', "updatedAt" = NOW() WHERE "eventKey" = ${event.eventKey}`;
+}
+
+async function processProvisioning(event: OutboxRow) {
+  if (event.eventType !== "provisioning.requested") return;
+  const entitlementId = event.aggregateId;
+  const rows = await db.$queryRaw<Array<{ status: string }>>`SELECT "status" FROM "ProvisioningJob" WHERE "entitlementId" = ${entitlementId} AND "idempotencyKey" = ${`provision:${entitlementId}`} LIMIT 1`;
+  if (!rows[0]) throw new Error("provisioning_job_missing");
+  if (rows[0].status === "COMPLETED") return;
+  throw new Error("unsupported_provisioning_adapter");
+}
+
+export async function processOutboxBatch() {
+  const events = await claimBatch();
+  let processed = 0;
+  let failed = 0;
+  for (const event of events) {
+    try {
+      if (event.eventType.startsWith("email.")) await processEmail(event);
+      else if (event.eventType === "provisioning.requested") await processProvisioning(event);
+      await markSuccess(event);
+      processed += 1;
+    } catch (error) {
+      await markFailure(event, error);
+      failed += 1;
+    }
+  }
+  return { claimed: events.length, processed, failed };
+}
