@@ -16,8 +16,7 @@ function domainFromWebsite(website: string | null) { if (!website) return null; 
 function pricingValue(pricing: Prisma.JsonValue, key: string) { if (!pricing || typeof pricing !== "object" || Array.isArray(pricing)) return null; return (pricing as Record<string, Prisma.JsonValue>)[key] ?? null; }
 
 export async function POST(request: Request) {
-  const requestId = getRequestId(request);
-  const limit = await enforcePublicRateLimit(`proposal-accept:${getClientIp(request)}`);
+  const requestId = getRequestId(request); const limit = await enforcePublicRateLimit(`proposal-accept:${getClientIp(request)}`);
   if (!limit.allowed) return NextResponse.json({ error: "rate_limited", requestId }, { status: 429, headers: { "cache-control": "no-store", "retry-after": String(limit.retryAfter ?? 60), "x-request-id": requestId } });
   try {
     const bodyText = await request.text();
@@ -40,7 +39,8 @@ export async function POST(request: Request) {
       const existingInvoice = await tx.$queryRaw<Array<{ id: string; status: string }>>`SELECT "id", "status" FROM "Invoice" WHERE "proposalId" = ${proposal.id} LIMIT 1`;
       if (existingInvoice[0]) return { organizationId, invoiceId: existingInvoice[0].id, invoiceStatus: existingInvoice[0].status, paymentToken: null };
       const invoiceId = newId();
-      await tx.$executeRaw`INSERT INTO "Invoice" ("id", "organizationId", "proposalId", "customerEmail", "currency", "amountMinor", "description", "status", "externalId", "paymentAccessRequired", "dueAt") VALUES (${invoiceId}, ${organizationId}, ${proposal.id}, ${proposal.lead.email}, ${currency}, ${totalMinor}, ${`Proposal ${proposal.proposalNumber} — ${proposal.title}`}, 'sent', ${paymentReference}, TRUE, ${proposal.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)})`;
+      const inserted = await tx.$queryRaw<Array<{ id: string }>>`INSERT INTO "Invoice" ("id", "organizationId", "proposalId", "customerEmail", "currency", "amountMinor", "description", "status", "externalId", "paymentAccessRequired", "dueAt") VALUES (${invoiceId}, ${organizationId}, ${proposal.id}, ${proposal.lead.email}, ${currency}, ${totalMinor}, ${`Proposal ${proposal.proposalNumber} — ${proposal.title}`}, 'sent', ${paymentReference}, TRUE, ${proposal.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}) ON CONFLICT ("proposalId") WHERE "proposalId" IS NOT NULL DO NOTHING RETURNING "id"`;
+      if (!inserted[0]) { const existing = await tx.$queryRaw<Array<{ id: string; status: string }>>`SELECT "id", "status" FROM "Invoice" WHERE "proposalId" = ${proposal.id} LIMIT 1`; return { organizationId, invoiceId: existing[0]?.id ?? invoiceId, invoiceStatus: existing[0]?.status ?? "sent", paymentToken: null }; }
       await tx.$executeRaw`INSERT INTO "CommercialToken" ("id", "kind", "entityId", "tokenHash", "expiresAt") VALUES (${newId()}, 'payment', ${invoiceId}, ${paymentHash}, ${paymentTokenExpiresAt})`;
       await tx.proposal.update({ where: { id: proposal.id }, data: { status: ProposalStatus.ACCEPTED, acceptedAt: new Date(), acceptedByName: parsed.data.acceptedByName, acceptedByEmail: parsed.data.acceptedByEmail, organizationId } });
       if (proposal.opportunityId) await tx.opportunity.update({ where: { id: proposal.opportunityId }, data: { organizationId, stage: OpportunityStage.ENGAGEMENT_PENDING, lastActivityAt: new Date(), nextAction: "Collect payment", nextActionAt: new Date(Date.now() + 24 * 60 * 60 * 1000) } });
