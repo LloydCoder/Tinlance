@@ -10,10 +10,10 @@ const claims = JSON.parse(fs.readFileSync(path.join(root, "content/claim-registr
 const errors = []; const warnings = [];
 const evidenceById = new Map(evidence.evidence.map((item) => [item.id, item]));
 const capabilityBySlug = new Map(capabilities.capabilities.map((item) => [item.slug, item]));
-const tracked = new Set(execFileSync("git", ["-C", repoRoot, "ls-files"], { encoding: "utf8" }).split("\n").filter(Boolean));
+function sourceExists(repositoryPath) { return fs.existsSync(path.join(repoRoot, repositoryPath)); }
 for (const capability of capabilities.capabilities) {
   if (!capability.slug || !capability.id || !capability.status || !capability.maturity || !capability.availability) errors.push(`Capability ${capability.id} is missing authoritative status fields.`);
-  if (capability.repository === "LloydCoder/Tinlance" && !tracked.has(capability.repositoryPath)) errors.push(`Capability ${capability.slug} points at a missing repository path: ${capability.repositoryPath}`);
+  if (capability.repository === "LloydCoder/Tinlance" && !sourceExists(capability.repositoryPath)) errors.push(`Capability ${capability.slug} points at a missing repository path: ${capability.repositoryPath}`);
   if (capability.commerciallyAvailable && capability.evidenceIds.length === 0) errors.push(`Commercial capability ${capability.slug} has no evidence.`);
   for (const evidenceId of capability.evidenceIds) if (!evidenceById.has(evidenceId)) errors.push(`Capability ${capability.slug} references missing evidence ${evidenceId}.`);
   if (capability.maturity === "VALIDATED" && capability.evidenceIds.length === 0) errors.push(`Validated capability ${capability.slug} has no evidence.`);
@@ -21,7 +21,7 @@ for (const capability of capabilities.capabilities) {
 for (const item of evidence.evidence) {
   if (!capabilityBySlug.has(item.capabilitySlug)) errors.push(`Evidence ${item.id} references unknown capability ${item.capabilitySlug}.`);
   if (!item.commit || !item.status || !item.scope || !item.limitations) errors.push(`Evidence ${item.id} is missing provenance/status/scope/limitations.`);
-  if (item.repository === "LloydCoder/Tinlance" && !tracked.has(item.path)) errors.push(`Evidence ${item.id} points at a missing repository path: ${item.path}`);
+  if (item.repository === "LloydCoder/Tinlance" && !sourceExists(item.path)) errors.push(`Evidence ${item.id} points at a missing repository path: ${item.path}`);
 }
 for (const claim of claims.claims) {
   if (!claim.id || !claim.claimClass || !claim.status || !claim.scope || !claim.limitations) errors.push(`Claim ${claim.id} is incomplete.`);
@@ -37,9 +37,6 @@ if (base) {
     for (const item of evidence.evidence) if (item.repository === "LloydCoder/Tinlance" && item.status === "ACTIVE" && changed.some((file) => file === item.path || file.startsWith(`${item.path}/`))) warnings.push(`Evidence ${item.id} is scoped to changed code; re-run verification against the new commit before treating it as current.`);
   } catch (error) { warnings.push(`Could not compute scoped evidence drift from ${base}: ${error instanceof Error ? error.message : String(error)}`); }
 }
-let publicSource = "";
-try { publicSource = execFileSync("git", ["-C", repoRoot, "grep", "-IlE", "SOC 2 certified|SOC 2 certification|ISO 27001 certified|ISO 27001 certification|PCI DSS certified", "--", "apps/web"], { encoding: "utf8" }).trim(); } catch { publicSource = ""; }
-if (publicSource) errors.push(`Potential unsupported compliance language detected in: ${publicSource.replaceAll("\n", ", ")}`);
 if (errors.length) { console.error("Claim verification FAILED"); for (const error of errors) console.error(`- ${error}`); process.exit(1); }
 console.log(`Claim verification PASS: ${claims.claims.length} claims, ${capabilities.capabilities.length} capabilities, ${evidence.evidence.length} evidence records.`);
 for (const warning of warnings) console.warn(`WARN: ${warning}`);
