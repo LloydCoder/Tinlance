@@ -15,12 +15,10 @@ const MAX_BODY_BYTES = 8_192;
 function slugify(value: string) {
   return value.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70) || `org-${Date.now()}`;
 }
-
 function domainFromWebsite(website: string | null) {
   if (!website) return null;
   try { return new URL(website).hostname.toLowerCase().replace(/^www\./, ""); } catch { return null; }
 }
-
 function pricingValue(pricing: Prisma.JsonValue, key: string) {
   if (!pricing || typeof pricing !== "object" || Array.isArray(pricing)) return null;
   return (pricing as Record<string, Prisma.JsonValue>)[key] ?? null;
@@ -37,14 +35,11 @@ export async function POST(request: Request) {
     const parsed = proposalAcceptSchema.safeParse(JSON.parse(bodyText));
     if (!parsed.success) return NextResponse.json({ error: "invalid_request", requestId }, { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } });
 
-    const proposal = await db.proposal.findUnique({
-      where: { publicTokenHash: hashProposalToken(parsed.data.token) },
-      include: { lead: true, versions: { orderBy: { version: "desc" }, take: 1 } },
-    });
+    const proposal = await db.proposal.findUnique({ where: { publicTokenHash: hashProposalToken(parsed.data.token) }, include: { lead: true, versions: { orderBy: { version: "desc" }, take: 1 } } });
     if (!proposal) return NextResponse.json({ error: "proposal_not_found", requestId }, { status: 404, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     if (proposal.status === ProposalStatus.ACCEPTED) {
-      const invoice = await db.invoice.findFirst({ where: { proposalId: proposal.id }, select: { id: true, status: true } });
-      return NextResponse.json({ status: "already_accepted", requestId, invoiceId: invoice?.id ?? null, invoiceStatus: invoice?.status ?? null }, { status: 200, headers: { "cache-control": "no-store", "x-request-id": requestId } });
+      const existing = await db.$queryRaw<Array<{ id: string; status: string }>>`SELECT "id", "status" FROM "Invoice" WHERE "proposalId" = ${proposal.id} LIMIT 1`;
+      return NextResponse.json({ status: "already_accepted", requestId, invoiceId: existing[0]?.id ?? null, invoiceStatus: existing[0]?.status ?? null }, { status: 200, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     }
     if (proposal.status !== ProposalStatus.SENT && proposal.status !== ProposalStatus.VIEWED) return NextResponse.json({ error: "proposal_not_accepting", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     if (proposal.expiresAt && proposal.expiresAt <= new Date()) {
@@ -72,8 +67,8 @@ export async function POST(request: Request) {
         if (!organizationId) organizationId = (await tx.organization.create({ data: { name: proposal.lead.organizationName, slug: slugify(proposal.lead.organizationName), websiteDomain: domain }, select: { id: true } })).id;
       }
 
-      const existingInvoice = await tx.invoice.findFirst({ where: { proposalId: proposal.id }, select: { id: true, status: true } });
-      if (existingInvoice) return { organizationId, invoiceId: existingInvoice.id, invoiceStatus: existingInvoice.status, paymentToken: null, paymentCreated: false };
+      const existingInvoice = await tx.$queryRaw<Array<{ id: string; status: string }>>`SELECT "id", "status" FROM "Invoice" WHERE "proposalId" = ${proposal.id} LIMIT 1`;
+      if (existingInvoice[0]) return { organizationId, invoiceId: existingInvoice[0].id, invoiceStatus: existingInvoice[0].status, paymentToken: null };
 
       const invoiceId = newId();
       await tx.$executeRaw`
@@ -88,11 +83,10 @@ export async function POST(request: Request) {
       await auditCommercialTransition({ organizationId, action: "invoice.created", resourceType: "invoice", resourceId: invoiceId, requestId, newState: "sent", metadata: { proposalId: proposal.id, amountMinor: totalMinor, currency }, tx });
       await recordOutboxEvent({ eventKey: `proposal.accepted:${proposal.id}:${proposal.currentVersion}`, eventType: "proposal.accepted", aggregateType: "proposal", aggregateId: proposal.id, organizationId, payload: { proposalId: proposal.id, version: proposal.currentVersion, invoiceId }, tx });
       await recordOutboxEvent({ eventKey: `invoice.created:${invoiceId}`, eventType: "invoice.created", aggregateType: "invoice", aggregateId: invoiceId, organizationId, payload: { invoiceId, proposalId: proposal.id }, tx });
-      return { organizationId, invoiceId, invoiceStatus: "sent", paymentToken, paymentCreated: true };
+      return { organizationId, invoiceId, invoiceStatus: "sent", paymentToken };
     });
 
     if (!result.paymentToken) return NextResponse.json({ status: "already_accepted", requestId, invoiceId: result.invoiceId, invoiceStatus: result.invoiceStatus }, { status: 200, headers: { "cache-control": "no-store", "x-request-id": requestId } });
-
     try {
       await recordGrowthEvent({ eventName: "proposal_accepted", source: "proposal", entityId: proposal.id, privacyClass: "FINANCIAL", properties: { invoiceId: result.invoiceId } });
       await recordGrowthEvent({ eventName: "deal_won", source: "proposal", entityId: proposal.id, privacyClass: "FINANCIAL" });
