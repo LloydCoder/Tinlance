@@ -7,7 +7,8 @@
     "build": "prisma generate && next build",
     "lint": "eslint .",
     "typecheck": "prisma generate && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "claims:verify": "node scripts/verify-platform-claims.mjs"
   },
   "dependencies": {
     "@better-auth/infra": "^0.3.7",
