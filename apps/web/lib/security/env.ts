@@ -1,9 +1,7 @@
 import { z } from "zod";
 
 const baseEnvSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .default("development"),
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   BETTER_AUTH_URL: z.string().url().optional(),
   BETTER_AUTH_SECRET: z.string().min(32).optional(),
@@ -13,6 +11,9 @@ const baseEnvSchema = z.object({
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
   PAYSTACK_SECRET_KEY: z.string().min(1).optional(),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  RESEND_FROM_EMAIL: z.string().min(3).optional(),
+  CRON_SECRET: z.string().min(32).optional(),
 });
 
 export const env = baseEnvSchema.parse({
@@ -26,11 +27,13 @@ export const env = baseEnvSchema.parse({
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+  CRON_SECRET: process.env.CRON_SECRET,
 });
 
-export function validateProductionEnv(options?: { billing?: boolean }) {
+export function validateProductionEnv(options?: { billing?: boolean; email?: boolean; outbox?: boolean }) {
   if (env.NODE_ENV !== "production") return;
-
   const required: Record<string, string | undefined> = {
     DATABASE_URL: env.DATABASE_URL,
     NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
@@ -39,28 +42,11 @@ export function validateProductionEnv(options?: { billing?: boolean }) {
     UPSTASH_REDIS_REST_URL: env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: env.UPSTASH_REDIS_REST_TOKEN,
   };
-
-  if (options?.billing) {
-    required.PAYSTACK_SECRET_KEY = env.PAYSTACK_SECRET_KEY;
-  }
-
-  const missing = Object.entries(required)
-    .filter(([, value]) => !value)
-    .map(([key]) => key);
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required production environment variables: ${missing.join(", ")}`,
-    );
-  }
-
-  if ((env.BETTER_AUTH_SECRET?.length ?? 0) < 32) {
-    throw new Error("Better Auth signing secret must contain at least 32 characters");
-  }
-
-  if (env.BETTER_AUTH_URL !== env.NEXT_PUBLIC_APP_URL) {
-    throw new Error(
-      "BETTER_AUTH_URL and NEXT_PUBLIC_APP_URL must match in production",
-    );
-  }
+  if (options?.billing) required.PAYSTACK_SECRET_KEY = env.PAYSTACK_SECRET_KEY;
+  if (options?.email) { required.RESEND_API_KEY = env.RESEND_API_KEY; required.RESEND_FROM_EMAIL = env.RESEND_FROM_EMAIL; }
+  if (options?.outbox) required.CRON_SECRET = env.CRON_SECRET;
+  const missing = Object.entries(required).filter(([, value]) => !value).map(([key]) => key);
+  if (missing.length > 0) throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
+  if ((env.BETTER_AUTH_SECRET?.length ?? 0) < 32) throw new Error("Better Auth signing secret must contain at least 32 characters");
+  if (env.BETTER_AUTH_URL !== env.NEXT_PUBLIC_APP_URL) throw new Error("BETTER_AUTH_URL and NEXT_PUBLIC_APP_URL must match in production");
 }
