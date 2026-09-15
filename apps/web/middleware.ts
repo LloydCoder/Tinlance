@@ -41,9 +41,14 @@ export default function middleware(request: NextRequest) {
     return nextResponseWithCanonical(request);
   }
 
-  // This is an optimistic redirect only. Every protected page/API handler
-  // performs a server-side Better Auth session and authorization check.
-  const sessionCookie = getSessionCookie(request);
+  // Better Auth uses the custom "tinlance" cookie prefix configured in
+  // lib/auth.ts. getSessionCookie does not read that server configuration,
+  // so the prefix must be supplied explicitly here. Without it, a valid
+  // session cookie is invisible to middleware and every portal request is
+  // redirected back to sign-in.
+  const sessionCookie = getSessionCookie(request, {
+    cookiePrefix: "tinlance",
+  });
   if (!sessionCookie) {
     const signInUrl = new URL("/sign-in", request.url);
     signInUrl.searchParams.set(
