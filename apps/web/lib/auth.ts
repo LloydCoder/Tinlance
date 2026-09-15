@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth/minimal";
 import { prismaAdapter } from "@better-auth/prisma-adapter";
 import { dash } from "@better-auth/infra";
-import { organization, twoFactor } from "better-auth/plugins";
+import { organization } from "better-auth/plugins";
 import { db } from "@/lib/db";
 
 // Vercel currently serves the Tinlance project on the www hostname. Keep the
@@ -38,7 +38,6 @@ export const auth = betterAuth({
   databaseHooks: { user: { create: { after: async (user) => { if (bootstrapAdminEmail && user.email.toLowerCase() === bootstrapAdminEmail) await db.user.update({ where: { id: user.id }, data: { role: "super-admin" } }); } } } },
   plugins: [
     organization({ allowUserToCreateOrganization: true, creatorRole: "owner", membershipLimit: 100, organizationLimit: 20, invitationExpiresIn: 60 * 60 * 24 * 7, disableOrganizationDeletion: true }),
-    twoFactor({ issuer: "Tinlance" }),
     dash({ apiKey: betterAuthApiKey }),
   ],
 });
