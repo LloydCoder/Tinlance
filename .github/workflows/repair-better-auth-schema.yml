@@ -6,6 +6,7 @@ on:
     paths:
       - apps/web/prisma/schema.prisma
       - apps/web/prisma/migrations/202609150003_better_auth_issuer/migration.sql
+      - .github/workflows/repair-better-auth-schema.yml
 
 permissions:
   contents: write
@@ -23,14 +24,12 @@ jobs:
           s = p.read_text()
           old = '''  accountId             String\n  providerId            String\n  userId                String'''
           new = '''  accountId             String\n  providerId            String\n  issuer                String    @default("local:credential")\n  userId                String'''
-          if old not in s:
-              raise SystemExit('Account field anchor not found')
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
           old2 = '''  @@unique([providerId, accountId])\n  @@index([userId])'''
           new2 = '''  @@unique([providerId, accountId])\n  @@unique([issuer, accountId])\n  @@index([userId])'''
-          if old2 not in s:
-              raise SystemExit('Account index anchor not found')
-          s = s.replace(old2, new2, 1)
+          if old2 in s:
+              s = s.replace(old2, new2, 1)
           p.write_text(s)
           PY
       - name: Commit schema repair
