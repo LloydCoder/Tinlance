@@ -4,12 +4,22 @@ import { dash } from "@better-auth/infra";
 import { organization, twoFactor } from "better-auth/plugins";
 import { db } from "@/lib/db";
 
+const productionOrigin = "https://tinlance.com";
+const productionWwwOrigin = "https://www.tinlance.com";
 const vercelOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
-const baseURL = process.env.BETTER_AUTH_URL ?? (vercelOrigin || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
+const configuredBaseURL = process.env.BETTER_AUTH_URL?.trim().replace(/\/$/, "");
+const baseURL = configuredBaseURL || (process.env.NODE_ENV === "production" ? productionOrigin : (vercelOrigin || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"));
 const bootstrapAdminEmail = process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
 const authSecret = process.env.BETTER_AUTH_SECRET;
 const betterAuthApiKey = process.env.BETTER_AUTH_API_KEY;
-const trustedOrigins = [baseURL, vercelOrigin].filter((origin): origin is string => Boolean(origin));
+
+// Keep the production custom domain as an explicit trusted origin so auth does
+// not depend on Vercel's deployment URL or on an optional environment variable.
+// www is accepted as well because it is a valid browser origin for the site.
+const trustedOrigins = [productionOrigin, productionWwwOrigin, baseURL, vercelOrigin]
+  .filter((origin): origin is string => Boolean(origin))
+  .map((origin) => origin.replace(/\/$/, ""))
+  .filter((origin, index, origins) => origins.indexOf(origin) === index);
 
 export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
