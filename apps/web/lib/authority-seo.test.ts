@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import robots from "../app/robots";
 import sitemap from "../app/sitemap";
 
+const canonicalOrigin = "https://www.tinlance.com";
+
 describe("authority SEO contract", () => {
   it("allows public discovery and protects private application areas", () => {
     const result = robots();
@@ -30,7 +32,7 @@ describe("authority SEO contract", () => {
       "/assessment",
       "/sales-engineer",
     ]) {
-      expect(urls).toContain(`https://tinlance.com${path}`);
+      expect(urls).toContain(`${canonicalOrigin}${path}`);
     }
     expect(urls.some((url) => url.includes("/admin"))).toBe(false);
     expect(urls.some((url) => url.includes("/portal"))).toBe(false);
