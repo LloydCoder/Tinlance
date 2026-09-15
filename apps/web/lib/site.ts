@@ -1,4 +1,4 @@
-const PRODUCTION_SITE_URL = "https://tinlance.com";
+const PRODUCTION_SITE_URL = "https://www.tinlance.com";
 
 export function isVercelPreview(): boolean {
   return process.env.VERCEL_ENV === "preview";
