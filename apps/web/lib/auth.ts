@@ -25,6 +25,24 @@ const trustedOrigins = [productionOrigin, apexOrigin, baseURL, vercelOrigin]
   .map((origin) => origin.replace(/\/$/, ""))
   .filter((origin, index, origins) => origins.indexOf(origin) === index);
 
+// Better Auth 1.7.0-1.7.2 writes Account.issuer. The production database was
+// created from the 1.6 schema, so keep startup self-healing until the committed
+// Prisma migration is applied by the database migration pipeline. This is
+// additive, idempotent, and only touches the Better Auth Account table.
+let accountSchemaRepair: Promise<void> | null = null;
+const ensureAccountIssuerSchema = async () => {
+  if (!accountSchemaRepair) {
+    accountSchemaRepair = db.$executeRawUnsafe(
+      `ALTER TABLE "Account" ADD COLUMN IF NOT EXISTS "issuer" TEXT NOT NULL DEFAULT 'local:credential'`,
+    )
+      .then(() => db.$executeRawUnsafe(
+        `CREATE UNIQUE INDEX IF NOT EXISTS "Account_issuer_accountId_key" ON "Account"("issuer", "accountId")`,
+      ))
+      .then(() => undefined);
+  }
+  await accountSchemaRepair;
+};
+
 export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
   advanced: { database: { joins: true }, useSecureCookies: process.env.NODE_ENV === "production", cookiePrefix: "tinlance" },
@@ -35,7 +53,20 @@ export const auth = betterAuth({
   user: { additionalFields: { role: { type: "string", required: false, defaultValue: "viewer", input: false, returned: true } } },
   session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24, cookieCache: { enabled: true, maxAge: 60 * 5 } },
   account: { encryptOAuthTokens: true },
-  databaseHooks: { user: { create: { after: async (user) => { if (bootstrapAdminEmail && user.email.toLowerCase() === bootstrapAdminEmail) await db.user.update({ where: { id: user.id }, data: { role: "super-admin" } }); } } } },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async () => {
+          await ensureAccountIssuerSchema();
+        },
+        after: async (user) => {
+          if (bootstrapAdminEmail && user.email.toLowerCase() === bootstrapAdminEmail) {
+            await db.user.update({ where: { id: user.id }, data: { role: "super-admin" } });
+          }
+        },
+      },
+    },
+  },
   plugins: [
     organization({ allowUserToCreateOrganization: true, creatorRole: "owner", membershipLimit: 100, organizationLimit: 20, invitationExpiresIn: 60 * 60 * 24 * 7, disableOrganizationDeletion: true }),
     dash({ apiKey: betterAuthApiKey }),
