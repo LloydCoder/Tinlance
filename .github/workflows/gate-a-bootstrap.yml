@@ -1,0 +1,103 @@
+name: Gate A Bootstrap And Verification
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: gate-a-bootstrap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-and-verify:
+    name: Generate Better Auth schema and verify Gate A foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_gate_a
+      BETTER_AUTH_SECRET: gate-a-ci-secret-32-characters-minimum-123456
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_API_KEY: gate-a-ci-api-key
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tinlance_gate_a
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tinlance_gate_a"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: 10.14.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies and refresh lockfile
+        run: pnpm install --no-frozen-lockfile
+      - name: Generate Better Auth Prisma schema
+        working-directory: apps/web
+        run: pnpm exec auth@1.7.5 generate --adapter prisma --dialect postgresql --yes
+      - name: Validate Prisma schema
+        working-directory: apps/web
+        run: pnpm prisma validate
+      - name: Generate Prisma client
+        working-directory: apps/web
+        run: pnpm prisma generate
+      - name: Compute reviewed migration
+        working-directory: apps/web
+        run: |
+          set -euo pipefail
+          mkdir -p prisma/migrations/202609172300_gate_a_identity_access
+          pnpm prisma migrate diff             --from-migrations prisma/migrations             --to-schema-datamodel prisma/schema.prisma             --script > prisma/migrations/202609172300_gate_a_identity_access/migration.sql
+          if grep -Eiq '(^|[[:space:]])(DROP[[:space:]]+(TABLE|COLUMN)|TRUNCATE|DELETE[[:space:]]+FROM)' prisma/migrations/202609172300_gate_a_identity_access/migration.sql; then
+            echo "Destructive SQL detected; review required."
+            cat prisma/migrations/202609172300_gate_a_identity_access/migration.sql
+            exit 1
+          fi
+      - name: Apply migration to isolated CI database
+        working-directory: apps/web
+        run: pnpm prisma migrate deploy
+      - name: Typecheck
+        working-directory: apps/web
+        run: pnpm typecheck
+      - name: Lint
+        working-directory: apps/web
+        run: pnpm lint
+      - name: Tests
+        working-directory: apps/web
+        run: pnpm test -- --passWithNoTests
+      - name: Build
+        working-directory: apps/web
+        run: pnpm build
+      - name: Commit generated auth schema and lockfile
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/package.json pnpm-lock.yaml apps/web/prisma/schema.prisma apps/web/prisma/migrations/202609172300_gate_a_identity_access/migration.sql .github/workflows/gate-a-bootstrap.yml apps/web/lib/auth.ts apps/web/lib/auth-client.ts 'apps/web/app/api/auth/[...all]/route.ts'
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit."
+            exit 0
+          fi
+          git commit -m "Gate A: generate enterprise identity schema"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
