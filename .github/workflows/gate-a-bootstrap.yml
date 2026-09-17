@@ -69,7 +69,72 @@ jobs:
           grep -R -n -E "transaction|native" node_modules/.pnpm/@better-auth+prisma-adapter@*/node_modules/@better-auth/prisma-adapter/dist 2>/dev/null | head -120 || true
       - name: Generate Better Auth Prisma schema
         working-directory: apps/web
-        run: pnpm dlx @better-auth/cli@1.4.22 generate --yes
+        run: pnpm dlx @better-auth/cli@1.4.22 generate --output prisma/better-auth.generated.prisma --yes
+      - name: Merge Better Auth schema additively
+        working-directory: apps/web
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const original = fs.readFileSync("prisma/schema.prisma", "utf8");
+          const generated = fs.readFileSync("prisma/better-auth.generated.prisma", "utf8");
+
+          function blocks(text) {
+            const lines = text.split(/\n/);
+            const out = new Map();
+            for (let i = 0; i < lines.length; i++) {
+              const m = lines[i].match(/^\s*(model|enum|type)\s+([A-Za-z0-9_]+)\s*\{/);
+              if (!m) continue;
+              const start = i;
+              let depth = 0;
+              for (; i < lines.length; i++) {
+                depth += (lines[i].match(/\{/g) || []).length;
+                depth -= (lines[i].match(/\}/g) || []).length;
+                if (depth === 0) break;
+              }
+              out.set(m[2], { kind: m[1], lines: lines.slice(start, i + 1) });
+            }
+            return out;
+          }
+
+          function key(line) {
+            const t = line.trim();
+            if (!t || t.startsWith("//")) return null;
+            if (t.startsWith("@@")) return t;
+            if (/^[A-Za-z_][A-Za-z0-9_]*/.test(t)) return t.split(/\s+/)[0];
+            return null;
+          }
+
+          const originalBlocks = blocks(original);
+          const generatedBlocks = blocks(generated);
+          let merged = original;
+
+          for (const [name, gen] of generatedBlocks) {
+            const existing = originalBlocks.get(name);
+            if (!existing) {
+              merged += (merged.endsWith("\n") ? "" : "\n") + gen.lines.join("\n") + "\n";
+              continue;
+            }
+
+            const existingKeys = new Set(existing.lines.map(key).filter(Boolean));
+            const additions = gen.lines.slice(1, -1).filter((line) => {
+              const k = key(line);
+              return k && !existingKeys.has(k);
+            });
+            if (!additions.length) continue;
+
+            const needle = existing.lines.join("\n");
+            const replacement = existing.lines.slice(0, -1).concat(additions, existing.lines.slice(-1)).join("\n");
+            merged = merged.replace(needle, replacement);
+            existing.lines = existing.lines.slice(0, -1).concat(additions, existing.lines.slice(-1));
+            for (const line of additions) {
+              const k = key(line);
+              if (k) existingKeys.add(k);
+            }
+          }
+
+          fs.writeFileSync("prisma/schema.prisma", merged);
+          NODE
+          rm -f prisma/better-auth.generated.prisma
       - name: Validate Prisma schema
         working-directory: apps/web
         run: pnpm prisma validate
