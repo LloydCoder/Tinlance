@@ -91,7 +91,6 @@ jobs:
             apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql
           if-no-files-found: error
       - name: Commit generated dependency and schema state
-        if: github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
