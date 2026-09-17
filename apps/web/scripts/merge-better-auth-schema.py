@@ -59,6 +59,31 @@ def merge_model(existing: str, generated: str) -> str:
     return "\n".join(lines)
 
 
+def normalize_model_block(model_block: str) -> str:
+    lines = model_block.splitlines()
+    seen = set()
+    output = [lines[0]]
+    for line in lines[1:-1]:
+        match = FIELD_RE.match(line) if line.strip() and not line.strip().startswith(("@@", "//")) else None
+        if match:
+            name = match.group(1)
+            if name in seen:
+                continue
+            seen.add(name)
+        output.append(line)
+    output.append(lines[-1])
+    return "\n".join(output)
+
+
+def normalize(text: str) -> str:
+    result = text
+    for name, model_block in list(blocks(text).items()):
+        normalized = normalize_model_block(model_block)
+        if normalized != model_block:
+            result = result.replace(model_block, normalized, 1)
+    return result
+
+
 def merge(base: str, *sources: str) -> str:
     result = base
     existing_models = blocks(base)
@@ -73,7 +98,7 @@ def merge(base: str, *sources: str) -> str:
             else:
                 result = result.rstrip() + "\n\n" + source_block + "\n"
                 existing_models[name] = source_block
-    return result
+    return normalize(result)
 
 
 if len(sys.argv) < 3:
