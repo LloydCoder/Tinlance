@@ -56,11 +56,12 @@ jobs:
             --dialect postgresql \
             --output /tmp/better-auth-schema.prisma \
             --yes
-      - name: Merge generated Better Auth models into the production schema
+      - name: Merge generated Better Auth and Gate A control-plane models
         run: |
           cp apps/web/prisma/schema.prisma /tmp/tinlance-schema-before-gate-a.prisma
           python3 apps/web/scripts/merge-better-auth-schema.py \
             /tmp/better-auth-schema.prisma \
+            apps/web/prisma/gate-a-control-plane.prisma \
             apps/web/prisma/schema.prisma
       - name: Validate Prisma schema
         env:
