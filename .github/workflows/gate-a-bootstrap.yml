@@ -24,6 +24,7 @@ jobs:
       BETTER_AUTH_SECRET: gate-a-ci-secret-32-characters-minimum-123456
       BETTER_AUTH_URL: http://localhost:3000
       BETTER_AUTH_API_KEY: gate-a-ci-api-key
+      BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET: gate-a-scim-credential-hash-secret-32-characters-min
       NEXT_PUBLIC_APP_URL: http://localhost:3000
     services:
       postgres:
