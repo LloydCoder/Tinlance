@@ -64,6 +64,7 @@ jobs:
             apps/web/prisma/gate-a-control-plane.prisma \
             apps/web/prisma/schema.prisma
           python3 apps/web/scripts/normalize-prisma-model-fields.py apps/web/prisma/schema.prisma
+          python3 apps/web/scripts/normalize-prisma-user.py apps/web/prisma/schema.prisma
       - name: Validate Prisma schema
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_ci?schema=public
