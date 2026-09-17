@@ -5,31 +5,52 @@ import sys
 from pathlib import Path
 
 
+MODEL_RE = re.compile(r"(?ms)^model\s+(\w+)\s*\{.*?^\}\s*$")
+FIELD_RE = re.compile(r"^\s*(\w+)\s+")
+
+
 def blocks(text: str):
-    pattern = re.compile(r"(?ms)^model\s+(\w+)\s*\{.*?^\}\s*$")
-    return {m.group(1): m.group(0) for m in pattern.finditer(text)}
+    return {m.group(1): m.group(0) for m in MODEL_RE.finditer(text)}
 
 
 def field_names(model_block: str):
     names = set()
     for line in model_block.splitlines()[1:-1]:
         stripped = line.strip()
-        if not stripped or stripped.startswith("@@") or stripped.startswith("//"):
+        if not stripped or stripped.startswith(("@@", "//")):
             continue
-        match = re.match(r"^(\w+)\s+", stripped)
+        match = FIELD_RE.match(line)
         if match:
             names.add(match.group(1))
     return names
 
 
-def field_lines(model_block: str):
-    return model_block.splitlines()[1:-1]
+def generated_field_lines(model_block: str):
+    seen = set()
+    for line in model_block.splitlines()[1:-1]:
+        stripped = line.strip()
+        if not stripped or stripped.startswith(("@@", "//")):
+            continue
+        match = FIELD_RE.match(line)
+        if not match:
+            continue
+        name = match.group(1)
+        if name in seen:
+            continue
+        seen.add(name)
+        yield line
 
 
 def merge_model(existing: str, generated: str) -> str:
     existing_names = field_names(existing)
-    generated_names = field_names(generated)
-    missing = [line for line in field_lines(generated) if line.strip() and not line.strip().startswith(("@@", "//")) and re.match(r"^\s*(\w+)\s+", line) and re.match(r"^\s*(\w+)\s+", line).group(1) not in existing_names]
+    missing = []
+    seen = set(existing_names)
+    for line in generated_field_lines(generated):
+        name = FIELD_RE.match(line).group(1)
+        if name in seen:
+            continue
+        seen.add(name)
+        missing.append(line)
     if not missing:
         return existing
     lines = existing.splitlines()
@@ -43,12 +64,12 @@ def merge(base: str, generated: str) -> str:
     generated_models = blocks(generated)
     existing_models = blocks(base)
     result = base
-    # Merge fields into existing Better Auth core/plugin models without touching Tinlance business relations.
     for name, generated_block in generated_models.items():
         if name in existing_models:
-            updated = merge_model(result[0:0] + existing_models[name], generated_block)
-            if updated != existing_models[name]:
-                result = result.replace(existing_models[name], updated, 1)
+            original = existing_models[name]
+            updated = merge_model(original, generated_block)
+            if updated != original:
+                result = result.replace(original, updated, 1)
         else:
             result = result.rstrip() + "\n\n" + generated_block + "\n"
     return result
