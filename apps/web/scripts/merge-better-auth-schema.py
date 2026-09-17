@@ -5,12 +5,30 @@ import sys
 from pathlib import Path
 
 
-MODEL_RE = re.compile(r"(?ms)^model\s+(\w+)\s*\{.*?^\}\s*$")
+MODEL_START_RE = re.compile(r"^model\s+(\w+)\s*\{$")
 FIELD_RE = re.compile(r"^\s*(\w+)\s+")
 
 
 def blocks(text: str):
-    return {m.group(1): m.group(0) for m in MODEL_RE.finditer(text)}
+    lines = text.splitlines()
+    found = {}
+    i = 0
+    while i < len(lines):
+        match = MODEL_START_RE.match(lines[i].strip())
+        if not match:
+            i += 1
+            continue
+        name = match.group(1)
+        start = i
+        depth = 0
+        while i < len(lines):
+            depth += lines[i].count("{") - lines[i].count("}")
+            if depth == 0:
+                found[name] = "\n".join(lines[start:i + 1])
+                break
+            i += 1
+        i += 1
+    return found
 
 
 def field_names(model_block: str):
@@ -77,7 +95,7 @@ def normalize_model_block(model_block: str) -> str:
 
 def normalize(text: str) -> str:
     result = text
-    for name, model_block in list(blocks(text).items()):
+    for model_block in list(blocks(text).values()):
         normalized = normalize_model_block(model_block)
         if normalized != model_block:
             result = result.replace(model_block, normalized, 1)
