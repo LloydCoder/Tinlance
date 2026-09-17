@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 
 type AuditInput = {
@@ -20,7 +20,7 @@ function hash(value: string | null | undefined) {
 }
 
 export async function recordSecurityAuditEvent(input: AuditInput) {
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   await db.$executeRaw`
     INSERT INTO "securityAuditEvent" (
       "id", "organizationId", "actorUserId", "actorServiceId", "action",
