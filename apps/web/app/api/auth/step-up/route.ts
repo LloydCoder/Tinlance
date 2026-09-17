@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { recordSecurityAuditEvent } from "@/lib/auth/audit";
 import { requirePrivileged } from "@/lib/auth/authorization";
 import { db } from "@/lib/db";
 
@@ -60,6 +61,18 @@ export async function POST(request: Request) {
           NOW() + (${STEP_UP_TTL_SECONDS} * INTERVAL '1 second'), NOW(), NOW()
         )
       `;
+    });
+
+    await recordSecurityAuditEvent({
+      organizationId: context.organizationId,
+      actorUserId: context.userId,
+      action: "auth.step_up.verified",
+      targetType: "session",
+      targetId: context.sessionId,
+      requestId: request.headers.get("x-request-id"),
+      ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? request.headers.get("x-real-ip"),
+      userAgent: request.headers.get("user-agent"),
+      metadata: { method: "totp", ttlSeconds: STEP_UP_TTL_SECONDS },
     });
 
     return NextResponse.json({
