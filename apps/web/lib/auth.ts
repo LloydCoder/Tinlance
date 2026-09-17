@@ -28,7 +28,7 @@ const trustedOrigins = [productionOrigin, apexOrigin, baseURL, vercelOrigin]
   .filter((origin, index, origins) => origins.indexOf(origin) === index);
 
 export const auth = betterAuth({
-  database: prismaAdapter(db, { provider: "postgresql" }),
+  database: prismaAdapter(db, { provider: "postgresql", transaction: true }),
   advanced: {
     database: { joins: true },
     useSecureCookies: process.env.NODE_ENV === "production",
