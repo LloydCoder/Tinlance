@@ -55,7 +55,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
       - name: Generate Better Auth Prisma schema
         working-directory: apps/web
-        run: pnpm dlx @better-auth/cli@1.4.22 generate --adapter prisma --dialect postgresql --yes
+        run: pnpm dlx @better-auth/cli@1.4.22 generate --yes
       - name: Validate Prisma schema
         working-directory: apps/web
         run: pnpm prisma validate
