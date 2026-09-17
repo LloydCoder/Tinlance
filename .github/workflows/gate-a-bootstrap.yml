@@ -61,6 +61,11 @@ jobs:
         run: |
           SCIM_FILE=$(find node_modules -path '*/@better-auth/scim/dist/index.mjs' | head -1)
           sed -n '7030,7070p' "$SCIM_FILE"
+      - name: Inspect Prisma adapter transaction support
+        run: |
+          ADAPTER_FILE=$(find node_modules -path '*/@better-auth/prisma-adapter/dist/*' | head -1)
+          echo "Adapter sample: $ADAPTER_FILE"
+          grep -R -n -E "transaction|native" node_modules/.pnpm/@better-auth+prisma-adapter*/*/dist 2>/dev/null | head -80 || true
       - name: Generate Better Auth Prisma schema
         working-directory: apps/web
         run: pnpm dlx @better-auth/cli@1.4.22 generate --yes
