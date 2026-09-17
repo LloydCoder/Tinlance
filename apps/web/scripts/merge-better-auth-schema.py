@@ -77,36 +77,16 @@ def merge_model(existing: str, generated: str) -> str:
     return "\n".join(lines)
 
 
-def normalize_model_block(model_block: str) -> str:
-    lines = model_block.splitlines()
-    seen = set()
-    output = [lines[0]]
-    for line in lines[1:-1]:
-        match = FIELD_RE.match(line) if line.strip() and not line.strip().startswith(("@@", "//")) else None
-        if match:
-            name = match.group(1)
-            if name in seen:
-                continue
-            seen.add(name)
-        output.append(line)
-    output.append(lines[-1])
-    return "\n".join(output)
-
-
-def normalize(text: str) -> str:
-    result = text
-    for model_block in list(blocks(text).values()):
-        normalized = normalize_model_block(model_block)
-        if normalized != model_block:
-            result = result.replace(model_block, normalized, 1)
-    return result
-
-
 def merge(base: str, *sources: str) -> str:
     result = base
     existing_models = blocks(base)
     for source in sources:
         for name, source_block in blocks(source).items():
+            # Tinlance already owns the User relation graph. Better Auth's generated
+            # User model contains overlapping invitation relations, so merge only
+            # plugin models and add the one required scalar separately.
+            if name == "User":
+                continue
             if name in existing_models:
                 original = existing_models[name]
                 updated = merge_model(original, source_block)
@@ -116,7 +96,7 @@ def merge(base: str, *sources: str) -> str:
             else:
                 result = result.rstrip() + "\n\n" + source_block + "\n"
                 existing_models[name] = source_block
-    return normalize(result)
+    return result
 
 
 if len(sys.argv) < 3:
