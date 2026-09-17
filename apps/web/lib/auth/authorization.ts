@@ -25,16 +25,18 @@ export async function getAuthorizationContext() {
     return {
       userId: null,
       organizationId: null,
+      sessionId: null,
       organizationRole: null,
       role: null,
+      twoFactorEnabled: false,
       isAuthenticated: false,
       isPrivileged: false,
     } as const;
   }
 
-  // Do not authorize privileged operations from a potentially cached session
-  // user object. The database role is the authoritative revocation boundary.
-  const [user, membership] = await Promise.all([
+  // The database role and organization membership are the revocation boundary;
+  // never authorize an operation from a tenant_id supplied by the caller.
+  const [user, membership, mfaRows] = await Promise.all([
     db.user.findUnique({
       where: { id: session.user.id },
       select: { role: true },
@@ -50,6 +52,12 @@ export async function getAuthorizationContext() {
           select: { role: true },
         })
       : null,
+    db.$queryRaw<Array<{ twoFactorEnabled: boolean | null }>>`
+      SELECT "twoFactorEnabled"
+      FROM "user"
+      WHERE id = ${session.user.id}
+      LIMIT 1
+    `,
   ]);
 
   const rawRole = user?.role;
@@ -59,12 +67,15 @@ export async function getAuthorizationContext() {
       : null;
 
   const activeOrganizationId = session.session.activeOrganizationId ?? null;
+  const twoFactorEnabled = mfaRows[0]?.twoFactorEnabled === true;
 
   return {
     userId: session.user.id,
     organizationId: activeOrganizationId,
+    sessionId: session.session.id,
     organizationRole: membership?.role ?? null,
     role,
+    twoFactorEnabled,
     isAuthenticated: true,
     isPrivileged: role ? privilegedRoles.has(role) : false,
   } as const;
@@ -76,8 +87,32 @@ export async function requireAuthenticated() {
   return context;
 }
 
-export async function requirePrivileged() {
+export async function requirePrivileged(options?: { requireMfa?: boolean }) {
   const context = await getAuthorizationContext();
+  const requireMfa = options?.requireMfa ?? true;
   if (!context.isAuthenticated || !context.isPrivileged) return null;
+  if (requireMfa && !context.twoFactorEnabled) return null;
+  return context;
+}
+
+export async function hasValidStepUp(context: Awaited<ReturnType<typeof getAuthorizationContext>>) {
+  if (!context.isAuthenticated || !context.userId || !context.sessionId) return false;
+  const rows = await db.$queryRaw<Array<{ id: string }>>`
+    SELECT id
+    FROM "stepUpChallenge"
+    WHERE "userId" = ${context.userId}
+      AND "sessionId" = ${context.sessionId}
+      AND "verifiedAt" IS NOT NULL
+      AND "expiresAt" > NOW()
+    ORDER BY "verifiedAt" DESC
+    LIMIT 1
+  `;
+  return rows.length === 1;
+}
+
+export async function requirePrivilegedStepUp() {
+  const context = await requirePrivileged({ requireMfa: true });
+  if (!context) return null;
+  if (!(await hasValidStepUp(context))) return null;
   return context;
 }

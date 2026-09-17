@@ -1,0 +1,116 @@
+name: Gate A dependency and schema bootstrap
+
+on:
+  push:
+    branches: [gate-a-implementation]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PNPM_VERSION: 10.14.0
+  NODE_VERSION: 22
+  BETTER_AUTH_VERSION: 1.7.5
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref || 'gate-a-implementation' }}
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22
+      - name: Align Better Auth packages as one release train
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm --filter @tinlance/web add \
+            better-auth@${BETTER_AUTH_VERSION} \
+            @better-auth/prisma-adapter@${BETTER_AUTH_VERSION} \
+            @better-auth/sso@${BETTER_AUTH_VERSION} \
+            @better-auth/scim@${BETTER_AUTH_VERSION} \
+            --save-exact
+          pnpm install --frozen-lockfile
+      - name: Generate the existing Prisma client first
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_ci?schema=public
+        run: pnpm --filter @tinlance/web exec prisma generate --schema prisma/schema.prisma
+      - name: Generate Better Auth schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_ci?schema=public
+          SCIM_CREDENTIAL_HASH_SECRET: ci-only-scim-credential-hash-secret-32-bytes-minimum
+        run: |
+          pnpm dlx auth@${BETTER_AUTH_VERSION} generate \
+            --cwd apps/web \
+            --adapter prisma \
+            --dialect postgresql \
+            --output /tmp/better-auth-schema.prisma \
+            --yes
+      - name: Remove generated User relation graph before merge
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path('/tmp/better-auth-schema.prisma')
+          text = source.read_text(encoding='utf-8')
+          filtered = re.sub(r'(?ms)^model User \{.*?^\}\s*', '', text)
+          source.write_text(filtered, encoding='utf-8')
+          PY
+      - name: Merge generated Better Auth and Gate A control-plane models
+        run: |
+          cp apps/web/prisma/schema.prisma /tmp/tinlance-schema-before-gate-a.prisma
+          python3 apps/web/scripts/merge-better-auth-schema.py \
+            /tmp/better-auth-schema.prisma \
+            apps/web/prisma/gate-a-control-plane.prisma \
+            apps/web/prisma/schema.prisma
+          python3 apps/web/scripts/ensure-user-two-factor-field.py apps/web/prisma/schema.prisma
+      - name: Validate Prisma schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_ci?schema=public
+          SCIM_CREDENTIAL_HASH_SECRET: ci-only-scim-credential-hash-secret-32-bytes-minimum
+        run: |
+          pnpm --filter @tinlance/web exec prisma format --schema prisma/schema.prisma
+          pnpm --filter @tinlance/web exec prisma validate --schema prisma/schema.prisma
+          pnpm --filter @tinlance/web exec prisma generate --schema prisma/schema.prisma
+      - name: Create non-destructive migration from the pre-Gate-A schema
+        run: |
+          mkdir -p apps/web/prisma/migrations/202609171900_gate_a_identity_access
+          pnpm --filter @tinlance/web exec prisma migrate diff \
+            --from-schema-datamodel /tmp/tinlance-schema-before-gate-a.prisma \
+            --to-schema-datamodel prisma/schema.prisma \
+            --script > apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql
+          if grep -Eiq 'DROP (TABLE|COLUMN|TYPE)|TRUNCATE|DELETE FROM' apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql; then
+            echo 'Destructive SQL detected in Gate A migration'
+            cat apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql
+            exit 1
+          fi
+          test -s apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql
+      - name: Upload generated schema and migration
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: gate-a-generated-schema-and-migration
+          path: |
+            /tmp/better-auth-schema.prisma
+            apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql
+          if-no-files-found: error
+      - name: Commit generated dependency and schema state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json pnpm-lock.yaml apps/web/package.json apps/web/prisma/schema.prisma apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit"
+            exit 0
+          fi
+          git commit -m "feat(auth): add Gate A Better Auth schema and migration"
+          git push origin gate-a-implementation
