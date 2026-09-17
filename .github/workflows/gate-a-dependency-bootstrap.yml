@@ -3,6 +3,9 @@ name: Gate A dependency and schema bootstrap
 on:
   push:
     branches: [gate-a-identity-access]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
@@ -21,7 +24,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           fetch-depth: 0
-          ref: gate-a-identity-access
+          ref: ${{ github.event.pull_request.head.ref || 'gate-a-identity-access' }}
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -58,6 +61,7 @@ jobs:
           path: /tmp/better-auth-schema.prisma
           if-no-files-found: error
       - name: Commit dependency lockfile update
+        if: github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
