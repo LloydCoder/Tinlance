@@ -70,6 +70,9 @@ jobs:
       - name: Generate Better Auth Prisma schema
         working-directory: apps/web
         run: pnpm dlx @better-auth/cli@1.4.22 generate --output prisma/better-auth.generated.prisma --yes
+      - name: Preserve current Prisma schema baseline
+        working-directory: apps/web
+        run: cp prisma/schema.prisma /tmp/tinlance-current.prisma
       - name: Merge Better Auth schema additively
         working-directory: apps/web
         run: |
@@ -185,14 +188,11 @@ jobs:
       - name: Generate Prisma client
         working-directory: apps/web
         run: pnpm prisma generate
-      - name: Prepare Prisma shadow database
-        run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE tinlance_gate_a_shadow' || true
-      - name: Compute reviewed migration
+      - name: Compute reviewed additive migration
         working-directory: apps/web
         run: |
           set -euo pipefail
-          pnpm prisma migrate diff             --from-migrations prisma/migrations             --to-schema-datamodel prisma/schema.prisma             --shadow-database-url "$SHADOW_DATABASE_URL"             --script > /tmp/gate-a-identity-access.sql
+          pnpm prisma migrate diff             --from-schema-datamodel /tmp/tinlance-current.prisma             --to-schema-datamodel prisma/schema.prisma             --script > /tmp/gate-a-identity-access.sql
           mkdir -p prisma/migrations/202609172300_gate_a_identity_access
           mv /tmp/gate-a-identity-access.sql prisma/migrations/202609172300_gate_a_identity_access/migration.sql
           if grep -Eiq '(^|[[:space:]])(DROP[[:space:]]+(TABLE|COLUMN)|TRUNCATE|DELETE[[:space:]]+FROM)' prisma/migrations/202609172300_gate_a_identity_access/migration.sql; then
@@ -200,9 +200,12 @@ jobs:
             cat prisma/migrations/202609172300_gate_a_identity_access/migration.sql
             exit 1
           fi
-      - name: Apply migration to isolated CI database
+      - name: Recreate CI database from current schema
         working-directory: apps/web
-        run: pnpm prisma migrate deploy
+        run: pnpm prisma db push --schema=/tmp/tinlance-current.prisma --skip-generate
+      - name: Apply Gate A migration to current-schema database
+        working-directory: apps/web
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/migrations/202609172300_gate_a_identity_access/migration.sql
       - name: Typecheck
         working-directory: apps/web
         run: pnpm typecheck
