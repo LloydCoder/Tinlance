@@ -56,6 +56,16 @@ jobs:
             --dialect postgresql \
             --output /tmp/better-auth-schema.prisma \
             --yes
+      - name: Remove generated User relation graph before merge
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path('/tmp/better-auth-schema.prisma')
+          text = source.read_text(encoding='utf-8')
+          filtered = re.sub(r'(?ms)^model User \{.*?^\}\s*', '', text)
+          source.write_text(filtered, encoding='utf-8')
+          PY
       - name: Merge generated Better Auth and Gate A control-plane models
         run: |
           cp apps/web/prisma/schema.prisma /tmp/tinlance-schema-before-gate-a.prisma
@@ -64,10 +74,6 @@ jobs:
             apps/web/prisma/gate-a-control-plane.prisma \
             apps/web/prisma/schema.prisma
           python3 apps/web/scripts/ensure-user-two-factor-field.py apps/web/prisma/schema.prisma
-          echo '--- model User ---'
-          sed -n '/^model User {/,/^}/p' apps/web/prisma/schema.prisma
-          echo '--- invitation fields ---'
-          grep -nE '^\s*invitations\s+Invitation' apps/web/prisma/schema.prisma || true
       - name: Validate Prisma schema
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_ci?schema=public
