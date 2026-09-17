@@ -4,44 +4,40 @@ import re
 import sys
 from pathlib import Path
 
-MODEL_START = re.compile(r"^model\s+(\w+)\s*\{$")
+MODEL_SECTION = re.compile(r"(?m)(?=^model\s+\w+\s*\{$)")
 FIELD = re.compile(r"^\s*(\w+)\s+")
 
 
-def normalize(text: str) -> str:
-    lines = text.splitlines()
-    out: list[str] = []
-    i = 0
-    while i < len(lines):
-        if not MODEL_START.match(lines[i].strip()):
-            out.append(lines[i])
-            i += 1
-            continue
+def normalize_section(section: str) -> str:
+    lines = section.splitlines()
+    if not lines or not lines[0].strip().startswith("model "):
+        return section
+    seen: set[str] = set()
+    output = [lines[0]]
+    for line in lines[1:]:
+        stripped = line.strip()
+        match = FIELD.match(line) if stripped and not stripped.startswith(("@@", "//")) else None
+        if match:
+            name = match.group(1)
+            if name in seen:
+                continue
+            seen.add(name)
+        output.append(line)
+    return "\n".join(output)
 
-        depth = 0
-        seen: set[str] = set()
-        while i < len(lines):
-            line = lines[i]
-            depth += line.count("{") - line.count("}")
-            match = FIELD.match(line) if line.strip() and not line.strip().startswith(("@@", "//")) else None
-            if match:
-                name = match.group(1)
-                if name in seen:
-                    i += 1
-                    continue
-                seen.add(name)
-            out.append(line)
-            i += 1
-            if depth == 0:
-                break
-    return "\n".join(out).rstrip() + "\n"
+
+def normalize(text: str) -> str:
+    sections = MODEL_SECTION.split(text)
+    if len(sections) == 1:
+        return text
+    prefix = sections[0]
+    models = [normalize_section(section) for section in sections[1:]]
+    return prefix + "\n".join(models)
 
 
 if len(sys.argv) != 2:
     raise SystemExit("usage: normalize-prisma-model-fields.py <schema>")
 
 path = Path(sys.argv[1])
-original = path.read_text(encoding="utf-8")
-normalized = normalize(original)
-path.write_text(normalized, encoding="utf-8")
+path.write_text(normalize(path.read_text(encoding="utf-8")).rstrip() + "\n", encoding="utf-8")
 print("Normalized Prisma model fields")
