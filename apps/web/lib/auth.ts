@@ -105,6 +105,9 @@ export const auth = betterAuth({
       },
     }),
     scim({
+      managedConnections: {
+        enabled: true,
+      },
       requiredRole: ["owner", "admin"],
       providerOwnership: {
         enabled: true,
