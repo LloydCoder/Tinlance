@@ -9,7 +9,9 @@ FIELD = re.compile(r"^\s*(\w+)\s+")
 
 
 def normalize_section(section: str) -> str:
-    lines = section.splitlines()
+    leading = section[: len(section) - len(section.lstrip("\n"))]
+    body = section.lstrip("\n")
+    lines = body.splitlines()
     if not lines or not lines[0].strip().startswith("model "):
         return section
     seen: set[str] = set()
@@ -23,7 +25,7 @@ def normalize_section(section: str) -> str:
                 continue
             seen.add(name)
         output.append(line)
-    return "\n".join(output)
+    return leading + "\n".join(output)
 
 
 def normalize(text: str) -> str:
