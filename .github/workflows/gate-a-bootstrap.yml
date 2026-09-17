@@ -53,6 +53,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies and refresh lockfile
         run: pnpm install --no-frozen-lockfile
+      - name: Bootstrap Prisma client for Better Auth CLI config loading
+        working-directory: apps/web
+        run: pnpm prisma generate
       - name: Generate Better Auth Prisma schema
         working-directory: apps/web
         run: pnpm dlx @better-auth/cli@1.4.22 generate --yes
