@@ -104,6 +104,31 @@ jobs:
             return null;
           }
 
+          function sameConstraint(a, b) {
+            const norm = (line) => line.trim()
+              .replace(/\s+/g, "")
+              .replace(/,map:\{?name?\}?/g, "");
+            return norm(a) === norm(b);
+          }
+
+          function relationSignature(line) {
+            const t = line.trim();
+            const m = t.match(/@relation\([^)]*fields:\s*\[([^\]]+)\][^)]*references:\s*\[([^\]]+)\]/);
+            return m ? `${m[1].replace(/\s/g, "")}->${m[2].replace(/\s/g, "")}` : null;
+          }
+
+          function uniqueSignature(line) {
+            const t = line.trim();
+            const m = t.match(/@@unique\(\[([^\]]+)\]/);
+            return m ? m[1].replace(/\s/g, "") : null;
+          }
+
+          function indexSignature(line) {
+            const t = line.trim();
+            const m = t.match(/@@index\(\[([^\]]+)\]/);
+            return m ? m[1].replace(/\s/g, "") : null;
+          }
+
           const originalBlocks = blocks(original);
           const generatedBlocks = blocks(generated);
           let merged = original;
@@ -116,9 +141,28 @@ jobs:
             }
 
             const existingKeys = new Set(existing.lines.map(key).filter(Boolean));
+            const existingRelations = new Set(existing.lines.map(relationSignature).filter(Boolean));
+            const existingUniques = new Set(existing.lines.map(uniqueSignature).filter(Boolean));
+            const existingIndexes = new Set(existing.lines.map(indexSignature).filter(Boolean));
             const additions = gen.lines.slice(1, -1).filter((line) => {
+              const t = line.trim();
               const k = key(line);
-              return k && !existingKeys.has(k);
+              if (!k) return false;
+              if (existingKeys.has(k)) return false;
+              const relation = relationSignature(line);
+              if (relation && existingRelations.has(relation)) return false;
+              const unique = uniqueSignature(line);
+              if (unique && existingUniques.has(unique)) return false;
+              if (unique) {
+                const fields = unique.split(",");
+                if (fields.length === 1 && existing.lines.some((l) => l.trim().startsWith(fields[0] + " ") && l.includes("@unique"))) return false;
+              }
+              const index = indexSignature(line);
+              if (index && existingIndexes.has(index)) return false;
+              if (t.startsWith("@@")) {
+                if (existing.lines.some((l) => sameConstraint(l, line))) return false;
+              }
+              return true;
             });
             if (!additions.length) continue;
 
