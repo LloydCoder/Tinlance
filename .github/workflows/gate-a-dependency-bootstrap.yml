@@ -19,7 +19,7 @@ env:
 jobs:
   bootstrap:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - name: Update Better Auth packages as one release train
+      - name: Align Better Auth packages as one release train
         run: |
           pnpm install --no-frozen-lockfile
           pnpm --filter @tinlance/web add \
@@ -42,10 +42,10 @@ jobs:
             @better-auth/scim@${BETTER_AUTH_VERSION} \
             --save-exact
           pnpm install --frozen-lockfile
-      - name: Generate Better Auth schema to a reviewable artifact
+      - name: Generate Better Auth schema
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_ci?schema=public
-          SCIM_CREDENTIAL_HASH_SECRET: ci-only-scim-credential-hash-secret-32-bytes-min
+          SCIM_CREDENTIAL_HASH_SECRET: ci-only-scim-credential-hash-secret-32-bytes-minimum
         run: |
           pnpm dlx auth@${BETTER_AUTH_VERSION} generate \
             --cwd apps/web \
@@ -53,22 +53,52 @@ jobs:
             --dialect postgresql \
             --output /tmp/better-auth-schema.prisma \
             --yes
-          pnpm --filter @tinlance/web exec prisma validate
-      - name: Upload generated schema
+      - name: Merge generated Better Auth models into the production schema
+        run: |
+          cp apps/web/prisma/schema.prisma /tmp/tinlance-schema-before-gate-a.prisma
+          python3 apps/web/scripts/merge-better-auth-schema.py \
+            /tmp/better-auth-schema.prisma \
+            apps/web/prisma/schema.prisma
+      - name: Validate Prisma schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_ci?schema=public
+          SCIM_CREDENTIAL_HASH_SECRET: ci-only-scim-credential-hash-secret-32-bytes-minimum
+        run: |
+          pnpm --filter @tinlance/web exec prisma format --schema prisma/schema.prisma
+          pnpm --filter @tinlance/web exec prisma validate --schema prisma/schema.prisma
+          pnpm --filter @tinlance/web exec prisma generate --schema prisma/schema.prisma
+      - name: Create non-destructive migration from the pre-Gate-A schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_ci?schema=public
+        run: |
+          mkdir -p apps/web/prisma/migrations/202609171900_gate_a_identity_access
+          pnpm --filter @tinlance/web exec prisma migrate diff \
+            --from-schema-datamodel /tmp/tinlance-schema-before-gate-a.prisma \
+            --to-schema-datamodel prisma/schema.prisma \
+            --script > prisma/migrations/202609171900_gate_a_identity_access/migration.sql
+          if grep -Eiq 'DROP (TABLE|COLUMN|TYPE)|TRUNCATE|DELETE FROM' apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql; then
+            echo 'Destructive SQL detected in Gate A migration'
+            cat apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql
+            exit 1
+          fi
+          test -s apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql
+      - name: Upload generated schema and migration
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: gate-a-better-auth-schema
-          path: /tmp/better-auth-schema.prisma
+          name: gate-a-generated-schema-and-migration
+          path: |
+            /tmp/better-auth-schema.prisma
+            apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql
           if-no-files-found: error
-      - name: Commit dependency lockfile update
+      - name: Commit generated dependency and schema state
         if: github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json pnpm-lock.yaml apps/web/package.json
+          git add package.json pnpm-lock.yaml apps/web/package.json apps/web/prisma/schema.prisma apps/web/prisma/migrations/202609171900_gate_a_identity_access/migration.sql
           if git diff --cached --quiet; then
-            echo "No dependency changes to commit"
+            echo "No generated changes to commit"
             exit 0
           fi
-          git commit -m "build(auth): align Better Auth packages to 1.7.5"
+          git commit -m "feat(auth): add Gate A Better Auth schema and migration"
           git push origin gate-a-identity-access
