@@ -151,6 +151,7 @@ jobs:
               const t = line.trim();
               const k = key(line);
               if (!k) return false;
+              if (t.startsWith("@@map(") || t.startsWith("@@schema(")) return false;
               if (existingKeys.has(k)) return false;
               const relation = relationSignature(line);
               if (relation && existingRelations.has(relation)) return false;
