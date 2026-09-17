@@ -1,0 +1,70 @@
+name: Gate A dependency and schema bootstrap
+
+on:
+  push:
+    branches: [gate-a-identity-access]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PNPM_VERSION: 10.14.0
+  NODE_VERSION: 22
+  BETTER_AUTH_VERSION: 1.7.5
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          ref: gate-a-identity-access
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@249970729cb0ef3589644e2895e5dc5ba9c38
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Update Better Auth packages as one release train
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm --filter @tinlance/web add \
+            better-auth@${BETTER_AUTH_VERSION} \
+            @better-auth/prisma-adapter@${BETTER_AUTH_VERSION} \
+            @better-auth/sso@${BETTER_AUTH_VERSION} \
+            @better-auth/scim@${BETTER_AUTH_VERSION} \
+            --save-exact
+          pnpm install --frozen-lockfile
+      - name: Generate Better Auth schema to a reviewable artifact
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_ci?schema=public
+          SCIM_CREDENTIAL_HASH_SECRET: ci-only-scim-credential-hash-secret-32-bytes-min
+        run: |
+          pnpm dlx auth@${BETTER_AUTH_VERSION} generate \
+            --cwd apps/web \
+            --adapter prisma \
+            --dialect postgresql \
+            --output /tmp/better-auth-schema.prisma \
+            --yes
+          pnpm --filter @tinlance/web exec prisma validate
+      - name: Upload generated schema
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: gate-a-better-auth-schema
+          path: /tmp/better-auth-schema.prisma
+          if-no-files-found: error
+      - name: Commit dependency lockfile update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json pnpm-lock.yaml apps/web/package.json
+          if git diff --cached --quiet; then
+            echo "No dependency changes to commit"
+            exit 0
+          fi
+          git commit -m "build(auth): align Better Auth packages to 1.7.5"
+          git push origin gate-a-identity-access
