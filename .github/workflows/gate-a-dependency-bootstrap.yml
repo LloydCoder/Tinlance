@@ -64,7 +64,10 @@ jobs:
             apps/web/prisma/gate-a-control-plane.prisma \
             apps/web/prisma/schema.prisma
           python3 apps/web/scripts/ensure-user-two-factor-field.py apps/web/prisma/schema.prisma
-          awk '/^model User \\{/{show=1} show{print} show && /^\\}/{exit}' apps/web/prisma/schema.prisma
+          echo '--- model User ---'
+          sed -n '/^model User {/,/^}/p' apps/web/prisma/schema.prisma
+          echo '--- invitation fields ---'
+          grep -nE '^\s*invitations\s+Invitation' apps/web/prisma/schema.prisma || true
       - name: Validate Prisma schema
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_ci?schema=public
