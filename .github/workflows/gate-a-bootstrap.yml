@@ -57,6 +57,10 @@ jobs:
       - name: Bootstrap Prisma client for Better Auth CLI config loading
         working-directory: apps/web
         run: pnpm prisma generate
+      - name: Inspect installed SCIM managed-connection contract
+        run: |
+          SCIM_FILE=$(find node_modules -path '*/@better-auth/scim/dist/index.mjs' | head -1)
+          sed -n '7030,7070p' "$SCIM_FILE"
       - name: Generate Better Auth Prisma schema
         working-directory: apps/web
         run: pnpm dlx @better-auth/cli@1.4.22 generate --yes
