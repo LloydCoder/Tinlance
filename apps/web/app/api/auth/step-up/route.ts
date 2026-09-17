@@ -37,6 +37,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "step_up_verification_failed" }, { status: 401 });
     }
 
+    const challengeId = randomBytes(16).toString("hex");
     const nonce = randomBytes(32).toString("base64url");
     const nonceHash = createHash("sha256").update(nonce).digest("hex");
 
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
           "id", "organizationId", "userId", "sessionId", "method",
           "nonceHash", "issuedAt", "expiresAt", "verifiedAt", "createdAt"
         ) VALUES (
-          gen_random_uuid()::text, ${context.organizationId}, ${context.userId},
+          ${challengeId}, ${context.organizationId}, ${context.userId},
           ${context.sessionId}, 'totp', ${nonceHash}, NOW(),
           NOW() + (${STEP_UP_TTL_SECONDS} * INTERVAL '1 second'), NOW(), NOW()
         )
