@@ -107,6 +107,7 @@ export const auth = betterAuth({
     scim({
       managedConnections: {
         enabled: true,
+        connections: [],
         credentialHashSecret: process.env.BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET,
       },
       requiredRole: ["owner", "admin"],
