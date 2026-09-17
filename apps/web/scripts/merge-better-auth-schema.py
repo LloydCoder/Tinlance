@@ -42,9 +42,8 @@ def generated_field_lines(model_block: str):
 
 
 def merge_model(existing: str, generated: str) -> str:
-    existing_names = field_names(existing)
+    seen = set(field_names(existing))
     missing = []
-    seen = set(existing_names)
     for line in generated_field_lines(generated):
         name = FIELD_RE.match(line).group(1)
         if name in seen:
@@ -60,28 +59,30 @@ def merge_model(existing: str, generated: str) -> str:
     return "\n".join(lines)
 
 
-def merge(base: str, generated: str) -> str:
-    generated_models = blocks(generated)
-    existing_models = blocks(base)
+def merge(base: str, *sources: str) -> str:
     result = base
-    for name, generated_block in generated_models.items():
-        if name in existing_models:
-            original = existing_models[name]
-            updated = merge_model(original, generated_block)
-            if updated != original:
-                result = result.replace(original, updated, 1)
-        else:
-            result = result.rstrip() + "\n\n" + generated_block + "\n"
+    existing_models = blocks(base)
+    for source in sources:
+        for name, source_block in blocks(source).items():
+            if name in existing_models:
+                original = existing_models[name]
+                updated = merge_model(original, source_block)
+                if updated != original:
+                    result = result.replace(original, updated, 1)
+                    existing_models[name] = updated
+            else:
+                result = result.rstrip() + "\n\n" + source_block + "\n"
+                existing_models[name] = source_block
     return result
 
 
-if len(sys.argv) != 3:
-    raise SystemExit("usage: merge-better-auth-schema.py <generated> <target>")
+if len(sys.argv) < 3:
+    raise SystemExit("usage: merge-better-auth-schema.py <generated> <target> [extra-model-file ...]")
 
-generated_path = Path(sys.argv[1])
-target_path = Path(sys.argv[2])
-generated = generated_path.read_text(encoding="utf-8")
+source_paths = [Path(arg) for arg in sys.argv[1:-1]]
+target_path = Path(sys.argv[-1])
+source_texts = [path.read_text(encoding="utf-8") for path in source_paths]
 target = target_path.read_text(encoding="utf-8")
-merged = merge(target, generated)
+merged = merge(target, *source_texts)
 target_path.write_text(merged.rstrip() + "\n", encoding="utf-8")
-print(f"Merged Better Auth models from {generated_path} into {target_path}")
+print(f"Merged {len(source_paths)} Prisma model sources into {target_path}")
