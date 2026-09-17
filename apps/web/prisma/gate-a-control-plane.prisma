@@ -26,6 +26,7 @@ model StepUpChallenge {
   verifiedAt     DateTime?
   ipHash         String?
   userAgentHash  String?
+  createdAt      DateTime  @default(now())
 
   @@index([organizationId, userId, createdAt])
   @@index([sessionId, expiresAt])
@@ -131,7 +132,7 @@ model SecurityAuditEvent {
   ipHash              String?
   userAgentHash       String?
   metadata            Json?
-  createdAt           DateTime @default(now())
+  createdAt            DateTime @default(now())
 
   @@index([organizationId, createdAt])
   @@index([actorUserId, createdAt])
