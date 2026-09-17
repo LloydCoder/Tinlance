@@ -175,22 +175,30 @@ enum AIAuthorship {
 }
 
 model User {
-  id            String       @id @default(cuid())
-  name          String
-  email         String       @unique
-  emailVerified Boolean      @default(false)
-  image         String?
-  role          String       @default("viewer")
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  members       Member[]
-  invitations   Invitation[] @relation("InvitationInviter")
-  messages      Message[]
-  auditEvents   AuditEvent[]
-  ownedLeads    Lead[]       @relation("LeadOwner")
-  ownedOpportunities Opportunity[] @relation("OpportunityOwner")
+  id                     String                  @id @default(cuid())
+  name                   String
+  email                  String                  @unique
+  emailVerified          Boolean                 @default(false)
+  image                  String?
+  role                   String                  @default("viewer")
+  twoFactorEnabled       Boolean                 @default(false)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  sessions               Session[]
+  accounts               Account[]
+  members                Member[]
+  invitations            Invitation[]            @relation("InvitationInviter")
+  messages               Message[]
+  auditEvents            AuditEvent[]
+  ownedLeads             Lead[]                  @relation("LeadOwner")
+  ownedOpportunities     Opportunity[]           @relation("OpportunityOwner")
+  twoFactors             TwoFactor[]
+  ssoProviders           SsoProvider[]
+  scimIdentityTombstones ScimIdentityTombstone[]
+  scimSubject            ScimSubject?
+  scimUsers              ScimUser[]
+  scimProjectionGrants   ScimProjectionGrant[]
+
   @@index([role])
 }
 
@@ -200,12 +208,13 @@ model Session {
   token                String   @unique
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
-  ipAddress             String?
+  ipAddress            String?
   userAgent            String?
   userId               String
   activeOrganizationId String?
   activeTeamId         String?
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([expiresAt])
 }
@@ -226,6 +235,7 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([providerId, accountId])
   @@unique([issuer, accountId])
   @@index([userId])
@@ -238,6 +248,7 @@ model Verification {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
   @@index([identifier])
 }
 
@@ -276,6 +287,7 @@ model Member {
   createdAt      DateTime     @default(now())
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([organizationId, userId])
   @@index([userId])
 }
@@ -291,6 +303,7 @@ model Invitation {
   expiresAt      DateTime
   inviter        User         @relation("InvitationInviter", fields: [inviterId], references: [id], onDelete: Cascade)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@index([email])
   @@index([organizationId, status])
   @@index([expiresAt])
@@ -303,6 +316,7 @@ model OrganizationMember {
   role           String
   createdAt      DateTime     @default(now())
   organization   Organization @relation("LegacyOrganizationMembers", fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@unique([organizationId, clerkUserId])
   @@index([clerkUserId])
 }
@@ -316,48 +330,50 @@ model Contact {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@unique([organizationId, email])
   @@index([organizationId, createdAt])
 }
 
 model Lead {
-  id                    String              @id @default(cuid())
-  organizationId        String?
-  organizationName      String
-  contactName           String
-  email                 String
-  country               String
-  service               String
-  notes                 String?
-  status                String              @default("new")
-  source                String              @default("website")
-  campaign              String?
-  referral              String?
-  roleTitle             String?
-  companySize           String?
-  website               String?
-  problemStatement      String?
-  desiredOutcome        String?
-  urgency               String?
-  budgetSignal          String?
-  timeline              String?
+  id                   String              @id @default(cuid())
+  organizationId       String?
+  organizationName     String
+  contactName          String
+  email                String
+  country              String
+  service              String
+  notes                String?
+  status               String              @default("new")
+  source               String              @default("website")
+  campaign             String?
+  referral             String?
+  roleTitle            String?
+  companySize          String?
+  website              String?
+  problemStatement     String?
+  desiredOutcome       String?
+  urgency              String?
+  budgetSignal         String?
+  timeline             String?
   technicalEnvironment String?
-  securitySensitivity   String?
-  qualificationScore    Int?
-  qualificationStatus   QualificationStatus @default(PENDING)
-  ownerUserId           String?
-  nextAction            String?
-  nextActionAt          DateTime?
-  consent               Boolean             @default(false)
-  idempotencyKey        String?             @unique
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  organization          Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  owner                 User?               @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  assessments           Assessment[]
-  opportunities         Opportunity[]
-  bookings              Booking[]
-  proposals             Proposal[]
+  securitySensitivity  String?
+  qualificationScore   Int?
+  qualificationStatus  QualificationStatus @default(PENDING)
+  ownerUserId          String?
+  nextAction           String?
+  nextActionAt         DateTime?
+  consent              Boolean             @default(false)
+  idempotencyKey       String?             @unique
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  organization         Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  owner                User?               @relation("LeadOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  assessments          Assessment[]
+  opportunities        Opportunity[]
+  bookings             Booking[]
+  proposals            Proposal[]
+
   @@index([organizationId, status])
   @@index([email])
   @@index([createdAt])
@@ -389,6 +405,7 @@ model Assessment {
   opportunity          Opportunity?
   booking              Booking?
   proposals            Proposal[]
+
   @@index([leadId, createdAt])
   @@index([organizationId, createdAt])
 }
@@ -415,6 +432,7 @@ model Opportunity {
   bookings       Booking[]
   proposals      Proposal[]
   engagement     Engagement?
+
   @@index([stage, nextActionAt])
   @@index([organizationId, stage])
   @@index([ownerUserId, stage, nextActionAt])
@@ -442,6 +460,7 @@ model Booking {
   lead             Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
   assessment       Assessment?   @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
   opportunity      Opportunity?  @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
   @@index([organizationId, status])
   @@index([startsAt])
   @@index([email])
@@ -449,16 +468,16 @@ model Booking {
 }
 
 model Proposal {
-  id              String         @id @default(cuid())
-  proposalNumber  String         @unique
+  id              String            @id @default(cuid())
+  proposalNumber  String            @unique
   organizationId  String?
   leadId          String
   assessmentId    String?
   opportunityId   String?
   title           String
-  status          ProposalStatus @default(DRAFT)
-  currentVersion  Int            @default(1)
-  publicTokenHash String         @unique
+  status          ProposalStatus    @default(DRAFT)
+  currentVersion  Int               @default(1)
+  publicTokenHash String            @unique
   sentAt          DateTime?
   viewedAt        DateTime?
   acceptedAt      DateTime?
@@ -467,109 +486,114 @@ model Proposal {
   acceptedByName  String?
   acceptedByEmail String?
   createdByUserId String
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  organization    Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  lead            Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  assessment      Assessment?    @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
-  opportunity     Opportunity?   @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  organization    Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  lead            Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assessment      Assessment?       @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  opportunity     Opportunity?      @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   versions        ProposalVersion[]
   engagement      Engagement?
+
   @@index([organizationId, status])
   @@index([leadId, createdAt])
   @@index([opportunityId, createdAt])
 }
 
 model ProposalVersion {
-  id                    String   @id @default(cuid())
-  proposalId            String
-  version               Int
-  executiveSummary      String   @db.Text
-  problemDefinition     String   @db.Text
-  proposedSolution      String   @db.Text
-  scope                 Json
-  deliverables          Json
-  assumptions           Json
-  exclusions            Json
-  timeline              Json
-  milestones            Json
-  pricing               Json
-  paymentSchedule       Json
-  dependencies          Json
-  securityConsiderations String? @db.Text
-  acceptanceTerms       String   @db.Text
-  createdByUserId       String
-  createdAt             DateTime @default(now())
-  proposal              Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  id                     String   @id @default(cuid())
+  proposalId             String
+  version                Int
+  executiveSummary       String   @db.Text
+  problemDefinition      String   @db.Text
+  proposedSolution       String   @db.Text
+  scope                  Json
+  deliverables           Json
+  assumptions            Json
+  exclusions             Json
+  timeline               Json
+  milestones             Json
+  pricing                Json
+  paymentSchedule        Json
+  dependencies           Json
+  securityConsiderations String?  @db.Text
+  acceptanceTerms        String   @db.Text
+  createdByUserId        String
+  createdAt              DateTime @default(now())
+  proposal               Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
   @@unique([proposalId, version])
   @@index([proposalId, createdAt])
 }
 
 model Client {
-  id             String              @id @default(cuid())
-  organizationId String              @unique
-  status         String              @default("active")
+  id             String               @id @default(cuid())
+  organizationId String               @unique
+  status         String               @default("active")
   onboardedAt    DateTime?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   engagements    Engagement[]
   accessInvites  ClientAccessInvite[]
 }
 
 model ClientAccessInvite {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   clientId   String
   email      String
-  tokenHash  String   @unique
+  tokenHash  String    @unique
   expiresAt  DateTime
   acceptedAt DateTime?
-  createdAt  DateTime @default(now())
-  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  client     Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   @@index([clientId, email])
   @@index([expiresAt])
 }
 
 model Engagement {
-  id                   String           @id @default(cuid())
+  id                   String                @id @default(cuid())
   organizationId       String
   clientId             String
-  opportunityId        String?          @unique
-  proposalId           String?          @unique
+  opportunityId        String?               @unique
+  proposalId           String?               @unique
   name                 String
-  scope                String           @db.Text
+  scope                String                @db.Text
   commercialValueMinor Int?
-  currency             String           @default("USD")
+  currency             String                @default("USD")
   startDate            DateTime?
   expectedEndDate      DateTime?
   ownerUserId          String?
   deliveryModel        DeliveryModel
-  status               EngagementStatus @default(PENDING)
+  status               EngagementStatus      @default(PENDING)
   billingRelationship  String?
   securityRequirements String?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  organization         Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  client               Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  opportunity          Opportunity?     @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
-  proposal             Proposal?        @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client               Client                @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  opportunity          Opportunity?          @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  proposal             Proposal?             @relation(fields: [proposalId], references: [id], onDelete: SetNull)
   projects             Project[]
   milestones           EngagementMilestone[]
   invoices             Invoice[]
+
   @@index([organizationId, status])
   @@index([clientId, status])
 }
 
 model EngagementMilestone {
-  id           String      @id @default(cuid())
+  id           String     @id @default(cuid())
   engagementId String
   name         String
   description  String?
   dueAt        DateTime?
-  status       String      @default("pending")
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  engagement   Engagement  @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  status       String     @default("pending")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  engagement   Engagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+
   @@index([engagementId, status])
 }
 
@@ -588,6 +612,7 @@ model Project {
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   engagement     Engagement?  @relation(fields: [engagementId], references: [id], onDelete: SetNull)
+
   @@index([organizationId, status])
   @@index([engagementId, status])
 }
@@ -601,6 +626,7 @@ model Document {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@index([organizationId, createdAt])
 }
 
@@ -612,6 +638,7 @@ model Message {
   createdAt      DateTime     @default(now())
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   author         User         @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+
   @@index([organizationId, createdAt])
 }
 
@@ -628,6 +655,7 @@ model Invoice {
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   engagement     Engagement?  @relation(fields: [engagementId], references: [id], onDelete: SetNull)
+
   @@index([organizationId, status])
   @@index([engagementId, status])
 }
@@ -638,6 +666,7 @@ model WebhookEvent {
   eventId    String
   eventType  String
   receivedAt DateTime @default(now())
+
   @@unique([provider, eventId])
   @@index([provider, receivedAt])
 }
@@ -653,6 +682,7 @@ model AuditEvent {
   metadata       Json?
   createdAt      DateTime @default(now())
   actor          User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
   @@index([organizationId, createdAt])
   @@index([actorUserId, createdAt])
   @@index([resourceType, resourceId])
@@ -675,6 +705,7 @@ model GrowthEvent {
   privacyClass   String
   properties     Json?
   createdAt      DateTime @default(now())
+
   @@index([eventName, occurredAt])
   @@index([source, occurredAt])
   @@index([organizationId, occurredAt])
@@ -682,17 +713,18 @@ model GrowthEvent {
 }
 
 model ProjectWorkspaceState {
-  id             String                @id @default(cuid())
-  projectId      String                @unique
+  id             String                 @id @default(cuid())
+  projectId      String                 @unique
   organizationId String
   status         ProjectWorkspaceStatus @default(DRAFT)
-  priority       String                @default("normal")
+  priority       String                 @default("normal")
   ownerUserId    String?
   startDate      DateTime?
   targetDate     DateTime?
   completedAt    DateTime?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
   @@index([organizationId, status])
   @@index([organizationId, updatedAt])
 }
@@ -714,6 +746,7 @@ model WorkspaceAssessment {
   completedAt    DateTime?
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
+
   @@index([organizationId, projectId, status])
   @@index([projectId, createdAt])
   @@index([assessmentId])
@@ -729,32 +762,34 @@ model WorkspaceAssessmentResult {
   result         Json
   resultHash     String
   createdAt      DateTime @default(now())
+
   @@index([organizationId, projectId, createdAt])
 }
 
 model WorkspaceFinding {
-  id               String                  @id @default(cuid())
-  organizationId   String
-  projectId        String
-  assessmentId     String
-  title            String
-  description      String                  @db.Text
-  category         String
-  severity         WorkspaceFindingSeverity
-  likelihood       String?
-  impact           String?
-  riskScore        Decimal?                @db.Decimal(8, 3)
-  riskMethodology  String?
-  status           WorkspaceFindingStatus   @default(DRAFT_INTERNAL)
-  affectedAsset    String?
-  recommendation   String                  @db.Text
-  ownerUserId      String?
-  dueDate          DateTime?
-  visibility       WorkspaceVisibility      @default(TINLANCE_INTERNAL)
-  authorship       AIAuthorship             @default(HUMAN_AUTHORED)
-  idempotencyKey   String?                 @unique
-  createdAt        DateTime                @default(now())
-  updatedAt        DateTime                @updatedAt
+  id              String                   @id @default(cuid())
+  organizationId  String
+  projectId       String
+  assessmentId    String
+  title           String
+  description     String                   @db.Text
+  category        String
+  severity        WorkspaceFindingSeverity
+  likelihood      String?
+  impact          String?
+  riskScore       Decimal?                 @db.Decimal(8, 3)
+  riskMethodology String?
+  status          WorkspaceFindingStatus   @default(DRAFT_INTERNAL)
+  affectedAsset   String?
+  recommendation  String                   @db.Text
+  ownerUserId     String?
+  dueDate         DateTime?
+  visibility      WorkspaceVisibility      @default(TINLANCE_INTERNAL)
+  authorship      AIAuthorship             @default(HUMAN_AUTHORED)
+  idempotencyKey  String?                  @unique
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
   @@index([organizationId, projectId, status])
   @@index([projectId, severity, status])
   @@index([assessmentId, createdAt])
@@ -783,6 +818,7 @@ model WorkspaceEvidence {
   idempotencyKey    String?                 @unique
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
+
   @@index([organizationId, projectId, createdAt])
   @@index([projectId, classification, visibility])
   @@index([assessmentId, createdAt])
@@ -793,6 +829,7 @@ model WorkspaceFindingEvidence {
   findingId  String
   evidenceId String
   createdAt  DateTime @default(now())
+
   @@id([findingId, evidenceId])
   @@index([evidenceId])
 }
@@ -814,38 +851,41 @@ model WorkspaceReport {
   idempotencyKey    String?               @unique
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
+
   @@index([organizationId, projectId, status])
   @@index([projectId, createdAt])
 }
 
 model WorkspaceReportVersion {
-  id             String   @id @default(cuid())
-  reportId       String
-  version        Int
-  content        String   @db.Text
-  contentHash    String
+  id              String   @id @default(cuid())
+  reportId        String
+  version         Int
+  content         String   @db.Text
+  contentHash     String
   createdByUserId String
-  createdAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
   @@unique([reportId, version])
   @@index([reportId, createdAt])
 }
 
 model WorkspaceRemediation {
-  id                 String                    @id @default(cuid())
+  id                 String                     @id @default(cuid())
   organizationId     String
   projectId          String
   findingId          String
   title              String
-  description        String                    @db.Text
+  description        String                     @db.Text
   ownerUserId        String?
   priority           String
   status             WorkspaceRemediationStatus @default(OPEN)
   targetDate         DateTime?
   completedAt        DateTime?
-  verificationStatus VerificationResult        @default(INCONCLUSIVE)
-  idempotencyKey     String?                   @unique
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
+  verificationStatus VerificationResult         @default(INCONCLUSIVE)
+  idempotencyKey     String?                    @unique
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
   @@index([organizationId, projectId, status])
   @@index([findingId, status])
   @@index([ownerUserId, status, targetDate])
@@ -855,6 +895,7 @@ model WorkspaceRemediationEvidence {
   remediationId String
   evidenceId    String
   createdAt     DateTime @default(now())
+
   @@id([remediationId, evidenceId])
   @@index([evidenceId])
 }
@@ -871,25 +912,27 @@ model WorkspaceVerification {
   notes          String?            @db.Text
   evidenceId     String?
   createdAt      DateTime           @default(now())
+
   @@index([organizationId, projectId, createdAt])
   @@index([findingId, createdAt])
   @@index([remediationId, createdAt])
 }
 
 model WorkspaceEvidenceRequest {
-  id                  String               @id @default(cuid())
+  id                  String                @id @default(cuid())
   organizationId      String
   projectId           String
   assessmentId        String?
   title               String
-  description         String               @db.Text
+  description         String                @db.Text
   requestedType       String
   dueDate             DateTime?
   requestedByUserId   String
   status              EvidenceRequestStatus @default(REQUESTED)
   submittedEvidenceId String?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
   @@index([organizationId, projectId, status])
   @@index([projectId, dueDate])
 }
@@ -905,6 +948,395 @@ model WorkspaceNote {
   body           String            @db.Text
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
+
   @@index([organizationId, projectId, kind, createdAt])
   @@index([resourceType, resourceId, createdAt])
+}
+
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
+}
+
+model SsoProvider {
+  id             String   @id
+  issuer         String
+  oidcConfig     String?
+  samlConfig     String?
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId     String
+  organizationId String?
+  domain         String
+  domainVerified Boolean?
+
+  @@unique([providerId])
+  @@map("ssoProvider")
+}
+
+model ScimManagedConnection {
+  id                          String                       @id
+  creationRequestId           String
+  connectionId                String
+  provisioningDomainId        String
+  status                      String
+  revision                    Int
+  createdAt                   DateTime
+  createdBy                   String
+  decommissionStartedAt       DateTime?
+  decommissionStartedBy       String?
+  decommissionedAt            DateTime?
+  decommissionedBy            String?
+  scimmanagedcredentials      ScimManagedCredential[]
+  scimmanagedconnectionevents ScimManagedConnectionEvent[]
+
+  @@unique([creationRequestId])
+  @@unique([connectionId])
+  @@index([provisioningDomainId])
+  @@map("scimManagedConnection")
+}
+
+model ScimManagedCredential {
+  id                    String                @id
+  connectionRecordId    String
+  scimmanagedconnection ScimManagedConnection @relation(fields: [connectionRecordId], references: [id], onDelete: Cascade)
+  credentialId          String
+  tokenDigest           String
+  hashVersion           String
+  activeSlotKey         String
+  status                String
+  serializedScopes      String
+  expiresAt             DateTime
+  createdAt             DateTime
+  createdBy             String
+  lastUsedAt            DateTime?
+  revokedAt             DateTime?
+  revokedBy             String?
+  decommissionedAt      DateTime?
+
+  @@unique([credentialId])
+  @@unique([activeSlotKey])
+  @@index([connectionRecordId])
+  @@map("scimManagedCredential")
+}
+
+model ScimManagedConnectionEvent {
+  id                    String                @id
+  connectionRecordId    String
+  scimmanagedconnection ScimManagedConnection @relation(fields: [connectionRecordId], references: [id], onDelete: Cascade)
+  eventKey              String
+  sequence              Int
+  type                  String
+  actorId               String
+  credentialId          String?
+  createdAt             DateTime
+
+  @@unique([eventKey])
+  @@index([connectionRecordId])
+  @@map("scimManagedConnectionEvent")
+}
+
+model ScimConnectionBinding {
+  id                              String    @id
+  connectionId                    String
+  connectionKey                   String
+  provisioningDomainId            String
+  createdAt                       DateTime
+  decommissionedAt                DateTime?
+  decommissionStatus              String    @default("active")
+  decommissionCursorUserId        String?
+  decommissionReconciledUserCount Int       @default(0)
+  decommissionBatchCount          Int       @default(0)
+  decommissionRevision            Int       @default(0)
+  decommissionCompletedAt         DateTime?
+  decommissionLeaseId             String?
+  decommissionLeaseExpiresAt      DateTime?
+
+  @@unique([connectionKey])
+  @@index([connectionId])
+  @@map("scimConnectionBinding")
+}
+
+model ScimIdentityTombstone {
+  id                   String   @id
+  connectionId         String
+  provisioningDomainId String
+  externalId           String
+  externalIdKey        String
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile              String
+  deletedAt            DateTime
+
+  @@unique([externalIdKey])
+  @@index([connectionId])
+  @@index([provisioningDomainId])
+  @@index([userId])
+  @@map("scimIdentityTombstone")
+}
+
+model ScimSubject {
+  id              String   @id
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileSourceId String?
+  revision        Int
+  createdAt       DateTime
+  updatedAt       DateTime
+
+  @@unique([userId])
+  @@index([profileSourceId])
+  @@map("scimSubject")
+}
+
+model ScimUser {
+  id                   String                @id
+  connectionId         String
+  provisioningDomainId String
+  userId               String
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionUserKey    String
+  userName             String
+  userNameKey          String
+  primaryEmail         String
+  workEmailValueIndex  String
+  emailValueIndex      String
+  displayName          String
+  formattedName        String
+  givenName            String?
+  familyName           String?
+  serializedEmails     String
+  serializedAttributes String?
+  externalId           String?
+  externalIdKey        String?
+  active               Boolean
+  orderKey             String
+  createdAt            DateTime
+  updatedAt            DateTime
+  scimprojectiongrants ScimProjectionGrant[]
+  scimgroupmembers     ScimGroupMember[]
+
+  @@unique([connectionUserKey])
+  @@unique([userNameKey])
+  @@unique([externalIdKey])
+  @@unique([orderKey])
+  @@index([connectionId])
+  @@index([provisioningDomainId])
+  @@index([userId])
+  @@map("scimUser")
+}
+
+model ScimProjectionGrant {
+  id                   String   @id
+  connectionId         String
+  provisioningDomainId String
+  scimUserId           String
+  scimuser             ScimUser @relation(fields: [scimUserId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceKind           String
+  sourceId             String
+  sourceValue          String?
+  role                 String
+  grantKey             String
+  createdAt            DateTime
+  updatedAt            DateTime
+
+  @@unique([grantKey])
+  @@index([connectionId])
+  @@index([provisioningDomainId])
+  @@index([scimUserId])
+  @@index([userId])
+  @@map("scimProjectionGrant")
+}
+
+model ScimGroup {
+  id                   String            @id
+  connectionId         String
+  provisioningDomainId String
+  revision             Int               @default(0)
+  displayName          String
+  displayNameKey       String
+  externalId           String?
+  externalIdKey        String?
+  orderKey             String
+  createdAt            DateTime
+  updatedAt            DateTime
+  scimgroupmembers     ScimGroupMember[]
+
+  @@unique([displayNameKey])
+  @@unique([externalIdKey])
+  @@unique([orderKey])
+  @@index([connectionId])
+  @@index([provisioningDomainId])
+  @@map("scimGroup")
+}
+
+model ScimGroupMember {
+  id            String    @id
+  connectionId  String
+  groupId       String
+  scimgroup     ScimGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  scimUserId    String
+  scimuser      ScimUser  @relation(fields: [scimUserId], references: [id], onDelete: Cascade)
+  membershipKey String
+  createdAt     DateTime
+
+  @@unique([membershipKey])
+  @@index([connectionId])
+  @@index([groupId])
+  @@index([scimUserId])
+  @@map("scimGroupMember")
+}
+
+model OrganizationSecurityPolicy {
+  id                      String   @id @default(cuid())
+  organizationId          String   @unique
+  requireMfaForPrivileged Boolean  @default(true)
+  requireSso              Boolean  @default(false)
+  sessionMaxMinutes       Int      @default(10080)
+  idleTimeoutMinutes      Int      @default(1440)
+  stepUpTtlSeconds        Int      @default(900)
+  breakGlassEnabled       Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("organizationSecurityPolicy")
+}
+
+model StepUpChallenge {
+  id             String    @id @default(cuid())
+  organizationId String
+  userId         String
+  sessionId      String
+  method         String
+  nonceHash      String    @unique
+  issuedAt       DateTime  @default(now())
+  expiresAt      DateTime
+  verifiedAt     DateTime?
+  ipHash         String?
+  userAgentHash  String?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId, userId, createdAt])
+  @@index([sessionId, expiresAt])
+  @@map("stepUpChallenge")
+}
+
+model BreakGlassGrant {
+  id               String    @id @default(cuid())
+  organizationId   String
+  grantedToUserId  String
+  approvedByUserId String
+  reason           String
+  scope            Json
+  ticketReference  String?
+  startsAt         DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([organizationId, grantedToUserId, expiresAt])
+  @@index([organizationId, expiresAt])
+  @@map("breakGlassGrant")
+}
+
+model PrivilegeElevation {
+  id               String    @id @default(cuid())
+  organizationId   String
+  userId           String
+  requestedRole    String
+  scope            Json
+  reason           String
+  approvedByUserId String?
+  startsAt         DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([organizationId, userId, expiresAt])
+  @@index([organizationId, expiresAt])
+  @@map("privilegeElevation")
+}
+
+model AccessReview {
+  id             String    @id @default(cuid())
+  organizationId String
+  periodStart    DateTime
+  periodEnd      DateTime
+  status         String    @default("open")
+  initiatedBy    String
+  dueAt          DateTime
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId, status, dueAt])
+  @@map("accessReview")
+}
+
+model AccessReviewItem {
+  id             String    @id @default(cuid())
+  reviewId       String
+  organizationId String
+  userId         String
+  resourceType   String
+  resourceId     String
+  currentRole    String
+  decision       String    @default("pending")
+  decidedBy      String?
+  decidedAt      DateTime?
+  reason         String?
+
+  @@unique([reviewId, userId, resourceType, resourceId])
+  @@index([organizationId, decision])
+  @@map("accessReviewItem")
+}
+
+model ServiceIdentity {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  keyId          String    @unique
+  secretHash     String
+  scopes         Json
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId, revokedAt])
+  @@map("serviceIdentity")
+}
+
+model SecurityAuditEvent {
+  id             String   @id @default(cuid())
+  organizationId String?
+  actorUserId    String?
+  actorServiceId String?
+  action         String
+  targetType     String?
+  targetId       String?
+  requestId      String?
+  ipHash         String?
+  userAgentHash  String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@map("securityAuditEvent")
 }
