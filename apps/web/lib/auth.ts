@@ -72,7 +72,7 @@ export const auth = betterAuth({
   plugins: [
     admin({
       defaultRole: "viewer",
-      adminRoles: ["admin", "super-admin", "security-admin", "billing-admin"],
+      adminRoles: ["admin"],
     }),
     organization({
       allowUserToCreateOrganization: true,
