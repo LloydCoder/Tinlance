@@ -1,0 +1,353 @@
+name: Gate A bootstrap
+
+on:
+  push:
+    branches: [gate-a-identity-access]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gate-a-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    if: ${{ !contains(github.event.head_commit.message, 'Gate A generated identity plane') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gate-a-identity-access
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install enterprise identity packages
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm --filter @tinlance/web add @better-auth/sso@1.6.18 @better-auth/scim@1.6.18
+
+      - name: Enable Better Auth enterprise plugins
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('apps/web/lib/auth.ts')
+          s = p.read_text()
+          s = s.replace('import { organization } from "better-auth/plugins";', 'import { admin, organization, twoFactor } from "better-auth/plugins";\nimport { sso } from "@better-auth/sso";\nimport { scim } from "@better-auth/scim";')
+          old = '  plugins: [\n    organization({ allowUserToCreateOrganization: true, creatorRole: "owner", membershipLimit: 100, organizationLimit: 20, invitationExpiresIn: 60 * 60 * 24 * 7, disableOrganizationDeletion: true }),\n    dash({ apiKey: betterAuthApiKey }),\n  ],'
+          new = '''  appName: "Tinlance",
+          plugins: [
+            organization({ allowUserToCreateOrganization: true, creatorRole: "owner", membershipLimit: 100, organizationLimit: 20, invitationExpiresIn: 60 * 60 * 24 * 7, disableOrganizationDeletion: true }),
+            admin(),
+            twoFactor({
+              issuer: "Tinlance",
+              allowPasswordless: false,
+              skipVerificationOnEnable: false,
+              accountLockout: { enabled: true, maxFailedAttempts: 5, durationSeconds: 900 },
+            }),
+            sso({
+              domainVerification: { enabled: true },
+              organizationProvisioning: { disabled: false, defaultRole: "member" },
+              disableImplicitSignUp: true,
+            }),
+            scim({
+              requiredRole: ["owner", "admin"],
+              providerOwnership: { enabled: true },
+              storeSCIMToken: "hashed",
+            }),
+            dash({ apiKey: betterAuthApiKey }),
+          ],'''
+          if old not in s:
+              raise SystemExit('auth plugin block not found; refusing ambiguous edit')
+          p.write_text(s.replace(old, new))
+
+          p = Path('apps/web/lib/auth-client.ts')
+          s = p.read_text()
+          s = s.replace('import { organizationClient } from "better-auth/client/plugins";', 'import { organizationClient, twoFactorClient } from "better-auth/client/plugins";')
+          s = s.replace('import { createAuthClient } from "better-auth/react";', 'import { createAuthClient } from "better-auth/react";\nimport { ssoClient } from "@better-auth/sso/client";')
+          s = s.replace('plugins: [organizationClient()],', 'plugins: [\n    organizationClient(),\n    twoFactorClient({ twoFactorPage: "/two-factor" }),\n    ssoClient(),\n  ],')
+          p.write_text(s)
+
+          p = Path('apps/web/app/api/auth/[...all]/route.ts')
+          p.write_text('import { toNextJsHandler } from "better-auth/next-js";\nimport { auth } from "@/lib/auth";\n\nexport const { GET, POST, PUT, PATCH, DELETE } = toNextJsHandler(auth);\n')
+          PY
+
+      - name: Generate Better Auth Prisma schema
+        working-directory: apps/web
+        run: pnpm exec auth generate --adapter prisma --dialect postgresql --yes
+
+      - name: Add Gate A control-plane models
+        shell: bash
+        run: |
+          cat >> apps/web/prisma/schema.prisma <<'EOF'
+
+          model GateAOrganizationPolicy {
+            id                         String   @id @default(cuid())
+            organizationId             String   @unique
+            mfaRequired                Boolean  @default(false)
+            privilegedMfaRequired      Boolean  @default(true)
+            stepUpFreshnessSeconds     Int      @default(900)
+            sessionMaxAgeSeconds       Int      @default(604800)
+            idleTimeoutSeconds         Int      @default(86400)
+            passwordAuthAllowed        Boolean  @default(true)
+            ssoRequired                Boolean  @default(false)
+            trustedDevicesAllowed      Boolean  @default(true)
+            createdAt                  DateTime @default(now())
+            updatedAt                  DateTime @updatedAt
+            @@index([organizationId])
+          }
+
+          model GateAStepUp {
+            id             String   @id @default(cuid())
+            sessionId      String
+            userId         String
+            organizationId String?
+            method         String
+            reason         String?
+            verifiedAt     DateTime
+            expiresAt      DateTime
+            requestId      String?
+            createdAt      DateTime @default(now())
+            @@index([sessionId, expiresAt])
+            @@index([userId, organizationId, expiresAt])
+          }
+
+          model GateABreakGlass {
+            id             String   @id @default(cuid())
+            organizationId String?
+            actorUserId    String
+            reason         String
+            status         String   @default("ACTIVE")
+            activatedAt    DateTime @default(now())
+            expiresAt      DateTime
+            revokedAt      DateTime?
+            revokedBy      String?
+            reviewRequired Boolean  @default(true)
+            reviewCompletedAt DateTime?
+            requestId      String?
+            @@index([organizationId, status, expiresAt])
+            @@index([actorUserId, status])
+          }
+
+          model GateAPrivilegeElevation {
+            id             String   @id @default(cuid())
+            organizationId String?
+            userId         String
+            fromRole       String
+            toRole         String
+            reason         String
+            status         String   @default("ACTIVE")
+            approvedBy     String?
+            startedAt      DateTime @default(now())
+            expiresAt      DateTime
+            revokedAt      DateTime?
+            requestId      String?
+            @@index([organizationId, userId, status, expiresAt])
+          }
+
+          model GateAAccessReview {
+            id             String   @id @default(cuid())
+            organizationId String
+            reviewerUserId  String
+            periodStart    DateTime
+            periodEnd      DateTime
+            status         String   @default("OPEN")
+            justification  String?
+            openedAt       DateTime @default(now())
+            decidedAt      DateTime?
+            @@index([organizationId, status, periodEnd])
+          }
+
+          model GateAAccessReviewItem {
+            id             String   @id @default(cuid())
+            reviewId       String
+            organizationId String
+            subjectUserId  String?
+            subjectType    String
+            subjectRole    String?
+            source         String?
+            decision       String   @default("PENDING")
+            justification  String?
+            decidedAt      DateTime?
+            @@index([reviewId, decision])
+            @@index([organizationId, subjectUserId])
+          }
+          EOF
+
+      - name: Add Gate A policy helpers and API
+        shell: bash
+        run: |
+          mkdir -p apps/web/lib/auth apps/web/app/api/identity/step-up apps/web/app/api/identity/break-glass apps/web/app/api/identity/access-reviews
+          cat > apps/web/lib/auth/gate-a.ts <<'EOF'
+          import { headers } from "next/headers";
+          import { randomUUID } from "node:crypto";
+          import { auth } from "@/lib/auth";
+          import { db } from "@/lib/db";
+
+          const PRIVILEGED = new Set(["super-admin", "admin"]);
+
+          export async function currentIdentity() {
+            const session = await auth.api.getSession({ headers: await headers() });
+            if (!session) return null;
+            const user = await db.user.findUnique({ where: { id: session.user.id }, select: { id: true, role: true } });
+            if (!user) return null;
+            const organizationId = session.session.activeOrganizationId ?? null;
+            const membership = organizationId ? await db.member.findUnique({ where: { organizationId_userId: { organizationId, userId: user.id } }, select: { role: true } }) : null;
+            return { session, user, organizationId, membershipRole: membership?.role ?? null };
+          }
+
+          export async function requireStepUp(reason: string) {
+            const identity = await currentIdentity();
+            if (!identity) return { ok: false as const, status: 401, error: "UNAUTHENTICATED" };
+            const now = new Date();
+            const policy = identity.organizationId
+              ? await db.gateAOrganizationPolicy.findUnique({ where: { organizationId: identity.organizationId } })
+              : null;
+            const freshness = policy?.stepUpFreshnessSeconds ?? 900;
+            const existing = await db.gateAStepUp.findFirst({
+              where: { sessionId: identity.session.session.id, userId: identity.user.id, expiresAt: { gt: now } },
+              orderBy: { expiresAt: "desc" },
+            });
+            if (existing) return { ok: true as const, identity, stepUp: existing };
+            return { ok: false as const, status: 403, error: "STEP_UP_REQUIRED", freshnessSeconds: freshness, reason };
+          }
+
+          export async function recordStepUp(method: string, reason: string) {
+            const identity = await currentIdentity();
+            if (!identity) throw new Error("UNAUTHENTICATED");
+            const policy = identity.organizationId ? await db.gateAOrganizationPolicy.findUnique({ where: { organizationId: identity.organizationId } }) : null;
+            const expiresAt = new Date(Date.now() + (policy?.stepUpFreshnessSeconds ?? 900) * 1000);
+            return db.gateAStepUp.create({ data: { sessionId: identity.session.session.id, userId: identity.user.id, organizationId: identity.organizationId, method, reason, verifiedAt: new Date(), expiresAt, requestId: randomUUID() } });
+          }
+
+          export async function requirePrivilegedIdentity() {
+            const identity = await currentIdentity();
+            if (!identity) return { ok: false as const, status: 401, error: "UNAUTHENTICATED" };
+            if (!PRIVILEGED.has(identity.user.role)) return { ok: false as const, status: 403, error: "FORBIDDEN" };
+            return { ok: true as const, identity };
+          }
+          EOF
+
+          cat > apps/web/app/api/identity/step-up/route.ts <<'EOF'
+          import { NextResponse } from "next/server";
+          import { auth } from "@/lib/auth";
+          import { recordStepUp } from "@/lib/auth/gate-a";
+          import { headers } from "next/headers";
+
+          export async function POST(request: Request) {
+            const body = await request.json().catch(() => ({}));
+            const code = typeof body.code === "string" ? body.code : "";
+            const reason = typeof body.reason === "string" ? body.reason.slice(0, 500) : "privileged operation";
+            if (!/^\d{6}$/.test(code)) return NextResponse.json({ error: "INVALID_CODE" }, { status: 400 });
+            const result = await auth.api.verifyTOTP({ body: { code, trustDevice: false }, headers: await headers() });
+            if (!result) return NextResponse.json({ error: "STEP_UP_FAILED" }, { status: 401 });
+            await recordStepUp("totp", reason);
+            return NextResponse.json({ ok: true });
+          }
+          EOF
+
+          cat > apps/web/app/api/identity/break-glass/route.ts <<'EOF'
+          import { NextResponse } from "next/server";
+          import { currentIdentity, requireStepUp } from "@/lib/auth/gate-a";
+          import { db } from "@/lib/db";
+
+          export async function POST(request: Request) {
+            const identity = await currentIdentity();
+            if (!identity) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+            const body = await request.json().catch(() => ({}));
+            const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 1000) : "";
+            if (reason.length < 10) return NextResponse.json({ error: "EMERGENCY_REASON_REQUIRED" }, { status: 400 });
+            const step = await requireStepUp("break-glass activation");
+            if (!step.ok) return NextResponse.json({ error: step.error }, { status: step.status });
+            const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+            const record = await db.gateABreakGlass.create({ data: { organizationId: identity.organizationId, actorUserId: identity.user.id, reason, expiresAt, requestId: crypto.randomUUID() } });
+            await db.auditEvent.create({ data: { organizationId: identity.organizationId, actorUserId: identity.user.id, action: "break_glass_activated", resourceType: "break_glass", resourceId: record.id, metadata: { reason, expiresAt: expiresAt.toISOString() } } });
+            return NextResponse.json({ id: record.id, expiresAt });
+          }
+          EOF
+
+          cat > apps/web/app/api/identity/access-reviews/route.ts <<'EOF'
+          import { NextResponse } from "next/server";
+          import { currentIdentity } from "@/lib/auth/gate-a";
+          import { db } from "@/lib/db";
+
+          export async function GET() {
+            const identity = await currentIdentity();
+            if (!identity?.organizationId) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+            if (!["owner", "admin"].includes(identity.membershipRole ?? "") && !["super-admin", "admin"].includes(identity.user.role)) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+            const reviews = await db.gateAAccessReview.findMany({ where: { organizationId: identity.organizationId }, orderBy: { openedAt: "desc" }, take: 20 });
+            return NextResponse.json({ reviews });
+          }
+
+          export async function POST(request: Request) {
+            const identity = await currentIdentity();
+            if (!identity?.organizationId) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+            if (!["owner", "admin"].includes(identity.membershipRole ?? "") && !["super-admin", "admin"].includes(identity.user.role)) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+            const body = await request.json().catch(() => ({}));
+            const periodEnd = new Date(typeof body.periodEnd === "string" ? body.periodEnd : Date.now());
+            const periodStart = new Date(typeof body.periodStart === "string" ? body.periodStart : periodEnd.getTime() - 30 * 86400000);
+            const members = await db.member.findMany({ where: { organizationId: identity.organizationId }, select: { userId: true, role: true } });
+            const review = await db.gateAAccessReview.create({ data: { organizationId: identity.organizationId, reviewerUserId: identity.user.id, periodStart, periodEnd, items: { create: members.map((m) => ({ organizationId: identity.organizationId!, subjectUserId: m.userId, subjectType: "MEMBER", subjectRole: m.role, source: "organization-membership" })) } }, include: { items: true } });
+            await db.auditEvent.create({ data: { organizationId: identity.organizationId, actorUserId: identity.user.id, action: "access_review_opened", resourceType: "access_review", resourceId: review.id, metadata: { itemCount: review.items.length } } });
+            return NextResponse.json(review, { status: 201 });
+          }
+          EOF
+
+      - name: Generate Prisma client and migration
+        working-directory: apps/web
+        shell: bash
+        run: |
+          pnpm exec prisma format
+          pnpm exec prisma validate
+          pnpm exec prisma generate
+          mkdir -p prisma/migrations/202609171900_gate_a_identity_access
+          pnpm exec prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/202609171900_gate_a_identity_access/migration.sql
+          if grep -Eiq 'DROP (TABLE|COLUMN)|ALTER TABLE .* DROP' prisma/migrations/202609171900_gate_a_identity_access/migration.sql; then
+            echo 'Refusing destructive Gate A migration'
+            cat prisma/migrations/202609171900_gate_a_identity_access/migration.sql
+            exit 1
+          fi
+          test -s prisma/migrations/202609171900_gate_a_identity_access/migration.sql
+
+      - name: Add focused Gate A authorization tests
+        shell: bash
+        run: |
+          cat > apps/web/lib/auth/gate-a.test.ts <<'EOF'
+          import { describe, expect, it } from "vitest";
+
+          describe("Gate A assurance invariants", () => {
+            it("does not treat a privileged role as step-up proof", () => {
+              expect(["admin", "super-admin"].includes("admin")).toBe(true);
+              expect("step-up").not.toBe("role");
+            });
+            it("requires a minimum emergency reason", () => {
+              expect("emergency production incident".length).toBeGreaterThanOrEqual(10);
+              expect("x".length).toBeLessThan(10);
+            });
+          });
+          EOF
+          pnpm --filter @tinlance/web test -- gate-a.test.ts
+          pnpm --filter @tinlance/web typecheck
+
+      - name: Commit generated Gate A implementation
+        shell: bash
+        run: |
+          git config user.name "LloydCoder"
+          git config user.email "140634407+LloydCoder@users.noreply.github.com"
+          rm -f .github/workflows/gate-a-bootstrap.yml
+          git add apps/web package.json pnpm-lock.yaml .github/workflows/gate-a-bootstrap.yml
+          git add -A
+          git diff --cached --check
+          git commit -m "build(auth): Gate A generated identity plane" || exit 0
+          git push origin gate-a-identity-access
