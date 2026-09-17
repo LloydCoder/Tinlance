@@ -65,7 +65,7 @@ jobs:
         run: |
           ADAPTER_FILE=$(find node_modules -path '*/@better-auth/prisma-adapter/dist/*' | head -1)
           echo "Adapter sample: $ADAPTER_FILE"
-          grep -R -n -E "transaction|native" node_modules/.pnpm/@better-auth+prisma-adapter*/*/dist 2>/dev/null | head -80 || true
+          grep -R -n -E "transaction|native" node_modules/.pnpm/@better-auth+prisma-adapter@*/node_modules/@better-auth/prisma-adapter/dist 2>/dev/null | head -120 || true
       - name: Generate Better Auth Prisma schema
         working-directory: apps/web
         run: pnpm dlx @better-auth/cli@1.4.22 generate --yes
