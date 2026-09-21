@@ -2,7 +2,7 @@ name: API contract
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'gate-a-enterprise-identity-v2']
     paths:
       - 'docs/api/openapi/**'
       - 'apps/web/app/api/v1/**'
