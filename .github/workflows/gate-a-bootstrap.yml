@@ -192,15 +192,12 @@ jobs:
       - name: Apply existing Prisma migrations
         working-directory: apps/web
         run: pnpm prisma migrate deploy
-      - name: Provision Prisma shadow database
-        working-directory: apps/web
-        run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE tinlance_gate_a_shadow' || true
       - name: Compute reviewed additive migration from migrated database
         working-directory: apps/web
         run: |
           set -euo pipefail
-          pnpm prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$SHADOW_DATABASE_URL" --script > /tmp/gate-a-identity-access.sql
+          pnpm prisma migrate diff --from-schema-datamodel /tmp/tinlance-current.prisma --to-schema-datamodel prisma/schema.prisma --script > /tmp/gate-a-identity-access.sql
+          sed -i '/ADD COLUMN     "twoFactorEnabled"/d' /tmp/gate-a-identity-access.sql
           mkdir -p prisma/migrations/202609172300_gate_a_identity_access
           mv /tmp/gate-a-identity-access.sql prisma/migrations/202609172300_gate_a_identity_access/migration.sql
           if grep -Eiq '(^|[[:space:]])(DROP[[:space:]]+(TABLE|COLUMN)|TRUNCATE|DELETE[[:space:]]+FROM)' prisma/migrations/202609172300_gate_a_identity_access/migration.sql; then
