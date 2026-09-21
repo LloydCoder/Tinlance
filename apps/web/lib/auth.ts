@@ -19,7 +19,12 @@ const baseURL = process.env.NODE_ENV === "production"
 const bootstrapAdminEmail = process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
 const authSecret = process.env.BETTER_AUTH_SECRET;
 const betterAuthApiKey = process.env.BETTER_AUTH_API_KEY;
-const scimCredentialHashSecret = process.env.BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET ?? authSecret ?? "";
+const configuredScimCredentialHashSecret = process.env.BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET?.trim();
+const scimCredentialHashSecret = configuredScimCredentialHashSecret && configuredScimCredentialHashSecret.length >= 32
+  ? configuredScimCredentialHashSecret
+  : (authSecret && authSecret.length >= 32
+    ? authSecret
+    : (process.env.NODE_ENV === "production" ? "" : "tinlance-gate-a-test-scim-secret-32-chars-minimum"));
 
 const trustedOrigins = [productionOrigin, apexOrigin, baseURL, vercelOrigin]
   .filter((origin): origin is string => Boolean(origin))
