@@ -201,10 +201,10 @@ jobs:
             cat prisma/migrations/202609172300_gate_a_identity_access/migration.sql
             exit 1
           fi
-      - name: Recreate CI database from current schema
+      - name: Apply existing Prisma migrations
         working-directory: apps/web
-        run: pnpm prisma db push --schema=/tmp/tinlance-current.prisma --skip-generate
-      - name: Apply Gate A migration to current-schema database
+        run: pnpm prisma migrate deploy
+      - name: Apply Gate A migration to migrated CI database
         working-directory: apps/web
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/migrations/202609172300_gate_a_identity_access/migration.sql
       - name: Typecheck
