@@ -2,7 +2,7 @@ name: Gate A Bootstrap And Verification
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'gate-a-enterprise-identity-v2']
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
