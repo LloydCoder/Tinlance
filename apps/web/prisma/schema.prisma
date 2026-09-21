@@ -192,6 +192,16 @@ model User {
   ownedLeads    Lead[]       @relation("LeadOwner")
   ownedOpportunities Opportunity[] @relation("OpportunityOwner")
   @@index([role])
+  banned                 Boolean?                @default(false)
+  banReason              String?
+  banExpires             DateTime?
+  twoFactorEnabled       Boolean?                @default(false)
+  twofactors             TwoFactor[]
+  ssoproviders           SsoProvider[]
+  scimidentitytombstones ScimIdentityTombstone[]
+  scimsubject            ScimSubject?
+  scimusers              ScimUser[]
+  scimprojectiongrants   ScimProjectionGrant[]
 }
 
 model Session {
@@ -208,6 +218,7 @@ model Session {
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
   @@index([expiresAt])
+  impersonatedBy       String?
 }
 
 model Account {
@@ -278,6 +289,7 @@ model Member {
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([organizationId, userId])
   @@index([userId])
+  @@index([organizationId])
 }
 
 model Invitation {
@@ -294,6 +306,7 @@ model Invitation {
   @@index([email])
   @@index([organizationId, status])
   @@index([expiresAt])
+  @@index([organizationId])
 }
 
 model OrganizationMember {
@@ -907,4 +920,238 @@ model WorkspaceNote {
   updatedAt      DateTime          @updatedAt
   @@index([organizationId, projectId, kind, createdAt])
   @@index([resourceType, resourceId, createdAt])
+}
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
+}
+model SsoProvider {
+  id             String   @id
+  issuer         String
+  oidcConfig     String?
+  samlConfig     String?
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId     String
+  organizationId String?
+  domain         String
+  domainVerified Boolean?
+
+  @@unique([providerId])
+  @@map("ssoProvider")
+}
+model ScimManagedConnection {
+  id                          String                       @id
+  creationRequestId           String
+  connectionId                String
+  provisioningDomainId        String
+  status                      String
+  revision                    Int
+  createdAt                   DateTime
+  createdBy                   String
+  decommissionStartedAt       DateTime?
+  decommissionStartedBy       String?
+  decommissionedAt            DateTime?
+  decommissionedBy            String?
+  scimmanagedcredentials      ScimManagedCredential[]
+  scimmanagedconnectionevents ScimManagedConnectionEvent[]
+
+  @@unique([creationRequestId])
+  @@unique([connectionId])
+  @@index([provisioningDomainId])
+  @@map("scimManagedConnection")
+}
+model ScimManagedCredential {
+  id                    String                @id
+  connectionRecordId    String
+  scimmanagedconnection ScimManagedConnection @relation(fields: [connectionRecordId], references: [id], onDelete: Cascade)
+  credentialId          String
+  tokenDigest           String
+  hashVersion           String
+  activeSlotKey         String
+  status                String
+  serializedScopes      String
+  expiresAt             DateTime
+  createdAt             DateTime
+  createdBy             String
+  lastUsedAt            DateTime?
+  revokedAt             DateTime?
+  revokedBy             String?
+  decommissionedAt      DateTime?
+
+  @@unique([credentialId])
+  @@unique([activeSlotKey])
+  @@index([connectionRecordId])
+  @@map("scimManagedCredential")
+}
+model ScimManagedConnectionEvent {
+  id                    String                @id
+  connectionRecordId    String
+  scimmanagedconnection ScimManagedConnection @relation(fields: [connectionRecordId], references: [id], onDelete: Cascade)
+  eventKey              String
+  sequence              Int
+  type                  String
+  actorId               String
+  credentialId          String?
+  createdAt             DateTime
+
+  @@unique([eventKey])
+  @@index([connectionRecordId])
+  @@map("scimManagedConnectionEvent")
+}
+model ScimConnectionBinding {
+  id                              String    @id
+  connectionId                    String
+  connectionKey                   String
+  provisioningDomainId            String
+  createdAt                       DateTime
+  decommissionedAt                DateTime?
+  decommissionStatus              String    @default("active")
+  decommissionCursorUserId        String?
+  decommissionReconciledUserCount Int       @default(0)
+  decommissionBatchCount          Int       @default(0)
+  decommissionRevision            Int       @default(0)
+  decommissionCompletedAt         DateTime?
+  decommissionLeaseId             String?
+  decommissionLeaseExpiresAt      DateTime?
+
+  @@unique([connectionKey])
+  @@index([connectionId])
+  @@map("scimConnectionBinding")
+}
+model ScimIdentityTombstone {
+  id                   String   @id
+  connectionId         String
+  provisioningDomainId String
+  externalId           String
+  externalIdKey        String
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile              String
+  deletedAt            DateTime
+
+  @@unique([externalIdKey])
+  @@index([connectionId])
+  @@index([provisioningDomainId])
+  @@index([userId])
+  @@map("scimIdentityTombstone")
+}
+model ScimSubject {
+  id              String   @id
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileSourceId String?
+  revision        Int
+  createdAt       DateTime
+  updatedAt       DateTime
+
+  @@unique([userId])
+  @@index([profileSourceId])
+  @@map("scimSubject")
+}
+model ScimUser {
+  id                   String                @id
+  connectionId         String
+  provisioningDomainId String
+  userId               String
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionUserKey    String
+  userName             String
+  userNameKey          String
+  primaryEmail         String
+  workEmailValueIndex  String
+  emailValueIndex      String
+  displayName          String
+  formattedName        String
+  givenName            String?
+  familyName           String?
+  serializedEmails     String
+  serializedAttributes String?
+  externalId           String?
+  externalIdKey        String?
+  active               Boolean
+  orderKey             String
+  createdAt            DateTime
+  updatedAt            DateTime
+  scimprojectiongrants ScimProjectionGrant[]
+  scimgroupmembers     ScimGroupMember[]
+
+  @@unique([connectionUserKey])
+  @@unique([userNameKey])
+  @@unique([externalIdKey])
+  @@unique([orderKey])
+  @@index([connectionId])
+  @@index([provisioningDomainId])
+  @@index([userId])
+  @@map("scimUser")
+}
+model ScimProjectionGrant {
+  id                   String   @id
+  connectionId         String
+  provisioningDomainId String
+  scimUserId           String
+  scimuser             ScimUser @relation(fields: [scimUserId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceKind           String
+  sourceId             String
+  sourceValue          String?
+  role                 String
+  grantKey             String
+  createdAt            DateTime
+  updatedAt            DateTime
+
+  @@unique([grantKey])
+  @@index([connectionId])
+  @@index([provisioningDomainId])
+  @@index([scimUserId])
+  @@index([userId])
+  @@map("scimProjectionGrant")
+}
+model ScimGroup {
+  id                   String            @id
+  connectionId         String
+  provisioningDomainId String
+  revision             Int               @default(0)
+  displayName          String
+  displayNameKey       String
+  externalId           String?
+  externalIdKey        String?
+  orderKey             String
+  createdAt            DateTime
+  updatedAt            DateTime
+  scimgroupmembers     ScimGroupMember[]
+
+  @@unique([displayNameKey])
+  @@unique([externalIdKey])
+  @@unique([orderKey])
+  @@index([connectionId])
+  @@index([provisioningDomainId])
+  @@map("scimGroup")
+}
+model ScimGroupMember {
+  id            String    @id
+  connectionId  String
+  groupId       String
+  scimgroup     ScimGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  scimUserId    String
+  scimuser      ScimUser  @relation(fields: [scimUserId], references: [id], onDelete: Cascade)
+  membershipKey String
+  createdAt     DateTime
+
+  @@unique([membershipKey])
+  @@index([connectionId])
+  @@index([groupId])
+  @@index([scimUserId])
+  @@map("scimGroupMember")
 }
