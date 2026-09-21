@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, 'feat/**', 'fix/**', 'chore/**']
+    branches: [main, 'feat/**', 'fix/**', 'chore/**', 'gate-a-enterprise-identity-v2']
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
