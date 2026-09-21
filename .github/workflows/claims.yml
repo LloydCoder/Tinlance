@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, 'feat/**', 'fix/**', 'chore/**', 'sprint-f/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'gate-a-enterprise-identity-v2']
     types: [opened, synchronize, reopened]
   merge_group:
   workflow_dispatch:
