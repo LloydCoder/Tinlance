@@ -197,7 +197,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm prisma migrate diff --from-schema-datamodel /tmp/tinlance-current.prisma --to-schema-datamodel prisma/schema.prisma --script > /tmp/gate-a-identity-access.sql
-          sed -i 's/ADD COLUMN     /ADD COLUMN IF NOT EXISTS     /g' /tmp/gate-a-identity-access.sql
+          sed -i -e 's/ADD COLUMN     /ADD COLUMN IF NOT EXISTS     /g' -e 's/CREATE TABLE /CREATE TABLE IF NOT EXISTS /g' -e 's/CREATE UNIQUE INDEX /CREATE UNIQUE INDEX IF NOT EXISTS /g' -e 's/CREATE INDEX /CREATE INDEX IF NOT EXISTS /g' /tmp/gate-a-identity-access.sql
           mkdir -p prisma/migrations/202609172300_gate_a_identity_access
           mv /tmp/gate-a-identity-access.sql prisma/migrations/202609172300_gate_a_identity_access/migration.sql
           if grep -Eiq '(^|[[:space:]])(DROP[[:space:]]+(TABLE|COLUMN)|TRUNCATE|DELETE[[:space:]]+FROM)' prisma/migrations/202609172300_gate_a_identity_access/migration.sql; then
