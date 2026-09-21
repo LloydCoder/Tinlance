@@ -1,6 +1,8 @@
 name: Gate A Bootstrap And Verification
 
 on:
+  push:
+    branches: [gate-a-enterprise-identity-v2]
   pull_request:
     branches: [main, 'gate-a-enterprise-identity-v2']
     types: [opened, synchronize, reopened]
