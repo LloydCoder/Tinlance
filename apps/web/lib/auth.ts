@@ -19,6 +19,7 @@ const baseURL = process.env.NODE_ENV === "production"
 const bootstrapAdminEmail = process.env.TINLANCE_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
 const authSecret = process.env.BETTER_AUTH_SECRET;
 const betterAuthApiKey = process.env.BETTER_AUTH_API_KEY;
+const scimCredentialHashSecret = process.env.BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET ?? authSecret ?? "";
 
 const trustedOrigins = [productionOrigin, apexOrigin, baseURL, vercelOrigin]
   .filter((origin): origin is string => Boolean(origin))
@@ -108,7 +109,7 @@ export const auth = betterAuth({
       connections: [],
       managedConnections: {
         enabled: true,
-        credentialHashSecret: process.env.BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET,
+        credentialHashSecret: scimCredentialHashSecret,
       },
       requiredRole: ["owner", "admin"],
       providerOwnership: {
