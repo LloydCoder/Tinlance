@@ -192,6 +192,10 @@ jobs:
       - name: Apply existing Prisma migrations
         working-directory: apps/web
         run: pnpm prisma migrate deploy
+      - name: Provision Prisma shadow database
+        working-directory: apps/web
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE tinlance_gate_a_shadow' || true
       - name: Compute reviewed additive migration from migrated database
         working-directory: apps/web
         run: |
