@@ -14,6 +14,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
+ARG BETTER_AUTH_SECRET
+ARG BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET
+ENV BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
+ENV BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET=$BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET
 ENV NEXT_TELEMETRY_DISABLED=1
 # Container image construction must remain database-independent. Production
 # deployments apply Prisma migrations separately from the application build.
