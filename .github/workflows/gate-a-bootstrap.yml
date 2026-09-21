@@ -209,7 +209,7 @@ jobs:
               constraint = name[1:-1].replace("'", "''")
               table_name = table[1:-1].replace("'", "''")
               return (f'DO $$ BEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = \'{constraint}\' '
-                      f'AND conrelid = \'{table_name}\'::regclass) THEN\n    ALTER TABLE {table} ADD CONSTRAINT {name} {body};\n  END IF;\nEND $$;')
+                      f'AND conrelid = to_regclass(\'public."{table_name}"\')) THEN\n    ALTER TABLE {table} ADD CONSTRAINT {name} {body};\n  END IF;\nEND $$;')
           path.write_text(pattern.sub(guard, sql))
           PY
           mkdir -p prisma/migrations/202609172300_gate_a_identity_access
