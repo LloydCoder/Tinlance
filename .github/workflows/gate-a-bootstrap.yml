@@ -1,0 +1,251 @@
+name: Gate A Bootstrap And Verification
+
+on:
+  push:
+    branches: [gate-a-enterprise-identity-v2]
+  pull_request:
+    branches: [main, 'gate-a-enterprise-identity-v2']
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: gate-a-bootstrap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-and-verify:
+    name: Generate Better Auth schema and verify Gate A foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_gate_a
+      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_gate_a_shadow
+      BETTER_AUTH_SECRET: gate-a-ci-secret-32-characters-minimum-123456
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_API_KEY: gate-a-ci-api-key
+      BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET: gate-a-scim-credential-hash-secret-32-characters-min
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tinlance_gate_a
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tinlance_gate_a"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: 10.14.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies and refresh lockfile
+        run: pnpm install --no-frozen-lockfile
+      - name: Bootstrap Prisma client for Better Auth CLI config loading
+        working-directory: apps/web
+        run: pnpm prisma generate
+      - name: Inspect installed SCIM managed-connection contract
+        run: |
+          SCIM_FILE=$(find node_modules -path '*/@better-auth/scim/dist/index.mjs' | head -1)
+          sed -n '7030,7070p' "$SCIM_FILE"
+      - name: Inspect Prisma adapter transaction support
+        run: |
+          ADAPTER_FILE=$(find node_modules -path '*/@better-auth/prisma-adapter/dist/*' | head -1)
+          echo "Adapter sample: $ADAPTER_FILE"
+          grep -R -n -E "transaction|native" node_modules/.pnpm/@better-auth+prisma-adapter@*/node_modules/@better-auth/prisma-adapter/dist 2>/dev/null | head -120 || true
+      - name: Generate Better Auth Prisma schema
+        working-directory: apps/web
+        run: pnpm dlx @better-auth/cli@1.4.22 generate --output prisma/better-auth.generated.prisma --yes
+      - name: Preserve current Prisma schema baseline
+        working-directory: apps/web
+        run: cp prisma/schema.prisma /tmp/tinlance-current.prisma
+      - name: Merge Better Auth schema additively
+        working-directory: apps/web
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const original = fs.readFileSync("prisma/schema.prisma", "utf8");
+          const generated = fs.readFileSync("prisma/better-auth.generated.prisma", "utf8");
+
+          function blocks(text) {
+            const lines = text.split(/\n/);
+            const out = new Map();
+            for (let i = 0; i < lines.length; i++) {
+              const m = lines[i].match(/^\s*(model|enum|type)\s+([A-Za-z0-9_]+)\s*\{/);
+              if (!m) continue;
+              const start = i;
+              let depth = 0;
+              for (; i < lines.length; i++) {
+                depth += (lines[i].match(/\{/g) || []).length;
+                depth -= (lines[i].match(/\}/g) || []).length;
+                if (depth === 0) break;
+              }
+              out.set(m[2], { kind: m[1], lines: lines.slice(start, i + 1) });
+            }
+            return out;
+          }
+
+          function key(line) {
+            const t = line.trim();
+            if (!t || t.startsWith("//")) return null;
+            if (t.startsWith("@@")) return t;
+            if (/^[A-Za-z_][A-Za-z0-9_]*/.test(t)) return t.split(/\s+/)[0];
+            return null;
+          }
+
+          function sameConstraint(a, b) {
+            const norm = (line) => line.trim()
+              .replace(/\s+/g, "")
+              .replace(/,map:\{?name?\}?/g, "");
+            return norm(a) === norm(b);
+          }
+
+          function relationSignature(line) {
+            const t = line.trim();
+            const m = t.match(/@relation\([^)]*fields:\s*\[([^\]]+)\][^)]*references:\s*\[([^\]]+)\]/);
+            return m ? `${m[1].replace(/\s/g, "")}->${m[2].replace(/\s/g, "")}` : null;
+          }
+
+          function uniqueSignature(line) {
+            const t = line.trim();
+            const m = t.match(/@@unique\(\[([^\]]+)\]/);
+            return m ? m[1].replace(/\s/g, "") : null;
+          }
+
+          function indexSignature(line) {
+            const t = line.trim();
+            const m = t.match(/@@index\(\[([^\]]+)\]/);
+            return m ? m[1].replace(/\s/g, "") : null;
+          }
+
+          const originalBlocks = blocks(original);
+          const generatedBlocks = blocks(generated);
+          let merged = original;
+
+          for (const [name, gen] of generatedBlocks) {
+            const existing = originalBlocks.get(name);
+            if (!existing) {
+              merged += (merged.endsWith("\n") ? "" : "\n") + gen.lines.join("\n") + "\n";
+              continue;
+            }
+
+            const existingKeys = new Set(existing.lines.map(key).filter(Boolean));
+            const existingRelations = new Set(existing.lines.map(relationSignature).filter(Boolean));
+            const existingUniques = new Set(existing.lines.map(uniqueSignature).filter(Boolean));
+            const existingIndexes = new Set(existing.lines.map(indexSignature).filter(Boolean));
+            const additions = gen.lines.slice(1, -1).filter((line) => {
+              const t = line.trim();
+              const k = key(line);
+              if (!k) return false;
+              if (t.startsWith("@@map(") || t.startsWith("@@schema(")) return false;
+              if (existingKeys.has(k)) return false;
+              const relation = relationSignature(line);
+              if (relation && existingRelations.has(relation)) return false;
+              const unique = uniqueSignature(line);
+              if (unique && existingUniques.has(unique)) return false;
+              if (unique) {
+                const fields = unique.split(",");
+                if (fields.length === 1 && existing.lines.some((l) => l.trim().startsWith(fields[0] + " ") && l.includes("@unique"))) return false;
+              }
+              const index = indexSignature(line);
+              if (index && existingIndexes.has(index)) return false;
+              if (t.startsWith("@@")) {
+                if (existing.lines.some((l) => sameConstraint(l, line))) return false;
+              }
+              return true;
+            });
+            if (!additions.length) continue;
+
+            const needle = existing.lines.join("\n");
+            const replacement = existing.lines.slice(0, -1).concat(additions, existing.lines.slice(-1)).join("\n");
+            merged = merged.replace(needle, replacement);
+            existing.lines = existing.lines.slice(0, -1).concat(additions, existing.lines.slice(-1));
+            for (const line of additions) {
+              const k = key(line);
+              if (k) existingKeys.add(k);
+            }
+          }
+
+          fs.writeFileSync("prisma/schema.prisma", merged);
+          NODE
+          rm -f prisma/better-auth.generated.prisma
+      - name: Validate Prisma schema
+        working-directory: apps/web
+        run: pnpm prisma validate
+      - name: Generate Prisma client
+        working-directory: apps/web
+        run: pnpm prisma generate
+      - name: Apply existing Prisma migrations
+        working-directory: apps/web
+        run: pnpm prisma migrate deploy
+      - name: Compute reviewed additive migration from migrated database
+        working-directory: apps/web
+        run: |
+          set -euo pipefail
+          pnpm prisma migrate diff --from-schema-datamodel /tmp/tinlance-current.prisma --to-schema-datamodel prisma/schema.prisma --script > /tmp/gate-a-identity-access.sql
+          sed -i -e 's/ADD COLUMN     /ADD COLUMN IF NOT EXISTS     /g' -e 's/CREATE TABLE /CREATE TABLE IF NOT EXISTS /g' -e 's/CREATE UNIQUE INDEX /CREATE UNIQUE INDEX IF NOT EXISTS /g' -e 's/CREATE INDEX /CREATE INDEX IF NOT EXISTS /g' /tmp/gate-a-identity-access.sql
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path('/tmp/gate-a-identity-access.sql')
+          sql = path.read_text()
+          pattern = re.compile(r'ALTER TABLE ("[^"]+") ADD CONSTRAINT ("[^"]+") ([^;]+);')
+          def guard(match):
+              table, name, body = match.groups()
+              constraint = name[1:-1].replace("'", "''")
+              table_name = table[1:-1].replace("'", "''")
+              return (f'DO $$ BEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = \'{constraint}\' '
+                      f'AND conrelid = to_regclass(\'public."{table_name}"\')) THEN\n    ALTER TABLE {table} ADD CONSTRAINT {name} {body};\n  END IF;\nEND $$;')
+          path.write_text(pattern.sub(guard, sql))
+          PY
+          mkdir -p prisma/migrations/202609172300_gate_a_identity_access
+          mv /tmp/gate-a-identity-access.sql prisma/migrations/202609172300_gate_a_identity_access/migration.sql
+          if grep -Eiq '(^|[[:space:]])(DROP[[:space:]]+(TABLE|COLUMN)|TRUNCATE|DELETE[[:space:]]+FROM)' prisma/migrations/202609172300_gate_a_identity_access/migration.sql; then
+            echo "Destructive SQL detected; review required."
+            cat prisma/migrations/202609172300_gate_a_identity_access/migration.sql
+            exit 1
+          fi
+      - name: Apply Gate A migration to migrated CI database
+        working-directory: apps/web
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/migrations/202609172300_gate_a_identity_access/migration.sql
+      - name: Typecheck
+        working-directory: apps/web
+        run: pnpm typecheck
+      - name: Lint
+        working-directory: apps/web
+        run: pnpm lint
+      - name: Tests
+        working-directory: apps/web
+        run: pnpm test -- --passWithNoTests
+      - name: Build
+        working-directory: apps/web
+        run: pnpm build
+      - name: Commit generated auth schema and lockfile
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/package.json pnpm-lock.yaml apps/web/prisma/schema.prisma apps/web/prisma/migrations/202609172300_gate_a_identity_access/migration.sql .github/workflows/gate-a-bootstrap.yml apps/web/lib/auth.ts apps/web/lib/auth-client.ts 'apps/web/app/api/auth/[...all]/route.ts'
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit."
+            exit 0
+          fi
+          git commit -m "Gate A: generate enterprise identity schema"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"

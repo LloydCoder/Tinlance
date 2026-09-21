@@ -2,12 +2,16 @@ name: M6 MCP security
 
 on:
   push:
-    branches: [main, 'feat/**', 'fix/**', 'chore/**']
+    branches: [main, 'feat/**', 'fix/**', 'chore/**', 'gate-a-enterprise-identity-v2']
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
   merge_group:
   workflow_dispatch:
+
+env:
+  BETTER_AUTH_SECRET: tinlance-gate-a-ci-auth-secret-32-characters-minimum
+  BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET: tinlance-gate-a-ci-scim-secret-32-characters-minimum
 
 permissions:
   contents: read

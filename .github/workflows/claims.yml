@@ -4,10 +4,14 @@ on:
   push:
     branches: [main, 'feat/**', 'fix/**', 'chore/**', 'sprint-f/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'gate-a-enterprise-identity-v2']
     types: [opened, synchronize, reopened]
   merge_group:
   workflow_dispatch:
+
+env:
+  BETTER_AUTH_SECRET: tinlance-gate-a-ci-auth-secret-32-characters-minimum
+  BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET: tinlance-gate-a-ci-scim-secret-32-characters-minimum
 
 permissions:
   contents: read
