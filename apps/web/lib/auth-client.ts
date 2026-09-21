@@ -3,7 +3,6 @@
 import { createAuthClient } from "better-auth/react";
 import {
   organizationClient,
-  ssoClient,
   twoFactorClient,
 } from "better-auth/client/plugins";
 
@@ -12,11 +11,6 @@ export const authClient = createAuthClient({
     organizationClient(),
     twoFactorClient({
       twoFactorPage: "/two-factor",
-    }),
-    ssoClient({
-      domainVerification: {
-        enabled: true,
-      },
     }),
   ],
 });
