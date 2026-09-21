@@ -108,14 +108,8 @@ export const auth = betterAuth({
     scim({
       connections: [],
       managedConnections: {
-        enabled: true,
         credentialHashSecret: scimCredentialHashSecret,
       },
-      requiredRole: ["owner", "admin"],
-      providerOwnership: {
-        enabled: true,
-      },
-      storeSCIMToken: "hashed",
     }),
     dash({
       apiKey: betterAuthApiKey,
