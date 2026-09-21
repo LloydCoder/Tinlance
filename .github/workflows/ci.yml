@@ -197,6 +197,9 @@ jobs:
           context: .
           file: apps/web/Dockerfile
           tags: tinlance-web:ci
+          build-args: |
+            BETTER_AUTH_SECRET=${{ env.BETTER_AUTH_SECRET }}
+            BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET=${{ env.BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET }}
           load: true
           provenance: false
       - name: Build FDE API image
@@ -246,6 +249,9 @@ jobs:
           context: .
           file: apps/web/Dockerfile
           tags: tinlance-web:sbom
+          build-args: |
+            BETTER_AUTH_SECRET=${{ env.BETTER_AUTH_SECRET }}
+            BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET=${{ env.BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET }}
           load: true
       - name: Build FDE API image for SBOM
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f
