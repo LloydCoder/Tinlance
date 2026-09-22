@@ -66,6 +66,7 @@ def test_execute_requires_signed_tenant_context(monkeypatch):
 
 
 def test_execute_requires_upstream(monkeypatch):
+    monkeypatch.setenv("FDE_TENANT_SIGNING_SECRET", TENANT_SIGNING_SECRET)
     monkeypatch.setenv("FDE_ENV", "test")
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
     monkeypatch.delenv("FDE_MASTER_UPSTREAM_URL", raising=False)
@@ -148,6 +149,7 @@ def test_execute_rejects_invalid_tenant_id(monkeypatch):
 
 @respx.mock
 def test_execute_caches_oauth_token_across_requests(monkeypatch):
+    monkeypatch.setenv("FDE_TENANT_SIGNING_SECRET", TENANT_SIGNING_SECRET)
     monkeypatch.setenv("FDE_ENV", "production")
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_URL", "https://fde-mastery.internal")
