@@ -15,7 +15,7 @@ async function fixture() {
   await db.member.create({ data: { id: randomUUID(), organizationId, userId, role: "owner", createdAt: new Date() } });
   await db.$executeRaw(Prisma.sql`INSERT INTO "Project" (id,"organizationId",name,status,"createdAt","updatedAt") VALUES (${projectA},${organizationId},'M5 Project A','active',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),(${projectB},${otherOrganizationId},'M5 Project B','active',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`);
   await db.$executeRaw(Prisma.sql`INSERT INTO "ApiCredential" (id,"organizationId","createdByUserId",name,prefix,"secretHash",scopes,"createdAt","updatedAt") VALUES (${credentialId},${organizationId},${userId},'M5 Test Key',${prefix},${keyHash(secret)},'["projects:read","projects:write"]'::jsonb,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`);
-  created.push({ organizationIds: [organizationId, otherOrganizationId], userId, credentialId }); return { organizationId, projectA, projectB, secret };
+  created.push({ organizationIds: [organizationId, otherOrganizationId], userId, credentialId }); return { organizationId, otherOrganizationId, projectA, projectB, secret };
 }
 
 afterEach(async () => { for (const item of created.splice(0)) { for (const organizationId of item.organizationIds) { await db.$executeRaw(Prisma.sql`DELETE FROM "ApiWebhookDelivery" WHERE "eventId" IN (SELECT id FROM "ApiEvent" WHERE "organizationId"=${organizationId})`); await db.$executeRaw(Prisma.sql`DELETE FROM "ApiEvent" WHERE "organizationId"=${organizationId}`); await db.$executeRaw(Prisma.sql`DELETE FROM "ApiIdempotencyKey" WHERE "organizationId"=${organizationId}`); await db.$executeRaw(Prisma.sql`DELETE FROM "ProjectWorkspaceState" WHERE "organizationId"=${organizationId}`); await db.$executeRaw(Prisma.sql`DELETE FROM "Project" WHERE "organizationId"=${organizationId}`); await db.$executeRaw(Prisma.sql`DELETE FROM "Organization" WHERE id=${organizationId}`); } await db.$executeRaw(Prisma.sql`DELETE FROM "ApiCredential" WHERE id=${item.credentialId}`); await db.$executeRaw(Prisma.sql`DELETE FROM "User" WHERE id=${item.userId}`); } });
@@ -54,5 +54,27 @@ describe("M5 public API security", () => {
     const replay = await createProject(new Request("https://tinlance.test/v1/projects", { method: "POST", headers, body: JSON.stringify({ name: "Idempotent project" }) })); expect(replay.status).toBe(201); const replayBody = await replay.json(); expect(replayBody.data.id).toBe(firstBody.data.id);
     const list = await getProjects(new Request("https://tinlance.test/v1/projects", { headers: { authorization: `Bearer ${f.secret}` } })); const listBody = await list.json(); expect(listBody.data.data.filter((p: { name: string }) => p.name === "Idempotent project")).toHaveLength(1);
     const cross = await getProject(new Request(`https://tinlance.test/v1/projects/${f.projectB}`, { headers: { authorization: `Bearer ${f.secret}` } }), { params: Promise.resolve({ projectId: f.projectB }) }); expect(cross.status).toBe(404);
+  });
+});
+
+
+describe("Gate C database tenant integrity", () => {
+  it("rejects a workspace child row whose project belongs to another organization", async () => {
+    const f = await fixture();
+    await expect(
+      db.$executeRaw(
+        Prisma.sql`INSERT INTO "ProjectWorkspaceState" ("id","projectId","organizationId","status","priority","createdAt","updatedAt")
+          VALUES (${randomUUID()}, ${f.projectA}, ${f.otherOrganizationId}, 'DRAFT', 'normal', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      ),
+    ).rejects.toThrow(/ProjectWorkspaceState_project_tenant_fkey/);
+  });
+
+  it("exposes the Gate C composite tenant foreign key as an enforced database constraint", async () => {
+    const rows = await db.$queryRaw<Array<{ constraintName: string; validated: boolean }>>(
+      Prisma.sql`SELECT conname AS "constraintName", convalidated AS "validated"
+        FROM pg_constraint
+        WHERE conname = 'ProjectWorkspaceState_project_tenant_fkey'`,
+    );
+    expect(rows).toEqual([{ constraintName: "ProjectWorkspaceState_project_tenant_fkey", validated: true }]);
   });
 });
