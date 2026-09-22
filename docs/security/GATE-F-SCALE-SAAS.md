@@ -32,3 +32,5 @@ Gate F does not claim payment/accounting certification, uptime guarantees, legal
 - `Gate F SDK + Scale Contracts` validates TypeScript SDK compilation, Python SDK installation/tests, usage/incident unit contracts, and formatting.
 - Existing CI continues to validate Prisma migrations, application build/typecheck/lint/tests, security regression, container hardening and SBOM.
 - Production deployment verification remains separate from repository CI.
+
+Gate F verification also requires the post-migration application CI to pass; generated authentication artifacts produced by the existing Gate A bootstrap workflow remain part of the repository's verified build state.
