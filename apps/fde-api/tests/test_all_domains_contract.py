@@ -1,4 +1,7 @@
+import hashlib
+import hmac
 import json
+import time
 
 import respx
 from fastapi.testclient import TestClient
@@ -16,6 +19,14 @@ DOMAINS = (
     "procurement",
     "custom",
 )
+TENANT_SIGNING_SECRET = "tinlance-gate-b-test-tenant-signing-secret-32"
+TENANT_TIMESTAMP = str(int(time.time()))
+TENANT_SIGNATURE = hmac.new(
+    TENANT_SIGNING_SECRET.encode(),
+    f"{TENANT_TIMESTAMP}.org123".encode(),
+    hashlib.sha256,
+).hexdigest()
+
 PAYLOADS = {
     domain: {"synthetic": True, "domain": domain, "case_id": f"E2E-{domain}"}
     for domain in DOMAINS
@@ -28,6 +39,7 @@ def test_gateway_forwards_every_supported_domain_to_canonical_triage(monkeypatch
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_URL", "https://fde-mastery.internal")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_TOKEN", "static-token")
+    monkeypatch.setenv("FDE_TENANT_SIGNING_SECRET", TENANT_SIGNING_SECRET)
     routes = {
         domain: respx.post(
             f"https://fde-mastery.internal/v1/triage/org123/{domain}"
@@ -55,6 +67,9 @@ def test_gateway_forwards_every_supported_domain_to_canonical_triage(monkeypatch
                 "Authorization": "Bearer secret",
                 "Idempotency-Key": f"domain-contract-{domain}",
                 "X-Request-ID": f"12345678-1234-4234-8234-{index:012d}",
+                "X-Tinlance-Tenant": "org123",
+                "X-Tinlance-Tenant-Timestamp": TENANT_TIMESTAMP,
+                "X-Tinlance-Tenant-Signature": TENANT_SIGNATURE,
             },
             json={"tenant_id": "org123", "payload": PAYLOADS[domain]},
         )

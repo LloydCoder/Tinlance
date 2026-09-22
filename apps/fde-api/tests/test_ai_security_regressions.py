@@ -47,7 +47,7 @@ def test_untrusted_metadata_is_not_treated_as_gateway_configuration(monkeypatch)
             },
         },
     )
-    assert response.status_code in {502, 503}
+    assert response.status_code in {403, 502, 503}
 
 
 def test_unknown_domain_is_rejected_before_upstream_execution(monkeypatch):

@@ -21,6 +21,33 @@ async function fixture() {
 afterEach(async () => { for (const item of created.splice(0)) { for (const organizationId of item.organizationIds) { await db.$executeRaw(Prisma.sql`DELETE FROM "ApiWebhookDelivery" WHERE "eventId" IN (SELECT id FROM "ApiEvent" WHERE "organizationId"=${organizationId})`); await db.$executeRaw(Prisma.sql`DELETE FROM "ApiEvent" WHERE "organizationId"=${organizationId}`); await db.$executeRaw(Prisma.sql`DELETE FROM "ApiIdempotencyKey" WHERE "organizationId"=${organizationId}`); await db.$executeRaw(Prisma.sql`DELETE FROM "ProjectWorkspaceState" WHERE "organizationId"=${organizationId}`); await db.$executeRaw(Prisma.sql`DELETE FROM "Project" WHERE "organizationId"=${organizationId}`); await db.$executeRaw(Prisma.sql`DELETE FROM "Organization" WHERE id=${organizationId}`); } await db.$executeRaw(Prisma.sql`DELETE FROM "ApiCredential" WHERE id=${item.credentialId}`); await db.$executeRaw(Prisma.sql`DELETE FROM "User" WHERE id=${item.userId}`); } });
 
 describe("M5 public API security", () => {
+  it("prevents duplicate creation under concurrent idempotent requests", async () => {
+    const f = await fixture();
+    const headers = { authorization: `Bearer ${f.secret}`, "content-type": "application/json", "idempotency-key": `concurrent-${f.organizationId}` };
+    const body = JSON.stringify({ name: "Concurrent idempotent project" });
+    const [first, second] = await Promise.all([
+      createProject(new Request("https://tinlance.test/v1/projects", { method: "POST", headers, body })),
+      createProject(new Request("https://tinlance.test/v1/projects", { method: "POST", headers, body })),
+    ]);
+    expect([first.status, second.status].sort()).toEqual([201, 201]);
+    const firstBody = await first.json();
+    const secondBody = await second.json();
+    expect(firstBody.data.id).toBe(secondBody.data.id);
+    const rows = await db.project.findMany({ where: { organizationId: f.organizationId, name: "Concurrent idempotent project" }, select: { id: true } });
+    expect(rows).toHaveLength(1);
+  });
+
+  it("rejects idempotency-key reuse with a different request", async () => {
+    const f = await fixture();
+    const headers = { authorization: `Bearer ${f.secret}`, "content-type": "application/json", "idempotency-key": `conflict-${f.organizationId}` };
+    const first = await createProject(new Request("https://tinlance.test/v1/projects", { method: "POST", headers, body: JSON.stringify({ name: "Original request" }) }));
+    expect(first.status).toBe(201);
+    const conflict = await createProject(new Request("https://tinlance.test/v1/projects", { method: "POST", headers, body: JSON.stringify({ name: "Different request" }) }));
+    expect(conflict.status).toBe(409);
+    const body = await conflict.json();
+    expect(body.code).toBe("idempotency_conflict");
+  });
+
   it("isolates tenant data and replays idempotent project creation without duplication", async () => {
     const f = await fixture(); const headers = { authorization: `Bearer ${f.secret}`, "content-type": "application/json", "idempotency-key": `project-create-${f.organizationId}` };
     const first = await createProject(new Request("https://tinlance.test/v1/projects", { method: "POST", headers, body: JSON.stringify({ name: "Idempotent project" }) })); expect(first.status).toBe(201); const firstBody = await first.json();

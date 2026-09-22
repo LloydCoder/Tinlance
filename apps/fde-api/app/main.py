@@ -89,6 +89,30 @@ _cached_token: str | None = None
 _cached_token_expires_at: float = 0.0
 
 
+TENANT_CONTEXT_MAX_SKEW_SECONDS = 300
+
+
+def verify_tenant_context(tenant_id: str, request_id: str, request: Request) -> None:
+    secret = os.getenv("FDE_TENANT_SIGNING_SECRET", "").strip()
+    if len(secret) < 32:
+        raise HTTPException(status_code=503, detail="FDE tenant signing is not configured")
+    asserted_tenant = request.headers.get("x-tinlance-tenant", "").strip()
+    timestamp_raw = request.headers.get("x-tinlance-tenant-timestamp", "").strip()
+    signature = request.headers.get("x-tinlance-tenant-signature", "").strip()
+    if not asserted_tenant or asserted_tenant != tenant_id:
+        raise HTTPException(status_code=403, detail="Tenant context is invalid")
+    try:
+        timestamp = int(timestamp_raw)
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail="Tenant context is invalid") from exc
+    if abs(int(time.time()) - timestamp) > TENANT_CONTEXT_MAX_SKEW_SECONDS:
+        raise HTTPException(status_code=401, detail="Tenant context has expired")
+    signing_input = f"{timestamp}.{tenant_id}".encode()
+    expected = hmac.new(secret.encode(), signing_input, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        raise HTTPException(status_code=401, detail="Tenant context signature is invalid")
+
+
 def static_token_allowed() -> bool:
     return os.getenv("FDE_ENV", "production").strip().lower() in {
         "development",
@@ -203,6 +227,7 @@ async def execute(
     normalized_domain = domain.strip().lower()
     if normalized_domain not in VALID_DOMAINS:
         raise HTTPException(status_code=422, detail="Unknown domain")
+    verify_tenant_context(payload.tenant_id, request_id, request)
     upstream = os.getenv("FDE_MASTER_UPSTREAM_URL")
     if not upstream:
         raise HTTPException(status_code=503, detail="FDE upstream is not configured")

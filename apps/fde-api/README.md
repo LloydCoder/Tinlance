@@ -69,6 +69,8 @@ FDE Mastery remains authoritative for client registration, domain enablement, te
 ## Security controls
 
 - Constant-time service-token comparison.
+- Cryptographically signed tenant context bound to the execution request; caller-supplied tenant identifiers are not trusted by themselves.
+- Five-minute tenant-context replay window with fail-closed verification.
 - Explicit supported-domain allowlist aligned with FDE Mastery.
 - Pydantic request validation with unknown fields rejected.
 - Bounded task, domain, organization and metadata inputs.

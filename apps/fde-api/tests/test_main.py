@@ -1,4 +1,7 @@
+import hashlib
+import hmac
 import json
+import time
 
 import respx
 from fastapi.testclient import TestClient
@@ -7,9 +10,19 @@ from httpx import Response
 from app.main import app
 
 client = TestClient(app)
+TENANT_SIGNING_SECRET = "tinlance-gate-b-test-tenant-signing-secret-32"
+TENANT_TIMESTAMP = str(int(time.time()))
+TENANT_SIGNATURE = hmac.new(
+    TENANT_SIGNING_SECRET.encode(),
+    f"{TENANT_TIMESTAMP}.org123".encode(),
+    hashlib.sha256,
+).hexdigest()
 AUTH_HEADERS = {
     "Authorization": "Bearer secret",
     "Idempotency-Key": "test-idempotency-key",
+    "X-Tinlance-Tenant": "org123",
+    "X-Tinlance-Tenant-Timestamp": TENANT_TIMESTAMP,
+    "X-Tinlance-Tenant-Signature": TENANT_SIGNATURE,
 }
 BASE_PAYLOAD = {"synthetic": True, "case_id": "TEST-CASE"}
 
@@ -19,6 +32,7 @@ def configure_static_test_auth(monkeypatch):
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_URL", "https://fde-mastery.internal")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_TOKEN", "static-token")
+    monkeypatch.setenv("FDE_TENANT_SIGNING_SECRET", TENANT_SIGNING_SECRET)
 
 
 def test_health_is_public(monkeypatch):
@@ -48,7 +62,19 @@ def test_execute_requires_idempotency_key(monkeypatch):
     assert response.json()["detail"] == "Idempotency-Key is required"
 
 
+def test_execute_requires_signed_tenant_context(monkeypatch):
+    configure_static_test_auth(monkeypatch)
+    headers = {"Authorization": "Bearer secret", "Idempotency-Key": "tenant-context-test"}
+    response = client.post(
+        "/v1/cybersecurity/execute",
+        headers=headers,
+        json={"tenant_id": "org123", "payload": BASE_PAYLOAD},
+    )
+    assert response.status_code == 403
+
+
 def test_execute_requires_upstream(monkeypatch):
+    monkeypatch.setenv("FDE_TENANT_SIGNING_SECRET", TENANT_SIGNING_SECRET)
     monkeypatch.setenv("FDE_ENV", "test")
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
     monkeypatch.delenv("FDE_MASTER_UPSTREAM_URL", raising=False)
@@ -131,6 +157,7 @@ def test_execute_rejects_invalid_tenant_id(monkeypatch):
 
 @respx.mock
 def test_execute_caches_oauth_token_across_requests(monkeypatch):
+    monkeypatch.setenv("FDE_TENANT_SIGNING_SECRET", TENANT_SIGNING_SECRET)
     monkeypatch.setenv("FDE_ENV", "production")
     monkeypatch.setenv("FDE_SERVICE_TOKEN", "secret")
     monkeypatch.setenv("FDE_MASTER_UPSTREAM_URL", "https://fde-mastery.internal")
@@ -163,10 +190,7 @@ def test_execute_caches_oauth_token_across_requests(monkeypatch):
     for index in range(2):
         response = client.post(
             "/v1/finance/execute",
-            headers={
-                "Authorization": "Bearer secret",
-                "Idempotency-Key": f"oauth-test-{index}",
-            },
+            headers={**AUTH_HEADERS, "Idempotency-Key": f"oauth-test-{index}"},
             json={
                 "tenant_id": "org123",
                 "payload": {"case_id": f"OAUTH-{index}", "synthetic": True},
