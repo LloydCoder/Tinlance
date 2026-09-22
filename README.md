@@ -18,7 +18,7 @@ Primary public routes:
 - `/about` — company, FDE philosophy and ecosystem context.
 - `/work` — typed public engineering/open-source evidence and case-study taxonomy.
 
-Production canonical URLs resolve to `https://tinlance.com`. Preview environments use their Vercel URL when no explicit `NEXT_PUBLIC_SITE_URL` is configured; local development falls back to `http://localhost:3000`. Canonical metadata, Open Graph URLs, structured data, sitemap and robots all use the same site URL resolver.
+Production canonical URLs resolve to `https://www.tinlance.com`. Preview environments use their Vercel URL when no explicit `NEXT_PUBLIC_SITE_URL` is configured; local development falls back to `http://localhost:3000`. Canonical metadata, Open Graph URLs, structured data, sitemap and robots all use the same site URL resolver.
 
 ## Evidence & trust
 
@@ -192,7 +192,7 @@ The security verification baseline is OWASP ASVS 5.0, with additional AI/agent s
 
 ## Public product relationships
 
-ThreatFade remains a distinct Tinlance-developed security product with its own public property and repository. Tinlance links to `https://threatfade.com` and the public ThreatFade repository from appropriate product/engineering surfaces. The ThreatFade web property links back to `https://tinlance.com` from its shared footer.
+ThreatFade remains a distinct Tinlance-developed security product with its own public property and repository. Tinlance links to `https://threatfade.com` and the public ThreatFade repository from appropriate product/engineering surfaces. The ThreatFade web property links back to `https://www.tinlance.com` from its shared footer.
 
 ThreatFade evidence is scoped to its documented methodology and test population. The public Tinlance site does not convert historical experimental results into universal accuracy, customer-deployment or certification claims.
 
