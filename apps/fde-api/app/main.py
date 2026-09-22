@@ -107,7 +107,7 @@ def verify_tenant_context(tenant_id: str, request_id: str, request: Request) -> 
         raise HTTPException(status_code=401, detail="Tenant context is invalid") from exc
     if abs(int(time.time()) - timestamp) > TENANT_CONTEXT_MAX_SKEW_SECONDS:
         raise HTTPException(status_code=401, detail="Tenant context has expired")
-    signing_input = f"{timestamp}.{tenant_id}.{request_id}".encode()
+    signing_input = f"{timestamp}.{tenant_id}".encode()
     expected = hmac.new(secret.encode(), signing_input, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(signature, expected):
         raise HTTPException(status_code=401, detail="Tenant context signature is invalid")
