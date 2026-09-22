@@ -1,7 +1,6 @@
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { authenticateApi, bodyHash, cursorPage, emitApiEvent, ok, parsePagination, problem } from "@/lib/api/v1";
+import { authenticateApi, bodyHash, cursorPage, emitApiEvent, parsePagination, problem } from "@/lib/api/v1";
 import { IdempotencyConflictError, runIdempotentMutation } from "@/lib/api/idempotency";
 
 const createSchema = z.object({ name: z.string().trim().min(1).max(200), type: z.string().trim().max(100).optional(), description: z.string().trim().max(5000).optional(), dueAt: z.string().datetime().optional() });
