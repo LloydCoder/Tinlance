@@ -35,7 +35,7 @@ jobs:
           echo "Production did not become reachable within 10 minutes."
           exit 1
 
-      - name: Verify apex production origin
+      - name: Verify www production origin
         shell: bash
         run: |
           set -euo pipefail
@@ -47,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          headers="$(curl --fail --silent --show-error --max-redirs 0 -D - -o /dev/null https://www.tinlance.com/security)"
+          headers="$(curl --fail --silent --show-error --max-redirs 0 -D - -o /dev/null https://tinlance.com/security)"
           echo "$headers"
           echo "$headers" | grep -Eiq "^HTTP/[^ ]+ 30[1278]($|[[:space:]])"
           echo "$headers" | grep -Eiq "^location: https://www\.tinlance\.com/security($|[?#])"
@@ -67,7 +67,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          headers="$(curl --fail --silent --show-error --max-redirs 0 -D - -o /dev/null https://tinlance.com/security)"
+          headers="$(curl --fail --silent --show-error --max-redirs 0 -D - -o /dev/null https://www.tinlance.com/security)"
           echo "$headers"
           echo "$headers" | grep -Eiq "^strict-transport-security:"
           echo "$headers" | grep -Eiq "^content-security-policy:"
@@ -81,7 +81,7 @@ jobs:
           set -euo pipefail
           robots="$(curl --fail --silent --show-error --max-redirs 0 https://www.tinlance.com/robots.txt)"
           sitemap="$(curl --fail --silent --show-error --max-redirs 0 https://www.tinlance.com/sitemap.xml)"
-          echo "$robots" | grep -Fq "https://tinlance.com/sitemap.xml"
-          echo "$sitemap" | grep -Fq "https://tinlance.com/"
-          ! echo "$robots" | grep -Fq "https://tinlance.com/sitemap.xml"
-          ! echo "$sitemap" | grep -Fq "https://tinlance.com/"
+          echo "$robots" | grep -Fq "https://www.tinlance.com/sitemap.xml"
+          echo "$sitemap" | grep -Fq "https://www.tinlance.com/"
+          ! echo "$robots" | grep -Fq "https://tinlance.com"
+          ! echo "$sitemap" | grep -Fq "https://tinlance.com"
