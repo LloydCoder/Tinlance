@@ -91,17 +91,14 @@ export async function POST(request: Request) {
       },
     );
 
-    if (result.replayed) {
-      return new Response(JSON.stringify(result.responseBody), {
-        status: result.statusCode,
-        headers: {
-          "content-type": "application/json",
-          "cache-control": "private, no-store",
-          "x-request-id": principal.requestId,
-        },
-      });
-    }
-    return ok(request, result.value ? result.responseBody && (result.responseBody as { data: unknown }).data : null, result.statusCode);
+    return new Response(JSON.stringify(result.responseBody), {
+      status: result.statusCode,
+      headers: {
+        "content-type": "application/json",
+        "cache-control": "private, no-store",
+        "x-request-id": principal.requestId,
+      },
+    });
   } catch (error) {
     if (error instanceof IdempotencyConflictError) {
       return problem(principal.requestId, 409, "idempotency_conflict", error.message);
