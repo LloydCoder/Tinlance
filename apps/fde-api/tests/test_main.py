@@ -12,7 +12,11 @@ from app.main import app
 client = TestClient(app)
 TENANT_SIGNING_SECRET = "tinlance-gate-b-test-tenant-signing-secret-32"
 TENANT_TIMESTAMP = str(int(time.time()))
-TENANT_SIGNATURE = hmac.new(TENANT_SIGNING_SECRET.encode(), f"{TENANT_TIMESTAMP}.org123".encode(), hashlib.sha256).hexdigest()
+TENANT_SIGNATURE = hmac.new(
+    TENANT_SIGNING_SECRET.encode(),
+    f"{TENANT_TIMESTAMP}.org123".encode(),
+    hashlib.sha256,
+).hexdigest()
 AUTH_HEADERS = {
     "Authorization": "Bearer secret",
     "Idempotency-Key": "test-idempotency-key",
@@ -61,7 +65,11 @@ def test_execute_requires_idempotency_key(monkeypatch):
 def test_execute_requires_signed_tenant_context(monkeypatch):
     configure_static_test_auth(monkeypatch)
     headers = {"Authorization": "Bearer secret", "Idempotency-Key": "tenant-context-test"}
-    response = client.post("/v1/cybersecurity/execute", headers=headers, json={"tenant_id": "org123", "payload": BASE_PAYLOAD})
+    response = client.post(
+        "/v1/cybersecurity/execute",
+        headers=headers,
+        json={"tenant_id": "org123", "payload": BASE_PAYLOAD},
+    )
     assert response.status_code == 403
 
 
