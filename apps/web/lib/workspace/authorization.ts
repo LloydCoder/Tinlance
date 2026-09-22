@@ -37,11 +37,15 @@ export async function getWorkspacePrincipal(): Promise<WorkspacePrincipal | null
   return { userId: session.user.id, organizationId, memberRole: membership.role, globalRole: user?.role ?? null, isPrivileged: isPrivilegedRole(user?.role) };
 }
 
+export function canAccessWorkspaceOrganization(principal: Pick<WorkspacePrincipal, "organizationId" | "globalRole">, resourceOrganizationId: string) {
+  return principal.organizationId === resourceOrganizationId || principal.globalRole === "super-admin";
+}
+
 export async function authorizeProject(projectId: string, permission: WorkspacePermission) {
   const principal = await getWorkspacePrincipal();
   if (!principal || !hasWorkspacePermission(principal, permission)) return null;
   const project = await db.project.findUnique({ where: { id: projectId }, select: { id: true, organizationId: true, name: true, status: true, type: true, engagementId: true, description: true } });
-  if (!project || (!principal.isPrivileged && project.organizationId !== principal.organizationId)) return null;
+  if (!project || !canAccessWorkspaceOrganization(principal, project.organizationId)) return null;
   const decision = await m7Authorize(principal, permission, "Project", project.id);
   if (decision.decision !== "ALLOW") return null;
   return { principal, project };
