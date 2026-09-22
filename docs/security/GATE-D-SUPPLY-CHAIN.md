@@ -6,11 +6,12 @@ Gate D establishes repository-level supply-chain controls that complement the ex
 
 ## Controls implemented in the repository
 
-1. Pull-request dependency review
-   - Runs on pull requests targeting main.
-   - Uses the pinned actions/dependency-review-action v5 release.
-   - Fails for newly introduced high or critical runtime dependency vulnerabilities.
+1. Blocking dependency audits
+   - Runs on pull requests targeting main, merge groups, pushes to main, a daily schedule and manual dispatch.
+   - Audits the production npm dependency graph with pnpm audit at high severity.
+   - Audits the FDE Python dependency graph with pip-audit in strict mode.
    - Uses contents: read workflow permissions.
+   - This is intentionally independent of GitHub's dependency-graph service.
 
 2. Full-history secret scanning
    - Runs on pushes, pull requests, merge groups, a daily schedule and manual dispatch.
