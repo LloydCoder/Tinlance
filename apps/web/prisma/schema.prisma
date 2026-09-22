@@ -603,6 +603,7 @@ model Project {
   engagement     Engagement?  @relation(fields: [engagementId], references: [id], onDelete: SetNull)
   @@index([organizationId, status])
   @@index([engagementId, status])
+  @@unique([id, organizationId])
 }
 
 model Document {
