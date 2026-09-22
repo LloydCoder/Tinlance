@@ -224,10 +224,10 @@ async def execute(
     idempotency_key = idempotency_key.strip()
     if len(idempotency_key) > 255:
         raise HTTPException(status_code=400, detail="Idempotency-Key is too long")
-    verify_tenant_context(payload.tenant_id, request_id, request)
     normalized_domain = domain.strip().lower()
     if normalized_domain not in VALID_DOMAINS:
         raise HTTPException(status_code=422, detail="Unknown domain")
+    verify_tenant_context(payload.tenant_id, request_id, request)
     upstream = os.getenv("FDE_MASTER_UPSTREAM_URL")
     if not upstream:
         raise HTTPException(status_code=503, detail="FDE upstream is not configured")
