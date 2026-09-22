@@ -25,7 +25,7 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 20); do
-            if curl --fail --silent --show-error --location --max-redirs 0 --output /dev/null https://tinlance.com/; then
+            if curl --fail --silent --show-error --location --max-redirs 0 --output /dev/null https://www.tinlance.com/; then
               echo "Production origin is responding."
               exit 0
             fi
@@ -35,29 +35,29 @@ jobs:
           echo "Production did not become reachable within 10 minutes."
           exit 1
 
-      - name: Verify apex production origin
+      - name: Verify www production origin
         shell: bash
         run: |
           set -euo pipefail
-          status="$(curl --fail --silent --show-error --location --max-redirs 0 -o /tmp/home.html -w "%{http_code}" https://tinlance.com/)"
+          status="$(curl --fail --silent --show-error --location --max-redirs 0 -o /tmp/home.html -w "%{http_code}" https://www.tinlance.com/)"
           test "$status" = "200"
           grep -qi "Tinlance" /tmp/home.html
 
-      - name: Verify legacy www redirects to apex
+      - name: Verify legacy apex redirects to www
         shell: bash
         run: |
           set -euo pipefail
-          headers="$(curl --fail --silent --show-error --max-redirs 0 -D - -o /dev/null https://www.tinlance.com/security)"
+          headers="$(curl --fail --silent --show-error --max-redirs 0 -D - -o /dev/null https://tinlance.com/security)"
           echo "$headers"
           echo "$headers" | grep -Eiq "^HTTP/[^ ]+ 30[1278]($|[[:space:]])"
-          echo "$headers" | grep -Eiq "^location: https://tinlance\.com/security($|[?#])"
+          echo "$headers" | grep -Eiq "^location: https://www\.tinlance\.com/security($|[?#])"
 
       - name: Verify health and readiness endpoints
         shell: bash
         run: |
           set -euo pipefail
-          health="$(curl --fail --silent --show-error --max-redirs 0 https://tinlance.com/api/health)"
-          ready="$(curl --fail --silent --show-error --max-redirs 0 https://tinlance.com/api/ready)"
+          health="$(curl --fail --silent --show-error --max-redirs 0 https://www.tinlance.com/api/health)"
+          ready="$(curl --fail --silent --show-error --max-redirs 0 https://www.tinlance.com/api/ready)"
           echo "$health"
           echo "$ready"
           echo "$health" | grep -Eiq '"status"[[:space:]]*:[[:space:]]*"ok"'
@@ -67,7 +67,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          headers="$(curl --fail --silent --show-error --max-redirs 0 -D - -o /dev/null https://tinlance.com/security)"
+          headers="$(curl --fail --silent --show-error --max-redirs 0 -D - -o /dev/null https://www.tinlance.com/security)"
           echo "$headers"
           echo "$headers" | grep -Eiq "^strict-transport-security:"
           echo "$headers" | grep -Eiq "^content-security-policy:"
@@ -79,9 +79,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          robots="$(curl --fail --silent --show-error --max-redirs 0 https://tinlance.com/robots.txt)"
-          sitemap="$(curl --fail --silent --show-error --max-redirs 0 https://tinlance.com/sitemap.xml)"
-          echo "$robots" | grep -Fq "https://tinlance.com/sitemap.xml"
-          echo "$sitemap" | grep -Fq "https://tinlance.com/"
-          ! echo "$robots" | grep -Fq "www.tinlance.com"
-          ! echo "$sitemap" | grep -Fq "www.tinlance.com"
+          robots="$(curl --fail --silent --show-error --max-redirs 0 https://www.tinlance.com/robots.txt)"
+          sitemap="$(curl --fail --silent --show-error --max-redirs 0 https://www.tinlance.com/sitemap.xml)"
+          echo "$robots" | grep -Fq "https://www.tinlance.com/sitemap.xml"
+          echo "$sitemap" | grep -Fq "https://www.tinlance.com/"
+          ! echo "$robots" | grep -Fq "https://tinlance.com"
+          ! echo "$sitemap" | grep -Fq "https://tinlance.com"
