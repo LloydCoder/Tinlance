@@ -188,6 +188,7 @@ The security verification baseline is OWASP ASVS 5.0, with additional AI/agent s
 - [`docs/FDE-INTEGRATION.md`](./docs/FDE-INTEGRATION.md) — FDE boundary.
 - [`docs/ENTERPRISE-CI-GATES.md`](./docs/ENTERPRISE-CI-GATES.md) — blocking CI/security controls.
 - [`docs/security/GATE-D-SUPPLY-CHAIN.md`](./docs/security/GATE-D-SUPPLY-CHAIN.md) — dependency review, full-history secret scanning and Dependabot supply-chain controls.
+- [`docs/security/GATE-E-PRODUCTION.md`](./docs/security/GATE-E-PRODUCTION.md) — canonical production origin, legacy-host redirect and live production smoke verification.
 
 ## Public product relationships
 
