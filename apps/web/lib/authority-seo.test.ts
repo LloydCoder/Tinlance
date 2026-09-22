@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import robots from "../app/robots";
 import sitemap from "../app/sitemap";
 
-const canonicalOrigin = "https://www.tinlance.com";
+const canonicalOrigin = "https://tinlance.com";
 
 describe("authority SEO contract", () => {
   it("allows public discovery and protects private application areas", () => {
