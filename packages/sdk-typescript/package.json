@@ -1,0 +1,1 @@
+{"name":"@tinlance/sdk","version":"1.0.0","description":"Official TypeScript client for the Tinlance v1 API.","type":"module","main":"dist/index.js","types":"dist/index.d.ts"}
