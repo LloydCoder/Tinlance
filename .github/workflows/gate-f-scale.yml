@@ -54,5 +54,6 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile=true
         working-directory: .
+      - run: pnpm prisma generate
       - run: pnpm exec vitest run lib/usage/meter.test.ts lib/incident-response.test.ts
       - run: pnpm exec prettier --check lib/usage/meter.ts lib/usage/meter.test.ts lib/incident-response.ts lib/incident-response.test.ts
