@@ -1,1 +1,88 @@
-import { Prisma } from "@prisma/client";\nimport { randomUUID } from "node:crypto";\nimport { db } from "@/lib/db";\n\nexport type IdempotencyReplay = Readonly<{ replayed: true; statusCode: number; responseBody: unknown; }>;\nexport type IdempotencyCreated<T> = Readonly<{ replayed: false; statusCode: number; responseBody: unknown; value: T; }>;\n\nexport class IdempotencyConflictError extends Error {\n  constructor() {\n    super("Idempotency key was already used with a different request");\n    this.name = "IdempotencyConflictError";\n  }\n}\n\ntype IdempotencyInput = Readonly<{\n  organizationId: string;\n  credentialId: string | null;\n  key: string;\n  method: string;\n  path: string;\n  requestHash: string;\n  ttlHours?: number;\n}>;\n\ntype IdempotencyResult<T> = IdempotencyReplay | IdempotencyCreated<T>;\n\nexport async function runIdempotentMutation<T>(\n  input: IdempotencyInput,\n  operation: (tx: Prisma.TransactionClient) => Promise<{ statusCode: number; responseBody: unknown; value: T }>,\n): Promise<IdempotencyResult<T>> {\n  const ttlHours = input.ttlHours ?? 24;\n\n  return db.$transaction(async (tx) => {\n    await tx.$executeRaw(\n      Prisma.sql`DELETE FROM "ApiIdempotencyKey"\n        WHERE "organizationId"=${input.organizationId}\n          AND "key"=${input.key}\n          AND "method"=${input.method}\n          AND "path"=${input.path}\n          AND "expiresAt" <= CURRENT_TIMESTAMP`,\n    );\n\n    const inserted = await tx.$queryRaw<Array<{ id: string }>>(\n      Prisma.sql`INSERT INTO "ApiIdempotencyKey"\n        ("id","organizationId","credentialId","key","method","path","requestHash","statusCode","responseBody","createdAt","expiresAt")\n        VALUES (\n          ${`idem_${randomUUID().replaceAll("-", "")}`},\n          ${input.organizationId},\n          ${input.credentialId},\n          ${input.key},\n          ${input.method},\n          ${input.path},\n          ${input.requestHash},\n          0,\n          '{}'::jsonb,\n          CURRENT_TIMESTAMP,\n          CURRENT_TIMESTAMP + (${ttlHours} * INTERVAL '1 hour')\n        )\n        ON CONFLICT ("organizationId","key","method","path") DO NOTHING\n        RETURNING "id"`,\n    );\n\n    if (!inserted[0]) {\n      const existing = await tx.$queryRaw<Array<{ requestHash: string; statusCode: number; responseBody: unknown }>>(\n        Prisma.sql`SELECT "requestHash","statusCode","responseBody"\n          FROM "ApiIdempotencyKey"\n          WHERE "organizationId"=${input.organizationId}\n            AND "key"=${input.key}\n            AND "method"=${input.method}\n            AND "path"=${input.path}\n            AND "expiresAt" > CURRENT_TIMESTAMP\n          LIMIT 1`,\n      );\n      if (!existing[0]) throw new Error("idempotency_record_unavailable");\n      if (existing[0].requestHash !== input.requestHash) throw new IdempotencyConflictError();\n      return { replayed: true, statusCode: existing[0].statusCode, responseBody: existing[0].responseBody };\n    }\n\n    const result = await operation(tx);\n    await tx.$executeRaw(\n      Prisma.sql`UPDATE "ApiIdempotencyKey"\n        SET "statusCode"=${result.statusCode},\n            "responseBody"=${JSON.stringify(result.responseBody)}::jsonb\n        WHERE "id"=${inserted[0].id}`,\n    );\n    return { replayed: false, statusCode: result.statusCode, responseBody: result.responseBody, value: result.value };\n  });\n}
+import { Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import { db } from "@/lib/db";
+
+export type IdempotencyReplay = Readonly<{ replayed: true; statusCode: number; responseBody: unknown; }>;
+export type IdempotencyCreated<T> = Readonly<{ replayed: false; statusCode: number; responseBody: unknown; value: T; }>;
+
+export class IdempotencyConflictError extends Error {
+  constructor() {
+    super("Idempotency key was already used with a different request");
+    this.name = "IdempotencyConflictError";
+  }
+}
+
+type IdempotencyInput = Readonly<{
+  organizationId: string;
+  credentialId: string | null;
+  key: string;
+  method: string;
+  path: string;
+  requestHash: string;
+  ttlHours?: number;
+}>;
+
+type IdempotencyResult<T> = IdempotencyReplay | IdempotencyCreated<T>;
+
+export async function runIdempotentMutation<T>(
+  input: IdempotencyInput,
+  operation: (tx: Prisma.TransactionClient) => Promise<{ statusCode: number; responseBody: unknown; value: T }>,
+): Promise<IdempotencyResult<T>> {
+  const ttlHours = input.ttlHours ?? 24;
+
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw(
+      Prisma.sql`DELETE FROM "ApiIdempotencyKey"
+        WHERE "organizationId"=${input.organizationId}
+          AND "key"=${input.key}
+          AND "method"=${input.method}
+          AND "path"=${input.path}
+          AND "expiresAt" <= CURRENT_TIMESTAMP`,
+    );
+
+    const inserted = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`INSERT INTO "ApiIdempotencyKey"
+        ("id","organizationId","credentialId","key","method","path","requestHash","statusCode","responseBody","createdAt","expiresAt")
+        VALUES (
+          ${`idem_${randomUUID().replaceAll("-", "")}`},
+          ${input.organizationId},
+          ${input.credentialId},
+          ${input.key},
+          ${input.method},
+          ${input.path},
+          ${input.requestHash},
+          0,
+          '{}'::jsonb,
+          CURRENT_TIMESTAMP,
+          CURRENT_TIMESTAMP + (${ttlHours} * INTERVAL '1 hour')
+        )
+        ON CONFLICT ("organizationId","key","method","path") DO NOTHING
+        RETURNING "id"`,
+    );
+
+    if (!inserted[0]) {
+      const existing = await tx.$queryRaw<Array<{ requestHash: string; statusCode: number; responseBody: unknown }>>(
+        Prisma.sql`SELECT "requestHash","statusCode","responseBody"
+          FROM "ApiIdempotencyKey"
+          WHERE "organizationId"=${input.organizationId}
+            AND "key"=${input.key}
+            AND "method"=${input.method}
+            AND "path"=${input.path}
+            AND "expiresAt" > CURRENT_TIMESTAMP
+          LIMIT 1`,
+      );
+      if (!existing[0]) throw new Error("idempotency_record_unavailable");
+      if (existing[0].requestHash !== input.requestHash) throw new IdempotencyConflictError();
+      return { replayed: true, statusCode: existing[0].statusCode, responseBody: existing[0].responseBody };
+    }
+
+    const result = await operation(tx);
+    await tx.$executeRaw(
+      Prisma.sql`UPDATE "ApiIdempotencyKey"
+        SET "statusCode"=${result.statusCode},
+            "responseBody"=${JSON.stringify(result.responseBody)}::jsonb
+        WHERE "id"=${inserted[0].id}`,
+    );
+    return { replayed: false, statusCode: result.statusCode, responseBody: result.responseBody, value: result.value };
+  });
+}
