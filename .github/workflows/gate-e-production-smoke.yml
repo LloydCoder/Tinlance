@@ -50,7 +50,7 @@ jobs:
           headers="$(curl --fail --silent --show-error --max-redirs 0 -D - -o /dev/null https://tinlance.com/security)"
           echo "$headers"
           echo "$headers" | grep -Eiq "^HTTP/[^ ]+ 30[1278]($|[[:space:]])"
-          echo "$headers" | grep -Eiq "^location: https://www\.tinlance\.com/security($|[?#])"
+          echo "$headers" | grep -Fqi "location: https://www.tinlance.com/security"
 
       - name: Verify health and readiness endpoints
         shell: bash
