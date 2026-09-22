@@ -33,7 +33,7 @@ CI-based Gitleaks is a repository control, not a replacement for GitHub Secret P
 
 For the public Tinlance repository, GitHub's user-level push protection also provides protection against supported secrets during pushes. Repository-level Secret Protection/push-protection status must be verified in GitHub Security and quality settings separately from repository code.
 
-Likewise, dependency-review enforcement is only a mandatory merge blocker when repository branch/ruleset configuration requires the corresponding check to pass.
+GitHub's native Dependency Review remains an additional platform control when Dependency Graph is enabled. The first Gate D run showed that this repository's Dependency Review endpoint is not currently available to the connected Actions token, so Gate D does not weaken the blocking CI path to accommodate it. The repository instead uses independent blocking audits already supported by the build toolchains.
 
 Gate D therefore treats:
 - repository workflow controls as code-verifiable;
@@ -42,7 +42,7 @@ Gate D therefore treats:
 ## Verification requirements
 
 A Gate D merge is not considered successful unless:
-- dependency review is green;
+- blocking npm and Python dependency audits are green;
 - full-history Gitleaks is green;
 - existing enterprise CI remains green;
 - no high/critical runtime dependency is introduced;
