@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { startAutomation } from "@/lib/automation/engine";
 import { authenticateApi, ok, problem } from "@/lib/api/v1";
+import { recordUsage } from "@/lib/usage/meter";
 const domains = new Set(["cybersecurity", "finance", "healthtech", "logistics", "legal", "revops", "procurement", "custom"]);
 export async function POST(request: Request, context: { params: Promise<{ assessmentId: string }> }) {
   const auth = await authenticateApi(request, "assessments:execute", "expensive"); if ("response" in auth) return auth.response; const { assessmentId } = await context.params;
@@ -11,6 +12,7 @@ export async function POST(request: Request, context: { params: Promise<{ assess
   const idempotencyKey = request.headers.get("idempotency-key")?.trim(); if (!idempotencyKey || idempotencyKey.length > 255) return problem(auth.principal.requestId, 400, "idempotency_required", "Idempotency-Key is required for execution");
   try {
     const run = await startAutomation({ organizationId: auth.principal.organizationId, projectId: assessment.projectId, assessmentId: assessment.assessmentId, playbookSlug: "fde-technical-assessment", actorUserId: auth.principal.userId, triggerType: "API", idempotencyKey: `api-assessment:${assessmentId}:${idempotencyKey}`, requestId: auth.principal.requestId, input: { assessmentId, domain, source: "api-v1" } });
+    await recordUsage({ organizationId: auth.principal.organizationId, requestId: auth.principal.requestId, credentialId: auth.principal.credentialId, metric: "assessment_executions", metadata: { assessmentId, domain, workflowRunId: run.id } });
     await db.auditEvent.create({ data: { organizationId: auth.principal.organizationId, actorUserId: auth.principal.userId, action: "ASSESSMENT_EXECUTION_REQUESTED", resourceType: "workspace_assessment", resourceId: assessmentId, requestId: auth.principal.requestId, metadata: { workflowRunId: run.id, domain, apiVersion: "v1" } } });
     return ok(request, { workflowRunId: run.id, status: run.status, assessmentId }, 202, { "retry-after": "5" });
   } catch (error) {

@@ -1,0 +1,59 @@
+name: Gate F SDK + Scale Contracts
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typescript-sdk:
+    name: TypeScript SDK
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with: { version: 10.14.0 }
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile=true
+      - run: pnpm exec tsc -p packages/sdk-typescript/tsconfig.json
+
+  python-sdk:
+    name: Python SDK
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with: { python-version: "3.12" }
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e packages/sdk-python
+      - run: pip install pytest
+      - run: pytest -q packages/sdk-python/tests
+      - run: python -m compileall -q packages/sdk-python/src
+
+  contract-tests:
+    name: Scale contract tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with: { version: 10.14.0 }
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile=true
+        working-directory: .
+      - run: pnpm prisma generate
+      - run: pnpm exec vitest run lib/usage/meter.test.ts lib/incident-response.test.ts
+      - run: pnpm exec prettier --check lib/usage/meter.ts lib/usage/meter.test.ts lib/incident-response.ts lib/incident-response.test.ts
