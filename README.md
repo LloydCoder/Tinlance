@@ -187,6 +187,7 @@ The security verification baseline is OWASP ASVS 5.0, with additional AI/agent s
 - [`apps/web/docs/security/M8_AGENT_EVALUATION_PLATFORM.md`](./apps/web/docs/security/M8_AGENT_EVALUATION_PLATFORM.md) — M8 assurance plane.
 - [`docs/FDE-INTEGRATION.md`](./docs/FDE-INTEGRATION.md) — FDE boundary.
 - [`docs/ENTERPRISE-CI-GATES.md`](./docs/ENTERPRISE-CI-GATES.md) — blocking CI/security controls.
+- [`docs/security/GATE-D-SUPPLY-CHAIN.md`](./docs/security/GATE-D-SUPPLY-CHAIN.md) — dependency review, full-history secret scanning and Dependabot supply-chain controls.
 
 ## Public product relationships
 
