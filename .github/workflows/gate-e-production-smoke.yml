@@ -1,0 +1,87 @@
+name: Gate E Production Smoke
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-e-production-smoke
+  cancel-in-progress: true
+
+jobs:
+  production-smoke:
+    name: Production canonical + security smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Wait for production deployment to converge
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --show-error --location --max-redirs 0 --output /dev/null https://tinlance.com/; then
+              echo "Production origin is responding."
+              exit 0
+            fi
+            echo "Production not ready yet (attempt ${attempt}/20); waiting 30s..."
+            sleep 30
+          done
+          echo "Production did not become reachable within 10 minutes."
+          exit 1
+
+      - name: Verify apex production origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl --fail --silent --show-error --location --max-redirs 0 -o /tmp/home.html -w "%{http_code}" https://tinlance.com/)"
+          test "$status" = "200"
+          grep -qi "Tinlance" /tmp/home.html
+
+      - name: Verify legacy www redirects to apex
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(curl --fail --silent --show-error --max-redirs 0 -D - -o /dev/null https://www.tinlance.com/security)"
+          echo "$headers"
+          echo "$headers" | grep -Eiq "^HTTP/[^ ]+ 30[1278]($|[[:space:]])"
+          echo "$headers" | grep -Eiq "^location: https://tinlance\.com/security($|[?#])"
+
+      - name: Verify health and readiness endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          health="$(curl --fail --silent --show-error --max-redirs 0 https://tinlance.com/api/health)"
+          ready="$(curl --fail --silent --show-error --max-redirs 0 https://tinlance.com/api/ready)"
+          echo "$health"
+          echo "$ready"
+          echo "$health" | grep -Eiq '"status"[[:space:]]*:[[:space:]]*"ok"'
+          echo "$ready" | grep -Eiq '"status"[[:space:]]*:[[:space:]]*"ready"'
+
+      - name: Verify security headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(curl --fail --silent --show-error --max-redirs 0 -D - -o /dev/null https://tinlance.com/security)"
+          echo "$headers"
+          echo "$headers" | grep -Eiq "^strict-transport-security:"
+          echo "$headers" | grep -Eiq "^content-security-policy:"
+          echo "$headers" | grep -Eiq "^x-content-type-options:[[:space:]]*nosniff"
+          echo "$headers" | grep -Eiq "^x-frame-options:[[:space:]]*DENY"
+          echo "$headers" | grep -Eiq "^referrer-policy:[[:space:]]*strict-origin-when-cross-origin"
+
+      - name: Verify robots and sitemap use canonical origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          robots="$(curl --fail --silent --show-error --max-redirs 0 https://tinlance.com/robots.txt)"
+          sitemap="$(curl --fail --silent --show-error --max-redirs 0 https://tinlance.com/sitemap.xml)"
+          echo "$robots" | grep -Fq "https://tinlance.com/sitemap.xml"
+          echo "$sitemap" | grep -Fq "https://tinlance.com/"
+          ! echo "$robots" | grep -Fq "www.tinlance.com"
+          ! echo "$sitemap" | grep -Fq "www.tinlance.com"
