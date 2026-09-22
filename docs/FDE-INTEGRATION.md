@@ -26,6 +26,9 @@ POST /v1/{domain}/execute
 Authorization: Bearer <FDE_SERVICE_TOKEN>
 Idempotency-Key: <unique operation key>
 x-request-id: <UUID>
+X-Tinlance-Tenant: <organization id>
+X-Tinlance-Tenant-Timestamp: <unix seconds>
+X-Tinlance-Tenant-Signature: <HMAC-SHA256(timestamp + "." + organization id)>
 
 {
   "tenant_id": "org-id-or-slug",
@@ -71,7 +74,7 @@ The canonical `fde-mastery` `Domain` enum is the source of truth for the upstrea
 
 ### Tinlance → FDE API
 
-The FDE API requires the server-only `FDE_SERVICE_TOKEN`. End users never authenticate directly to this service boundary.
+The FDE API requires the server-only `FDE_SERVICE_TOKEN` plus a separate HMAC-signed tenant context. The signed tenant context must match the request body tenant identifier and is rejected when missing, invalid, or older than five minutes. End users never authenticate directly to this service boundary.
 
 ### FDE API → fde-mastery
 
