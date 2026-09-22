@@ -2,18 +2,13 @@ import { getSessionCookie } from "better-auth/cookies";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-const CANONICAL_HOST = "tinlance.com";
-const LEGACY_HOST = "www.tinlance.com";
+const CANONICAL_HOST = "www.tinlance.com";
+const LEGACY_HOST = "tinlance.com";
 const protectedPrefixes = ["/portal", "/admin"] as const;
 const nonHtmlPrefixes = ["/api", "/_next", "/feed.xml", "/sitemap.xml", "/robots.txt", "/icon.svg", "/opengraph-image.svg"] as const;
 
-function isProtectedPath(pathname: string) {
-  return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-}
-
-function shouldSetCanonical(pathname: string) {
-  return !nonHtmlPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-}
+function isProtectedPath(pathname: string) { return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)); }
+function shouldSetCanonical(pathname: string) { return !nonHtmlPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)); }
 
 function redirectLegacyHost(request: NextRequest) {
   const hostname = request.nextUrl.hostname.toLowerCase();
@@ -26,9 +21,7 @@ function redirectLegacyHost(request: NextRequest) {
 
 function nextResponseWithCanonical(request: NextRequest) {
   const response = NextResponse.next();
-  if (shouldSetCanonical(request.nextUrl.pathname)) {
-    response.headers.set("Link", `<https://${CANONICAL_HOST}${request.nextUrl.pathname}>; rel="canonical"`);
-  }
+  if (shouldSetCanonical(request.nextUrl.pathname)) response.headers.set("Link", `<https://${CANONICAL_HOST}${request.nextUrl.pathname}>; rel="canonical"`);
   return response;
 }
 
