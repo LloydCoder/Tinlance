@@ -1,0 +1,282 @@
+name: FDE Cross-Repository Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fde-cross-repo-\${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    name: Tinlance → FDE API → FDE Mastery
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Tinlance
+        uses: actions/checkout@v6
+
+      - name: Checkout current FDE Mastery main
+        uses: actions/checkout@v6
+        with:
+          repository: LloydCoder/fde-mastery
+          ref: main
+          path: fde-mastery
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            apps/fde-api/pyproject.toml
+            fde-mastery/packages/platform-core/pyproject.toml
+
+      - name: Install both execution layers
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "apps/fde-api[test]"
+          pip install -e "fde-mastery/packages/platform-core"
+          pip install "pyjwt[crypto]>=2.13,<3" "uvicorn>=0.34,<1" requests
+
+      - name: Create deterministic local OIDC/JWKS provider
+        run: |
+          cat > /tmp/oidc_stub.py <<'PY'
+          from http.server import BaseHTTPRequestHandler, HTTPServer
+          from pathlib import Path
+          import json
+          import jwt
+          from cryptography.hazmat.primitives.asymmetric import rsa
+          from jwt.utils import base64url_encode
+
+          issuer = "http://127.0.0.1:9000"
+          key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+          public = key.public_key().public_numbers()
+          kid = "fde-ci-key-1"
+
+          def b64(value: int) -> str:
+              return base64url_encode(value.to_bytes((value.bit_length() + 7) // 8, "big")).decode()
+
+          jwk = {
+              "kty": "RSA",
+              "use": "sig",
+              "alg": "RS256",
+              "kid": kid,
+              "n": b64(public.n),
+              "e": b64(public.e),
+          }
+
+          token = jwt.encode(
+              {
+                  "iss": issuer,
+                  "aud": "fde-mastery",
+                  "sub": "ci-service",
+                  "tenant_id": "org123",
+                  "scope": "triage:execute",
+                  "iat": int(__import__("time").time()),
+                  "exp": int(__import__("time").time()) + 3600,
+              },
+              key,
+              algorithm="RS256",
+              headers={"kid": kid},
+          )
+          Path("/tmp/fde-ci-token").write_text(token, encoding="utf-8")
+
+          class Handler(BaseHTTPRequestHandler):
+              def do_GET(self):
+                  if self.path == "/jwks":
+                      body = json.dumps({"keys": [jwk]}).encode()
+                      self.send_response(200)
+                      self.send_header("Content-Type", "application/json")
+                      self.send_header("Content-Length", str(len(body)))
+                      self.end_headers()
+                      self.wfile.write(body)
+                      return
+                  self.send_response(404)
+                  self.end_headers()
+
+              def log_message(self, *_args):
+                  return
+
+          HTTPServer(("127.0.0.1", 9000), Handler).serve_forever()
+          PY
+          nohup python /tmp/oidc_stub.py >/tmp/oidc.log 2>&1 &
+
+      - name: Start FDE Mastery
+        working-directory: fde-mastery/packages/platform-core
+        env:
+          FDE_ENVIRONMENT: test
+          FDE_STORAGE_BACKEND: memory
+          FDE_RATE_LIMIT_BACKEND: memory
+          FDE_MONTH1_PROVIDER: openai
+          MOCK_LLM: "true"
+          FDE_OIDC_ISSUER: http://127.0.0.1:9000
+          FDE_OIDC_AUDIENCE: fde-mastery
+          FDE_OIDC_JWKS_URL: http://127.0.0.1:9000/jwks
+          FDE_OIDC_ALGORITHMS: RS256
+          FDE_ADMIN_API_KEYS: ci-admin-key
+        run: |
+          nohup python -m uvicorn deployment.api_gateway.main:app --host 127.0.0.1 --port 8001 >/tmp/fde-mastery.log 2>&1 &
+          for i in $(seq 1 30); do curl --fail --silent http://127.0.0.1:8001/health && break || sleep 1; done
+
+      - name: Register synthetic integration tenant in FDE Mastery
+        run: |
+          curl --fail --silent --show-error \
+            -X POST http://127.0.0.1:8001/admin/clients/register \
+            -H "X-API-Key: ci-admin-key" \
+            -H "Content-Type: application/json" \
+            -d '{"client_id":"org123","client_name":"CI Cross-Repository Tenant","domains":["cybersecurity","finance","healthtech","logistics","legal","revops","procurement","custom"]}'
+
+      - name: Start Tinlance FDE API
+        env:
+          FDE_ENV: test
+          FDE_ALLOWED_HOSTS: 127.0.0.1,localhost,testserver
+          FDE_SERVICE_TOKEN: ci-service-token
+          FDE_TENANT_SIGNING_SECRET: ci-tenant-signing-secret-32-bytes-minimum
+          FDE_MASTER_UPSTREAM_URL: http://127.0.0.1:8001
+        run: |
+          export FDE_MASTER_UPSTREAM_TOKEN="$(cat /tmp/fde-ci-token)"
+          nohup python -m uvicorn app.main:app --app-dir apps/fde-api --host 127.0.0.1 --port 8000 >/tmp/tinlance-fde-api.log 2>&1 &
+          for i in $(seq 1 30); do curl --fail --silent http://127.0.0.1:8000/health && break || sleep 1; done
+
+      - name: Execute every supported domain through both repositories
+        run: |
+          python - <<'PY'
+          import hashlib
+          import hmac
+          import time
+          import uuid
+          import requests
+
+          domains = (
+              "cybersecurity", "finance", "healthtech", "logistics",
+              "legal", "revops", "procurement", "custom",
+          )
+          payloads = {
+              "cybersecurity": {
+                  "log_id": "SOC-E2E-001",
+                  "timestamp": "2026-01-01T00:00:00+00:00",
+                  "source_ip": "10.10.10.10",
+                  "destination_ip": "10.10.10.20",
+                  "user_id": "synthetic-analyst",
+                  "event_type": "UNAUTHORIZED_SSH_ATTEMPT",
+                  "payload_summary": "Repeated failed SSH authentication attempts.",
+              },
+              "finance": {
+                  "transaction_id": "TXN-E2E-001",
+                  "account_id": "acct-synthetic",
+                  "counterparty_id": "counterparty-synthetic",
+                  "transaction_type": "WIRE_TRANSFER",
+                  "amount": 1000,
+                  "currency": "USD",
+                  "source_country": "US",
+                  "destination_country": "US",
+                  "metadata": {},
+              },
+              "healthtech": {
+                  "encounter_id": "ENC-E2E-001",
+                  "patient_id": "patient-synthetic",
+                  "encounter_type": "AMBULATORY",
+                  "primary_symptom": "routine follow-up",
+                  "vital_signs": {"heart_rate": 72, "systolic_bp": 120, "diastolic_bp": 80, "spo2": 98},
+                  "raw_notes": "Synthetic E2E fixture.",
+                  "phi_redacted": True,
+              },
+              "logistics": {
+                  "shipment_id": "SHIP-E2E-001",
+                  "transport_mode": "OCEAN_CONTAINER",
+                  "carrier": "Synthetic Carrier",
+                  "origin_country": "US",
+                  "destination_country": "DE",
+                  "hs_code": "8517.62",
+                  "declared_temp_range_c": [2, 8],
+                  "goods_value_usd": 10000,
+                  "telemetry": {"temperature_c": 5, "humidity_percent": 45, "shock_g_force": 0.2, "location_coords": "40.7128,-74.0060"},
+                  "carrier_status_note": "On schedule.",
+              },
+              "legal": {
+                  "contract_id": "CONTRACT-E2E-001",
+                  "title": "Synthetic Services Agreement",
+                  "counterparty": "Synthetic Counterparty",
+                  "governing_jurisdiction": "Delaware, USA",
+                  "annual_contract_value_usd": 50000,
+                  "clauses": [],
+              },
+              "revops": {
+                  "opportunity_id": "OPP-E2E-001",
+                  "account_name": "Synthetic Account",
+                  "annual_recurring_revenue_usd": 100000,
+                  "lead_source": "PRODUCT_QUALIFIED_PQL",
+                  "deal_stage": "TECHNICAL_EVALUATION",
+                  "discount_requested_pct": 5,
+                  "has_exec_sponsor": True,
+                  "telemetry": {"monthly_active_users": 100, "weekly_usage_growth_pct": 10, "license_utilization_pct": 80},
+              },
+              "procurement": {
+                  "supplier_id": "SUP-E2E-001",
+                  "quote_amount_usd": 75000,
+                  "supplier_risk_score": 25,
+                  "approval_threshold_usd": 50000,
+                  "quote_count": 3,
+              },
+              "custom": {
+                  "risk_level": "medium",
+                  "confidence": 0.75,
+                  "reasons": ["Synthetic tenant-defined E2E case."],
+              },
+          }
+          tenant = "org123"
+          timestamp = str(int(time.time()))
+          signature = hmac.new(
+              b"ci-tenant-signing-secret-32-bytes-minimum",
+              f"{timestamp}.{tenant}".encode(),
+              hashlib.sha256,
+          ).hexdigest()
+
+          for domain in domains:
+              request_id = str(uuid.uuid4())
+              response = requests.post(
+                  f"http://127.0.0.1:8000/v1/{domain}/execute",
+                  headers={
+                      "Authorization": "Bearer ci-service-token",
+                      "Idempotency-Key": f"cross-repo-{domain}",
+                      "X-Request-ID": request_id,
+                      "X-Tinlance-Tenant": tenant,
+                      "X-Tinlance-Tenant-Timestamp": timestamp,
+                      "X-Tinlance-Tenant-Signature": signature,
+                  },
+                  json={
+                      "tenant_id": tenant,
+                      "payload": {
+                          **payloads[domain],
+                      },
+                  },
+                  timeout=20,
+              )
+              assert response.status_code == 200, (domain, response.status_code, response.text)
+              body = response.json()
+              assert body["status"] == "completed", body
+              assert body["result"]["domain"] == domain, body
+              assert body["result"]["client_id"] == tenant, body
+              assert body["result"]["request_id"], body
+              print(f"{domain}: PASS")
+          PY
+
+      - name: Upload cross-repository diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: fde-cross-repo-diagnostics
+          path: |
+            /tmp/oidc.log
+            /tmp/fde-mastery.log
+            /tmp/tinlance-fde-api.log
+          if-no-files-found: warn
