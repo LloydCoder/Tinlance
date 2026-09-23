@@ -80,7 +80,7 @@ jobs:
                   "aud": "fde-mastery",
                   "sub": "ci-service",
                   "tenant_id": "org123",
-                  "scope": "agents:execute",
+                  "scope": "triage:execute",
                   "iat": int(__import__("time").time()),
                   "exp": int(__import__("time").time()) + 3600,
               },
