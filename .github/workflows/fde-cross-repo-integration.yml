@@ -122,9 +122,18 @@ jobs:
           FDE_OIDC_AUDIENCE: fde-mastery
           FDE_OIDC_JWKS_URL: http://127.0.0.1:9000/jwks
           FDE_OIDC_ALGORITHMS: RS256
+          FDE_ADMIN_API_KEYS: ci-admin-key
         run: |
           nohup python -m uvicorn api:app --host 127.0.0.1 --port 8001 >/tmp/fde-mastery.log 2>&1 &
           for i in $(seq 1 30); do curl --fail --silent http://127.0.0.1:8001/health && break || sleep 1; done
+
+      - name: Register synthetic integration tenant in FDE Mastery
+        run: |
+          curl --fail --silent --show-error \
+            -X POST http://127.0.0.1:8001/admin/clients/register \
+            -H "X-API-Key: ci-admin-key" \
+            -H "Content-Type: application/json" \
+            -d '{"client_id":"org123","client_name":"CI Cross-Repository Tenant","domains":["cybersecurity","finance","healthtech","logistics","legal","revops","procurement","custom"]}'
 
       - name: Start Tinlance FDE API
         env:
