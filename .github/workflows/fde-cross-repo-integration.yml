@@ -124,7 +124,7 @@ jobs:
           FDE_OIDC_ALGORITHMS: RS256
           FDE_ADMIN_API_KEYS: ci-admin-key
         run: |
-          nohup python -m uvicorn api:app --host 127.0.0.1 --port 8001 >/tmp/fde-mastery.log 2>&1 &
+          nohup python -m uvicorn deployment.api_gateway.main:app --host 127.0.0.1 --port 8001 >/tmp/fde-mastery.log 2>&1 &
           for i in $(seq 1 30); do curl --fail --silent http://127.0.0.1:8001/health && break || sleep 1; done
 
       - name: Register synthetic integration tenant in FDE Mastery
