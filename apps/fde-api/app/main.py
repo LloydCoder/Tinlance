@@ -242,7 +242,7 @@ async def execute(
         "Idempotency-Key": idempotency_key,
         "authorization": f"Bearer {token}",
     }
-    upstream_payload = {"tenant_id": payload.tenant_id, "payload": payload.payload}
+    upstream_payload = payload.payload
     try:
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(30.0, connect=5.0)
