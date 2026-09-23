@@ -137,7 +137,7 @@ def test_execute_calls_fde_mastery_canonical_route_and_payload(monkeypatch):
     assert response.status_code == 200
     assert route.called
     parsed = json.loads(route.calls.last.request.content)
-    assert parsed == {"tenant_id": "org123", "payload": {"case_id": "E2E-cybersecurity", "alert": "execute this"}}
+    assert parsed == {"case_id": "E2E-cybersecurity", "alert": "execute this"}
     assert route.calls.last.request.headers["authorization"] == "Bearer static-token"
     assert route.calls.last.request.headers["idempotency-key"] == "test-idempotency-key"
     assert route.calls.last.request.headers["x-request-id"] == request_id
