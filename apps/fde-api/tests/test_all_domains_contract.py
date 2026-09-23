@@ -76,7 +76,7 @@ def test_gateway_forwards_every_supported_domain_to_canonical_triage(monkeypatch
         assert response.status_code == 200, f"{domain}: {response.text}"
         assert routes[domain].called
         forwarded = json.loads(routes[domain].calls.last.request.content)
-        assert forwarded == {"tenant_id": "org123", "payload": PAYLOADS[domain]}
+        assert forwarded == PAYLOADS[domain]
         assert response.json()["result"]["domain"] == domain
 
 
