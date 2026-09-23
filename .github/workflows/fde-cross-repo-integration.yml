@@ -151,6 +151,84 @@ jobs:
               "cybersecurity", "finance", "healthtech", "logistics",
               "legal", "revops", "procurement", "custom",
           )
+          payloads = {
+              "cybersecurity": {
+                  "log_id": "CROSS-REPO-cybersecurity",
+                  "timestamp": "2026-01-01T00:00:00Z",
+                  "source_ip": "10.0.0.15",
+                  "destination_ip": "192.168.1.10",
+                  "user_id": "ci-user",
+                  "event_type": "UNAUTHORIZED_SSH_ATTEMPT",
+                  "payload_summary": "Synthetic failed SSH login attempts for integration verification.",
+              },
+              "finance": {
+                  "transaction_id": "CROSS-REPO-finance",
+                  "account_id": "acct-ci",
+                  "counterparty_id": "counterparty-ci",
+                  "transaction_type": "WIRE_TRANSFER",
+                  "amount": 1000.0,
+                  "currency": "USD",
+                  "source_country": "US",
+                  "destination_country": "US",
+                  "metadata": {"source": "ci"},
+              },
+              "healthtech": {
+                  "encounter_id": "CROSS-REPO-healthtech",
+                  "patient_id": "synthetic-patient",
+                  "encounter_type": "AMBULATORY",
+                  "primary_symptom": "routine follow-up",
+                  "vital_signs": {"heart_rate": 72, "systolic_bp": 120, "diastolic_bp": 80, "temp_c": 36.8, "spo2": 99},
+                  "raw_notes": "Synthetic CI encounter; no real PHI.",
+                  "phi_redacted": True,
+              },
+              "logistics": {
+                  "shipment_id": "CROSS-REPO-logistics",
+                  "transport_mode": "OCEAN_CONTAINER",
+                  "carrier": "CI-CARRIER",
+                  "origin_country": "US",
+                  "destination_country": "DE",
+                  "hs_code": "847130",
+                  "declared_temp_range_c": [15, 25],
+                  "goods_value_usd": 5000.0,
+                  "telemetry": {"temperature_c": 20.0, "humidity_percent": 50.0, "shock_g_force": 0.2, "location_coords": "0,0"},
+                  "carrier_status_note": "Synthetic CI shipment in normal transit.",
+              },
+              "legal": {
+                  "contract_id": "CROSS-REPO-legal",
+                  "title": "Synthetic CI Services Agreement",
+                  "counterparty": "CI Counterparty",
+                  "governing_jurisdiction": "New York",
+                  "annual_contract_value_usd": 10000.0,
+                  "clauses": [{
+                      "clause_id": "1",
+                      "clause_type": "LIABILITY_CAP",
+                      "section_title": "Limitation of Liability",
+                      "text": "Liability is limited to fees paid under the agreement.",
+                  }],
+              },
+              "revops": {
+                  "opportunity_id": "CROSS-REPO-revops",
+                  "account_name": "CI Account",
+                  "annual_recurring_revenue_usd": 12000.0,
+                  "lead_source": "INBOUND_DEMO",
+                  "deal_stage": "QUALIFICATION",
+                  "discount_requested_pct": 0.0,
+                  "has_exec_sponsor": False,
+                  "telemetry": {"monthly_active_users": 10, "weekly_usage_growth_pct": 2.0, "license_utilization_pct": 50.0},
+              },
+              "procurement": {
+                  "supplier_id": "supplier-ci",
+                  "quote_amount_usd": 1000.0,
+                  "supplier_risk_score": 10.0,
+                  "approval_threshold_usd": 50000.0,
+                  "quote_count": 3,
+              },
+              "custom": {
+                  "risk_level": "low",
+                  "confidence": 0.9,
+                  "reasons": ["synthetic integration verification"],
+              },
+          }
           tenant = "org123"
           timestamp = str(int(time.time()))
           signature = hmac.new(
@@ -174,9 +252,7 @@ jobs:
                   json={
                       "tenant_id": tenant,
                       "payload": {
-                          "synthetic": True,
-                          "domain": domain,
-                          "case_id": f"CROSS-REPO-{domain}",
+                          **payloads[domain],
                       },
                   },
                   timeout=20,
