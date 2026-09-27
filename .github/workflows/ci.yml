@@ -327,7 +327,6 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_dast?schema=public
       BETTER_AUTH_SECRET: tinlance-dast-auth-secret-32-characters-minimum
       BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET: tinlance-dast-scim-secret-32-characters-minimum
-      NODE_ENV: production
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
@@ -342,7 +341,7 @@ jobs:
       - run: pnpm --filter @tinlance/web build
       - name: Start production web server
         working-directory: apps/web
-        run: pnpm exec next start -H 127.0.0.1 -p 3000 > /tmp/tinlance-next.log 2>&1 & echo $! > /tmp/tinlance-next.pid
+        run: NODE_ENV=production pnpm exec next start -H 127.0.0.1 -p 3000 > /tmp/tinlance-next.log 2>&1 & echo $! > /tmp/tinlance-next.pid
       - name: Wait for application readiness
         run: |
           set -euo pipefail
