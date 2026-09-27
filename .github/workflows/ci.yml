@@ -358,10 +358,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/zap
-          docker run --rm --network host \\
-            -v /tmp/zap:/zap/wrk:rw \\
-            ghcr.io/zaproxy/zaproxy:stable \\
-            zap-baseline.py -t http://127.0.0.1:3000 -m 5 -J zap-report.json -r zap-report.html -w zap-report.md
+          docker run --rm --network host -v /tmp/zap:/zap/wrk:rw ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://127.0.0.1:3000 -m 5 -J zap-report.json -r zap-report.html -w zap-report.md
       - name: Upload DAST evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
