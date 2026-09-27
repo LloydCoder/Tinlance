@@ -20,7 +20,29 @@ function redirectLegacyHost(request: NextRequest) {
 }
 
 function nextResponseWithCanonical(request: NextRequest) {
-  const response = NextResponse.next();
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const cspHeader = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://va.vercel-scripts.com`,
+    `style-src 'self' 'nonce-${nonce}'`,
+    "img-src 'self' blob: data:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://vitals.vercel-insights.com",
+    "frame-src 'self'",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", cspHeader);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("Content-Security-Policy", cspHeader);
   if (shouldSetCanonical(request.nextUrl.pathname)) response.headers.set("Link", `<https://${CANONICAL_HOST}${request.nextUrl.pathname}>; rel="canonical"`);
   return response;
 }
