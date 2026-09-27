@@ -1,0 +1,113 @@
+name: DAST
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dast-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-dast:
+    name: OWASP ZAP web DAST
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tinlance_dast
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tinlance_dast"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_dast?schema=public
+      BETTER_AUTH_SECRET: tinlance-dast-auth-secret-32-characters-minimum
+      BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET: tinlance-dast-scim-secret-32-characters-minimum
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: 10.14.0
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile=true
+      - run: pnpm prisma migrate deploy
+      - run: pnpm --filter @tinlance/web build
+
+      - name: Start production web server
+        working-directory: apps/web
+        run: |
+          set -euo pipefail
+          pnpm exec next start -H 127.0.0.1 -p 3000 > /tmp/tinlance-next.log 2>&1 &
+          echo $! > /tmp/tinlance-next.pid
+
+      - name: Wait for application readiness
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/api/health > /tmp/health.json; then
+              cat /tmp/health.json
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/tinlance-next.log
+          exit 1
+
+      - name: Run OWASP ZAP baseline scan
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/zap
+          docker run --rm --network host \
+            -v /tmp/zap:/zap/wrk:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://127.0.0.1:3000 \
+            -m 5 \
+            -J zap-report.json \
+            -r zap-report.html \
+            -w zap-report.md
+
+      - name: Upload DAST evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tinlance-dast-evidence
+          path: |
+            /tmp/zap/zap-report.json
+            /tmp/zap/zap-report.html
+            /tmp/zap/zap-report.md
+            /tmp/tinlance-next.log
+          if-no-files-found: warn
+
+      - name: Stop production web server
+        if: always()
+        run: |
+          if [ -f /tmp/tinlance-next.pid ]; then
+            kill "$(cat /tmp/tinlance-next.pid)" || true
+          fi
