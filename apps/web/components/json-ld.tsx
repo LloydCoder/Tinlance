@@ -1,10 +1,10 @@
 import { absoluteUrl } from "../lib/site";
 
-type JsonLdProps = { data: Record<string, unknown> | Record<string, unknown>[] };
+type JsonLdProps = { data: Record<string, unknown> | Record<string, unknown>[]; nonce?: string | null };
 
-export function JsonLd({ data }: JsonLdProps) {
+export function JsonLd({ data, nonce }: JsonLdProps) {
   const json = JSON.stringify(data).replace(/</g, "\\u003c");
-  return <script type="application/ld+json">{json}</script>;
+  return <script type="application/ld+json" nonce={nonce ?? undefined}>{json}</script>;
 }
 
 export const organizationSchema = {

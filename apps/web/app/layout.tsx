@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { JsonLd, organizationSchema, websiteSchema } from "../components/json-ld";
 import { GrowthTracker } from "../components/growth-tracker";
 import { SiteFooter } from "../components/site-footer";
@@ -31,11 +32,12 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: "Tinlance — AI Engineering & Forward-Deployed Engineering", description: "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation.", images: ["/twitter-image"] },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const nonce = (await headers()).get("x-nonce");
   return (
     <html lang="en">
       <body>
-        <JsonLd data={[organizationSchema, websiteSchema]} />
+        <JsonLd data={[organizationSchema, websiteSchema]} nonce={nonce} />
         <GrowthTracker />
         <SiteHeader />
         <main>{children}</main>
