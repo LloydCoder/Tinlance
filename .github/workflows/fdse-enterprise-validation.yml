@@ -45,6 +45,11 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Set up pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
           version: 10.14.0
@@ -104,13 +109,13 @@ jobs:
       - name: 8 Failure-injection validation
         run: |
           set -euo pipefail
-          matches="$(grep -RniE "reject|invalid|unauthorized|forbidden|fail.?closed|timeout|idempot" apps/fde-api/tests apps/web/tests docs | head -120 || true)"
+          matches="$(grep -RniE "reject|invalid|unauthorized|forbidden|fail.?closed|timeout|idempot"             apps/fde-api/tests apps/web/tests docs | head -120 || true)"
           test -n "$matches"
           printf '%s\n' "$matches"
       - name: 9 Workflow-recovery validation
         run: |
           set -euo pipefail
-          grep -RniE "retry|recovery|lease|cancel|resume|idempot" apps/web/docs docs apps/fde-api | sed -n '1,80p'
+          grep -RniE "retry|recovery|lease|cancel|resume|idempot"             apps/web/docs docs apps/fde-api | sed -n '1,80p'
       - name: 10 Memory/context security validation
         run: |
           test -f apps/web/docs/security/M9_AGENT_RUNTIME.md
@@ -118,7 +123,7 @@ jobs:
       - name: 11 Multi-agent validation
         run: |
           set -euo pipefail
-          grep -RniE "multi.?agent|delegation|agent.?identity|agent.?runtime" apps/web/docs docs .github/workflows | sed -n '1,100p'
+          grep -RniE "multi.?agent|delegation|agent.?identity|agent.?runtime"             apps/web/docs docs .github/workflows | sed -n '1,100p'
       - name: 12 MCP/tool security validation
         run: |
           set -euo pipefail
@@ -126,17 +131,19 @@ jobs:
           grep -RniE "MCP|tool" docs/security apps/web/docs/security | sed -n '1,100p'
       - name: 13 Supply-chain validation
         run: |
+          set -euo pipefail
           pnpm audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
-          python -m pip install 'pip-audit>=2.7,<3.0'
-          python -m pip freeze --local --exclude-editable > /tmp/tinlance-python-audit-requirements.txt
-          ! grep -Eiq '^tinlance-fde-api([=[:space:]@]|$)' /tmp/tinlance-python-audit-requirements.txt
-          pip-audit --strict -r /tmp/tinlance-python-audit-requirements.txt
+          python -m pip install 'pip-audit>=2.10,<3.0'
+          python -m pip uninstall -y tinlance-fde-api
+          pip-audit --strict
       - name: 14 Provenance validation
         run: |
+          set -euo pipefail
           grep -R "uses: .*@[0-9a-f]\{40\}" .github/workflows >/dev/null
           grep -R "ref: [0-9a-f]\{40\}" .github/workflows/fdse-system-of-systems.yml >/dev/null
       - name: 15 End-to-end validation
         run: |
+          set -euo pipefail
           pnpm --filter @tinlance/web exec prisma migrate deploy
           NODE_ENV=production pnpm --filter @tinlance/web exec next start -H 127.0.0.1 -p 3000 >/tmp/tinlance-enterprise.log 2>&1 &
           echo $! >/tmp/tinlance-enterprise.pid
@@ -151,42 +158,52 @@ jobs:
       - name: 16 Performance validation
         run: |
           python - <<'PY'
-          import concurrent.futures, time, urllib.request
+          import concurrent.futures
+          import time
+          import urllib.request
+
           def hit(_):
-              start=time.monotonic()
-              with urllib.request.urlopen("http://127.0.0.1:3000/api/health", timeout=10) as r:
-                  assert r.status == 200
-                  r.read()
-              return time.monotonic()-start
+              start = time.monotonic()
+              with urllib.request.urlopen("http://127.0.0.1:3000/api/health", timeout=10) as response:
+                  assert response.status == 200
+                  response.read()
+              return time.monotonic() - start
+
           with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
-              samples=sorted(pool.map(hit, range(50)))
-          p95=samples[int(len(samples)*0.95)-1]
+              samples = sorted(pool.map(hit, range(50)))
+          p95 = samples[int(len(samples) * 0.95) - 1]
           print(f"requests={len(samples)} p95_seconds={p95:.3f}")
           assert p95 < 10
           PY
       - name: 17 Load validation
         run: |
           python - <<'PY'
-          import concurrent.futures, urllib.request
+          import concurrent.futures
+          import urllib.request
+
           def hit(_):
-              with urllib.request.urlopen("http://127.0.0.1:3000/engineering/fdse", timeout=10) as r:
-                  assert r.status == 200
-                  return len(r.read())
+              with urllib.request.urlopen("http://127.0.0.1:3000/engineering/fdse", timeout=10) as response:
+                  assert response.status == 200
+                  return len(response.read())
+
           with concurrent.futures.ThreadPoolExecutor(max_workers=20) as pool:
-              results=list(pool.map(hit, range(100)))
+              results = list(pool.map(hit, range(100)))
           assert min(results) > 1000
           print(f"concurrent_requests={len(results)} minimum_body_bytes={min(results)}")
           PY
       - name: 18 Concurrency validation
         run: |
           python - <<'PY'
-          import concurrent.futures, urllib.request
+          import concurrent.futures
+          import urllib.request
+
           def hit(_):
-              with urllib.request.urlopen("http://127.0.0.1:3000/api/health", timeout=10) as r:
-                  assert r.status == 200
-                  return r.read()
+              with urllib.request.urlopen("http://127.0.0.1:3000/api/health", timeout=10) as response:
+                  assert response.status == 200
+                  return response.read()
+
           with concurrent.futures.ThreadPoolExecutor(max_workers=25) as pool:
-              results=list(pool.map(hit, range(100)))
+              results = list(pool.map(hit, range(100)))
           assert all(results)
           print("concurrency invariant: all 100 responses succeeded")
           PY
@@ -197,23 +214,26 @@ jobs:
         run: pnpm --filter @tinlance/web exec prisma migrate deploy
       - name: 21 Disaster-recovery validation
         run: |
-          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS public.enterprise_recovery_probe (id text primary key, value text not null);"
-          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO public.enterprise_recovery_probe VALUES ('phase-v','recovery-ok') ON CONFLICT (id) DO UPDATE SET value=EXCLUDED.value;"
+          set -euo pipefail
+          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -c             "CREATE TABLE IF NOT EXISTS public.enterprise_recovery_probe (id text primary key, value text not null);"
+          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -c             "INSERT INTO public.enterprise_recovery_probe VALUES ('phase-v','recovery-ok') ON CONFLICT (id) DO UPDATE SET value=EXCLUDED.value;"
           pg_dump --dbname="$PSQL_DATABASE_URL" --format=custom --file=/tmp/tinlance-enterprise-with-probe.dump
           psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP TABLE public.enterprise_recovery_probe;"
           pg_restore --dbname="$PSQL_DATABASE_URL" --clean --if-exists /tmp/tinlance-enterprise-with-probe.dump
-          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -tAc "SELECT value FROM public.enterprise_recovery_probe WHERE id='phase-v'" | grep -Fx "recovery-ok"
+          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -tAc             "SELECT value FROM public.enterprise_recovery_probe WHERE id='phase-v'" | grep -Fx "recovery-ok"
       - name: 22 Observability validation
         run: |
+          set -euo pipefail
           curl --fail --silent http://127.0.0.1:3000/api/health | grep -Eiq '"status"'
-          grep -RniE "request.?id|correlation|trace|audit|observability" docs apps/web/docs apps/fde-api | sed -n '1,100p'
+          grep -RniE "request.?id|correlation|trace|audit|observability"             docs apps/web/docs apps/fde-api | sed -n '1,100p'
       - name: 23 Documentation validation
         run: |
-          for path in README.md docs/EVIDENCE-AND-TRUST.md docs/ENTERPRISE-CI-GATES.md docs/FDSE-SYSTEM-OF-SYSTEMS.md docs/FDSE-FDE-MASTERY-INTEGRATION.md docs/FDSE-AGENT-PLATFORM-INTEGRATION.md; do
+          for path in             README.md             docs/EVIDENCE-AND-TRUST.md             docs/ENTERPRISE-CI-GATES.md             docs/FDSE-SYSTEM-OF-SYSTEMS.md             docs/FDSE-FDE-MASTERY-INTEGRATION.md             docs/FDSE-AGENT-PLATFORM-INTEGRATION.md             docs/FDSE-ENTERPRISE-VALIDATION.md; do
             test -f "$path"
           done
       - name: 24 API compatibility validation
         run: |
+          set -euo pipefail
           grep -Fq "POST /v1/triage/{client_id}/{domain}" docs/FDE-INTEGRATION.md
           grep -Fq "POST /v1/execute" apps/fde-api/README.md
           for domain in cybersecurity finance healthtech logistics legal revops procurement custom; do
@@ -221,10 +241,12 @@ jobs:
           done
       - name: 25 Dependency-security validation
         run: |
+          set -euo pipefail
           pnpm audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
           python -m pip check
       - name: 26 CI/CD validation
         run: |
+          set -euo pipefail
           test -f .github/workflows/ci.yml
           grep -Fq "enterprise-gate" .github/workflows/ci.yml
           test -f .github/workflows/fdse-system-of-systems.yml
@@ -232,59 +254,27 @@ jobs:
         run: |
           set -euo pipefail
           changed="$(git diff --name-only)"
-          unexpected="$(printf '%s\\n' "$changed" | grep -vE '^(apps/web/next-env\\.d\\.ts|package\\.json)
-      - name: 28 Production-readiness validation
-        run: |
-          curl --fail --silent --show-error --location https://www.tinlance.com/engineering/fdse | grep -F "Engineering intelligence and assurance"
-          curl --fail --silent --show-error --location https://www.tinlance.com/sitemap.xml | grep -F "/engineering/fdse"
-          curl --fail --silent --show-error https://www.tinlance.com/api/health | grep -Eiq '"status"'
-      - name: Stop local production server
-        if: always()
-        run: |
-          if [ -f /tmp/tinlance-enterprise.pid ]; then kill "$(cat /tmp/tinlance-enterprise.pid)" || true; fi
-      - name: Upload enterprise evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: fdse-enterprise-validation-evidence
-          path: |
-            /tmp/health.json
-            /tmp/tinlance-enterprise.log
-          if-no-files-found: warn
-
-  enterprise-gate:
-    name: Enterprise validation gate
-    if: always()
-    needs: [enterprise-validation]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Require enterprise validation matrix to pass
-        env:
-          RESULT: ${{ needs.enterprise-validation.result }}
-        run: |
-          test "$RESULT" = success
-          echo "FDSE enterprise validation matrix: VERIFIED"
- || true)"
+          unexpected="$(printf '%s\n' "$changed" | grep -vE '^(apps/web/next-env\.d\.ts|package\.json)$' || true)"
           if [ -n "$unexpected" ]; then
-            printf 'Unexpected tracked working-tree mutations:\\n%s\\n' "$unexpected"
-            git diff -- "$unexpected" || true
+            printf 'Unexpected tracked working-tree mutations:\n%s\n' "$unexpected"
+            git diff -- "$unexpected"
             exit 1
           fi
-          # Next.js route generation and pnpm's legacy audit-ignore compatibility
-          # may mutate these two tracked files during validation. Restore them
-          # before the final release-tree cleanliness assertion.
           git restore --source=HEAD -- apps/web/next-env.d.ts package.json
           git diff --exit-code
-          grep -RniE "IMPLEMENTED|TESTED|VALIDATED|EXPERIMENTAL|PLANNED" apps/web/lib/evidence docs | sed -n '1,50p'
+          grep -RniE "IMPLEMENTED|TESTED|VALIDATED|EXPERIMENTAL|PLANNED"             apps/web/lib/evidence docs | sed -n '1,80p'
       - name: 28 Production-readiness validation
         run: |
-          curl --fail --silent --show-error --location https://www.tinlance.com/engineering/fdse | grep -F "Engineering intelligence and assurance"
-          curl --fail --silent --show-error --location https://www.tinlance.com/sitemap.xml | grep -F "/engineering/fdse"
-          curl --fail --silent --show-error https://www.tinlance.com/api/health | grep -Eiq '"status"'
+          set -euo pipefail
+          curl --fail --silent --show-error --location             https://www.tinlance.com/engineering/fdse | grep -F "Engineering intelligence and assurance"
+          curl --fail --silent --show-error --location             https://www.tinlance.com/sitemap.xml | grep -F "/engineering/fdse"
+          curl --fail --silent --show-error             https://www.tinlance.com/api/health | grep -Eiq '"status"'
       - name: Stop local production server
         if: always()
         run: |
-          if [ -f /tmp/tinlance-enterprise.pid ]; then kill "$(cat /tmp/tinlance-enterprise.pid)" || true; fi
+          if [ -f /tmp/tinlance-enterprise.pid ]; then
+            kill "$(cat /tmp/tinlance-enterprise.pid)" || true
+          fi
       - name: Upload enterprise evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
