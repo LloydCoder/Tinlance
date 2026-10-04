@@ -26,7 +26,7 @@ The FDSE repository/domain-contract track is complete at M0–M18 + E1–E6 in L
 
 ### I2 — FDSE Product / Service Presentation
 
-**Implementation in progress.**
+**Complete.** Implemented in PR #111 and merged as `398a8eb4944ab4ec1d32c7b7a3b0a4a7ff67d6cc`. The final implementation revision `80a906dcee78a4fef6c9dcb2fa438f8742b99ef9` passed all Tinlance GitHub Actions gates; Vercel preview provisioning remained an external infrastructure failure before the build started and is tracked separately from repository CI.
 
 - commercial/product positioning;
 - capability presentation;
