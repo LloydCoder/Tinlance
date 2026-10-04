@@ -55,6 +55,7 @@ jobs:
       - name: Install dependencies
         run: |
           pnpm install --frozen-lockfile=true
+          pnpm --filter @tinlance/web exec prisma generate
           python -m pip install --upgrade pip
           python -m pip install -e 'apps/fde-api[test]'
       - name: 1 Unit validation
@@ -236,7 +237,7 @@ jobs:
           if [ -f /tmp/tinlance-enterprise.pid ]; then kill "$(cat /tmp/tinlance-enterprise.pid)" || true; fi
       - name: Upload enterprise evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@043fb46d1a93c77ae656e7c1c64a875d1fc6a0a
         with:
           name: fdse-enterprise-validation-evidence
           path: |
