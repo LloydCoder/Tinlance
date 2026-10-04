@@ -140,7 +140,7 @@ The gate pins FDSE, FDE Mastery, Agent Platform and Agent OS to immutable revisi
 
 ### Phase V — Enterprise validation
 
-**In progress.** The 28-layer executable validation matrix is implemented on the `feat/fdse-enterprise-validation-v1` branch and is gated by `.github/workflows/fdse-enterprise-validation.yml`. The initial run reached layer 13 before failing because the locally installed editable `tinlance-fde-api` project was presented to `pip-audit` as a PyPI distribution; the gate is being corrected to use the documented `--skip-editable` behavior without weakening dependency auditing.
+**In progress.** The 28-layer executable validation matrix is implemented on the `feat/fdse-enterprise-validation-v1` branch and is gated by `.github/workflows/fdse-enterprise-validation.yml`. The first run reached layer 13 and exposed an editable-local-package boundary in `pip-audit`; the gate now follows the repository's established FDE API CI pattern by removing only the local `tinlance-fde-api` distribution before auditing the remaining installed third-party dependencies.
 
 Planned 28-layer validation: unit, contract, cross-repository contract, integration, security, adversarial, property/invariant, failure injection, workflow recovery, memory/context security, multi-agent, MCP/tool security, supply chain, provenance, E2E, performance, load, concurrency, tenant isolation, migration, disaster recovery, observability, documentation, API compatibility, dependency security, CI/CD, release certification and production readiness.
 
