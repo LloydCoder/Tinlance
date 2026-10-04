@@ -79,7 +79,7 @@ jobs:
         run: |
           test -f .github/workflows/fdse-system-of-systems.yml
           test -f .github/workflows/fdse-agent-platform-integration.yml
-          test -f .github/workflows/fde-cross-repository-integration.yml
+          test -f .github/workflows/fde-cross-repo-integration.yml
       - name: 4 Integration validation
         run: |
           pnpm --filter @tinlance/web typecheck
