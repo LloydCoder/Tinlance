@@ -36,7 +36,7 @@ The FDSE repository/domain-contract track is complete at M0–M18 + E1–E6 in L
 
 ### I3 — FDE ↔ FDSE Website Integration
 
-**Implementation complete on the I3 branch; merge remains gated on CI.**
+**Complete.** Merged in PR #112 as `9d23d68325da4b90aa064cfb68304aecc2b1890d`; all required repository checks passed before merge.
 
 - FDE Mastery now links directly to the FDSE public boundary;
 - the engineering evidence map records the FDE Mastery → FDSE responsibility relationship;
@@ -44,13 +44,18 @@ The FDSE repository/domain-contract track is complete at M0–M18 + E1–E6 in L
 - capability/evidence/claim registries record the public relationship without claiming live runtime integration;
 - repository and production evidence boundaries remain explicit.
 
-I3 completion requires the resulting pull request and all required repository gates to pass before merge.
+I3 merge evidence includes the FDE Mastery → FDSE journey, engineering evidence relationship, reconciled assessment/API semantics, and explicit non-production-integration claim boundaries.
 
 ### I4 — Agent Platform ↔ FDSE Website Architecture
 
-- explain governed execution authority;
-- document the FDSE ↔ Agent Platform contract;
-- clearly distinguish defined architecture from implemented/integrated production behavior.
+**Implementation complete on the I4 branch; merge remains gated on CI.**
+
+- FDSE now explains the Agent Platform as the generic governed execution authority;
+- the public page documents the implemented governed-execution.v1 responsibility boundary;
+- identity, tenant, capability, policy, risk, approval, execution, evidence and audit ownership is explicitly separated;
+- the Agent Platform repository and R10 contract are linked as inspectable architecture evidence;
+- capability/evidence/claim registries record the contract without claiming live FDSE-to-Platform production integration;
+- FDE integration documentation is reconciled with the same authority boundary.
 
 ### I5 — Public Evidence / Claim Reconciliation
 
