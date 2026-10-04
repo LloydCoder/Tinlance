@@ -49,6 +49,7 @@ Only verified public repositories are linked from the public site:
 
 - `LloydCoder/tinlance-threatfade`
 - `LloydCoder/fde-mastery`
+- `LloydCoder/tinlance-fdse`
 
 Private repositories, credentials and internal infrastructure are never linked as public evidence.
 
