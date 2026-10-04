@@ -237,7 +237,7 @@ jobs:
           if [ -f /tmp/tinlance-enterprise.pid ]; then kill "$(cat /tmp/tinlance-enterprise.pid)" || true; fi
       - name: Upload enterprise evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77ae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: fdse-enterprise-validation-evidence
           path: |
