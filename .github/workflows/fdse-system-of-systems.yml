@@ -1,0 +1,177 @@
+name: FDSE System of Systems Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fdse-system-of-systems-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validation:
+    name: FDSE system-of-systems
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Tinlance
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Checkout pinned FDSE
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/tinlance-fdse
+          ref: 0bfc34212a453f9a79c706d81a5082f869f08987
+          path: tinlance-fdse
+
+      - name: Checkout pinned FDE Mastery
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/fde-mastery
+          ref: 0aae198cadd7f69d8173653803bca19e780154ca
+          path: fde-mastery
+
+      - name: Checkout pinned Agent Platform
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/tinlance-agent-platform
+          ref: 775132611af59d301abd4f03d86d4bcdf6806fef
+          path: tinlance-agent-platform
+
+      - name: Checkout pinned Agent Platform SDK
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/tinlance-agent-platform-sdk
+          ref: 2307c705047200ebaede73f0bd628da38542d31f
+          path: tinlance-agent-platform-sdk
+
+      - name: Checkout pinned Agent OS
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/tinlance-agent-os
+          ref: ab08fe3d145da378ec56ce392f70600c247c81f5
+          path: tinlance-agent-os
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12"
+
+      - name: Install FDSE, FDE Mastery and Platform
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "tinlance-fdse[dev]"
+          pip install -e "fde-mastery/packages/platform-core[test]"
+          pip install -e "tinlance-agent-platform[test]"
+
+      - name: Verify immutable repository identities
+        run: |
+          set -euo pipefail
+          test "$(git -C tinlance-fdse rev-parse HEAD)" = "0bfc34212a453f9a79c706d81a5082f869f08987"
+          test "$(git -C fde-mastery rev-parse HEAD)" = "0aae198cadd7f69d8173653803bca19e780154ca"
+          test "$(git -C tinlance-agent-platform rev-parse HEAD)" = "775132611af59d301abd4f03d86d4bcdf6806fef"
+          test "$(git -C tinlance-agent-platform-sdk rev-parse HEAD)" = "2307c705047200ebaede73f0bd628da38542d31f"
+          test "$(git -C tinlance-agent-os rev-parse HEAD)" = "ab08fe3d145da378ec56ce392f70600c247c81f5"
+
+      - name: Run FDSE and Agent Platform conformance
+        run: |
+          python -m pytest tinlance-fdse/tests -q
+          python -m pytest tinlance-agent-platform/tests/test_r10_execution.py -q
+
+      - name: Run FDE Mastery domain contract suite
+        working-directory: fde-mastery
+        run: |
+          python -m pytest tests -q
+
+      - name: Verify SDK and Agent OS dependency boundaries
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          sdk = Path("tinlance-agent-platform-sdk/README.md").read_text()
+          os_readme = Path("tinlance-agent-os/README.md").read_text()
+          platform_arch = Path("tinlance-agent-platform/ARCHITECTURE.md").read_text()
+
+          assert "developer SDK" in sdk or "SDK" in sdk
+          assert "Agent Platform" in os_readme
+          assert "domain products consume stable contracts" in platform_arch
+
+          for path in (
+              "tinlance-agent-platform-sdk/src",
+              "tinlance-agent-os/src",
+          ):
+              assert Path(path).exists(), path
+          PY
+
+      - name: Verify Tinlance FDE API contract and repository tests
+        run: |
+          python -m pytest apps/fde-api/tests -q
+          python - <<'PY'
+          from pathlib import Path
+
+          contract = Path("docs/FDE-INTEGRATION.md").read_text()
+          assert "POST /v1/triage/{client_id}/{domain}" in contract
+          assert "LIVE FDE PATH: UNVERIFIED" in contract
+          assert "FDSE" in contract
+          PY
+
+      - name: Verify public production boundary
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --max-time 20             --output /tmp/fdse.html             https://www.tinlance.com/engineering/fdse
+          grep -q "Engineering intelligence" /tmp/fdse.html
+          curl --fail --silent --show-error --location --max-time 20             --output /tmp/sitemap.xml             https://www.tinlance.com/sitemap.xml
+          grep -q "/engineering/fdse" /tmp/sitemap.xml
+          curl --fail --silent --show-error --max-time 20             https://www.tinlance.com/api/health >/tmp/health.json
+          grep -q '"status"' /tmp/health.json
+
+      - name: Build deterministic system manifest
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import subprocess
+
+          repos = {
+              "fdse": "tinlance-fdse",
+              "fde_mastery": "fde-mastery",
+              "agent_platform": "tinlance-agent-platform",
+              "agent_platform_sdk": "tinlance-agent-platform-sdk",
+              "agent_os": "tinlance-agent-os",
+              "tinlance": ".",
+          }
+          manifest = {
+              name: subprocess.check_output(
+                  ["git", "-C", path, "rev-parse", "HEAD"], text=True
+              ).strip()
+              for name, path in repos.items()
+          }
+          manifest["public_routes"] = [
+              "/engineering/fdse",
+              "/sitemap.xml",
+              "/api/health",
+          ]
+          canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+          digest = hashlib.sha256(canonical.encode()).hexdigest()
+          Path("fdse-system-of-systems-manifest.json").write_text(
+              json.dumps({**manifest, "manifest_digest": digest}, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(canonical)
+          print(f"manifest_digest={digest}")
+          PY
+
+      - name: Upload system-of-systems evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: fdse-system-of-systems-evidence
+          path: fdse-system-of-systems-manifest.json
+          if-no-files-found: error
