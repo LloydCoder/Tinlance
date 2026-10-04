@@ -225,6 +225,9 @@ jobs:
           ignore-unfixed: true
           vuln-type: os,library
           severity: CRITICAL,HIGH
+      - name: Verify FDE API urllib3 runtime provenance
+        run: |
+          docker run --rm --entrypoint python tinlance-fde-api:ci -c "import importlib.metadata as m; versions=sorted({d.version for d in m.distributions() if d.metadata.get('Name','').lower() == 'urllib3'}); assert versions == ['2.8.0'], versions"
       - name: Scan FDE API image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -234,6 +237,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: os,library
           severity: CRITICAL,HIGH
+          ignorefile: .trivyignore
 
   sbom:
     name: SBOM
