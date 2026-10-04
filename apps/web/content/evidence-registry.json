@@ -128,6 +128,20 @@
       "status": "ACTIVE"
     },
     {
+      "id": "ev_fdse_agent_platform_contract",
+      "capabilitySlug": "fdse-public-architecture",
+      "evidenceType": "ARCHITECTURE",
+      "source": "external_repository",
+      "repository": "LloydCoder/tinlance-agent-platform",
+      "path": "docs/R10-GOVERNED-EXECUTION.md",
+      "commit": "775132611af59d301abd4f03d86d4bcdf6806fef",
+      "workflow": "Agent Platform repository CI / R10 certification",
+      "result": "CONTRACT_IMPLEMENTED_REFERENCE_AUTHORITY",
+      "scope": "Public FDSE → Agent Platform responsibility contract and governed-execution.v1 authority boundary.",
+      "limitations": "The Agent Platform repository documents the reference contract and deployment requirements; this evidence does not establish a live FDSE-to-Platform production connection.",
+      "status": "ACTIVE"
+    },
+    {
       "id": "ev_threatfade_public_truth",
       "capabilitySlug": "threatfade-engineering",
       "evidenceType": "DOCUMENTATION",
