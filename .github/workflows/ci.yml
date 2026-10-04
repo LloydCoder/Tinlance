@@ -357,7 +357,7 @@ jobs:
             local path="$1"
             local expected="$2"
             local body
-            body="$(curl --fail --silent --show-error --location "http://127.0.0.1:3000.github/workflows/ci.yml")"
+            body="$(curl --fail --silent --show-error --location "http://127.0.0.1:3000${path}")"
             printf '%s' "$body" | grep -Fq "$expected"
           }
           check_route "/engineering/fdse" "Engineering intelligence and assurance"
