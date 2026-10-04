@@ -18,7 +18,7 @@ const publicRepositories = [["ThreatFade", "https://github.com/LloydCoder/tinlan
 
 export default function EngineeringPage() {
   const moduleById = new Map(architectureModules.map((module) => [module.id, module]));
-  const boundaryNames = new Map([["FDE-MASTERY", "FDE Mastery"], ["FDSE", "FDSE"]]);
+  const boundaryNames = new Map([["FDE-MASTERY", "FDE Mastery"], ["FDSE", "FDSE"], ["AGENT-PLATFORM", "Agent Platform"]]);
   return (
     <main>
       <JsonLd data={breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Engineering", path: "/engineering" }])} />
