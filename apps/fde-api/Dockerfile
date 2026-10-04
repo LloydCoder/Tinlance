@@ -5,6 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 RUN apt-get update \
     && apt-get upgrade -y \
+    && apt-get purge -y python3-urllib3 || true \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 app \
     && useradd --system --uid 10001 --gid 10001 app
