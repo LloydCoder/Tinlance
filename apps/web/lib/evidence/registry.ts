@@ -42,6 +42,7 @@ export const architectureFlows = [
   ["M5", "FDE", "FDE API provides the domain execution boundary."],
   ["FDE", "FDE-MASTERY", "FDE API routes into the domain-oriented FDE platform."],
   ["FDE-MASTERY", "FDSE", "FDE Mastery delivers domain engineering; FDSE provides engineering intelligence and assurance semantics around that work."],
+  ["FDSE", "AGENT-PLATFORM", "FDSE defines engineering meaning and assurance semantics; Agent Platform owns generic governed execution authority."],
   ["THREATFADE", "M7", "ThreatFade is a distinct security product and public engineering evidence source; it is not a Tinlance subsystem."],
 ] as const;
 
