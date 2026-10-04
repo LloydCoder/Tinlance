@@ -216,9 +216,9 @@ jobs:
         run: |
           grep -Fq "POST /v1/triage/{client_id}/{domain}" docs/FDE-INTEGRATION.md
           grep -Fq "POST /v1/execute" apps/fde-api/README.md
-          grep -Fq '"cybersecurity"' apps/fde-api/README.md
-          grep -Fq -- '- `custom`' apps/fde-api/README.md
-          grep -Fq '"procurement"' apps/fde-api/README.md
+          for domain in cybersecurity finance healthtech logistics legal revops procurement custom; do
+            grep -Fq -- "- \`$domain\`" apps/fde-api/README.md
+          done
       - name: 25 Dependency-security validation
         run: |
           pnpm audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
