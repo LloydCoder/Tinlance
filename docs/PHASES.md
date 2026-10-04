@@ -134,11 +134,13 @@ Completion was gated by implementation, documentation, CI/workflow success and m
 
 ### Phase IV — Full Tinlance system-of-systems validation
 
-**In progress.** Implementation is on the `feat/fdse-system-of-systems-validation` branch and is gated by `.github/workflows/fdse-system-of-systems.yml`.
+**Complete.** Implemented and merged in PR #124 as merge commit `0f07466650c4e39d8942f2633191f7bdc25d660a`. The system-of-systems gate passed against immutable FDSE, FDE Mastery, Agent Platform and Agent OS revisions.
 
 The gate pins FDSE, FDE Mastery, Agent Platform and Agent OS to immutable revisions; runs their relevant validation suites; verifies the complete FDSE evidence spine and incident lineage; and checks that Agent Platform remains the authority owner.
 
 ### Phase V — Enterprise validation
+
+**In progress.** The 28-layer executable validation matrix is implemented on the `feat/fdse-enterprise-validation-v1` branch and is gated by `.github/workflows/fdse-enterprise-validation.yml`. The initial run reached layer 13 before failing because the locally installed editable `tinlance-fde-api` project was presented to `pip-audit` as a PyPI distribution; the gate is being corrected to use the documented `--skip-editable` behavior without weakening dependency auditing.
 
 Planned 28-layer validation: unit, contract, cross-repository contract, integration, security, adversarial, property/invariant, failure injection, workflow recovery, memory/context security, multi-agent, MCP/tool security, supply chain, provenance, E2E, performance, load, concurrency, tenant isolation, migration, disaster recovery, observability, documentation, API compatibility, dependency security, CI/CD, release certification and production readiness.
 
