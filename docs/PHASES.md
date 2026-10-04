@@ -93,3 +93,46 @@ I3 merge evidence includes the FDE Mastery → FDSE journey, engineering evidenc
 ## Later cross-system validation
 
 After I1–I7, the remaining FDSE initiative continues through cross-repository integration with FDE Mastery and Agent Platform, system-of-systems validation, enterprise validation, customer/production validation and final certification/GA. Those stages are not silently included in I1.
+
+
+### Phase II — FDSE ↔ FDE Mastery Integration
+
+**Complete.** Implemented and merged in PR #120 as merge commit `cd49b4f351ff93185f463c6b81be4b979c9e7aff`.
+
+The cross-repository gate pins FDSE, exercises all eight FDE Mastery domains through the Tinlance FDE API, records deterministic FDSE IntegrationEvidence, requires fail-closed VERIFIED status, and checks tenant isolation and idempotency boundaries.
+
+Phase II establishes contract/integration verification. It does not claim customer-production deployment.
+
+### Phase III — FDSE ↔ Agent Platform Integration
+
+**In progress.** The implementation is on the `feat/fdse-agent-platform-integration-v1` branch and is gated by `.github/workflows/fdse-agent-platform-integration.yml`.
+
+Sub-gates:
+
+- III1 — immutable FDSE and Agent Platform revision pinning;
+- III2 — authoritative Agent Platform R10 conformance;
+- III3 — FDSE contract binding to Platform authority, capability/version, policy/approval, idempotency, evidence and audit semantics;
+- III4 — tenant mismatch and unverified-integration fail-closed checks;
+- III5 — deterministic VERIFIED integration evidence and graph digest.
+
+Completion requires implementation, documentation, CI/workflow success and merge evidence.
+
+### Phase IV — Full Tinlance system-of-systems validation
+
+Planned after Phase III: FDSE, FDE Mastery, Tinlance FDE API, Agent Platform/SDK, Agent OS, GitHub/CI, scanners, artifact registries, provenance/attestation, deployment, observability and customer-environment boundaries.
+
+### Phase V — Enterprise validation
+
+Planned 28-layer validation: unit, contract, cross-repository contract, integration, security, adversarial, property/invariant, failure injection, workflow recovery, memory/context security, multi-agent, MCP/tool security, supply chain, provenance, E2E, performance, load, concurrency, tenant isolation, migration, disaster recovery, observability, documentation, API compatibility, dependency security, CI/CD, release certification and production readiness.
+
+### Phase VI — Customer / Production Validation
+
+Planned internal Tinlance E2E, controlled customer environment, real repository/CI validation, security/supply-chain validation, operational/SLO validation and production-readiness review.
+
+### Phase VII — Enterprise Certification & GA
+
+Final fail-closed sequence:
+
+`FDSE repository → FDE Mastery → Agent Platform → Tinlance → customer E2E → security → supply chain → operations → certification → Enterprise GA`
+
+Enterprise GA must never be inferred from repository CI alone.
