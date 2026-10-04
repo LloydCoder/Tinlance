@@ -49,6 +49,10 @@ The PostgreSQL recovery test validates dump/restore behavior in the CI database 
 
 Production checks validate the current public origin only. They do not prove a live customer FDSE execution path; docs/FDE-INTEGRATION.md continues to mark the authenticated live FDE path as unverified until it is actually observed.
 
+## Python dependency-audit boundary
+
+The FDE API is installed into CI as an editable local package (`pip install -e 'apps/fde-api[test]'`). `pip-audit` documents `--skip-editable` specifically for excluding editable packages from environment auditing; the package's declared third-party dependencies remain in the environment and are audited. This prevents the local project name (`tinlance-fde-api`) from being incorrectly treated as a public PyPI distribution while preserving dependency vulnerability coverage. The CI gate therefore uses `pip-audit --strict --skip-editable` rather than suppressing a vulnerability or skipping the Python dependency graph. citeturn0search0turn0search7
+
 ## Completion gate
 
 Phase V is complete only when every layer passes, existing Tinlance CI is green, Phase IV remains green, documentation is reconciled, and the implementation is merged with all required checks green.
