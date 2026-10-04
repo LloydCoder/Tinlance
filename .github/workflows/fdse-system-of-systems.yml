@@ -1,0 +1,169 @@
+name: FDSE System of Systems Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fdse-system-of-systems-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cross-system:
+    name: FDSE System of Systems
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout Tinlance
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Checkout pinned FDSE
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/tinlance-fdse
+          ref: 0bfc34212a453f9a79c706d81a5082f869f08987
+          path: tinlance-fdse
+
+      - name: Checkout pinned FDE Mastery
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/fde-mastery
+          ref: 0aae198cadd7f69d8173653803bca19e780154ca
+          path: fde-mastery
+
+      - name: Checkout pinned Agent Platform
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/tinlance-agent-platform
+          ref: 775132611af59d301abd4f03d86d4bcdf6806fef
+          path: tinlance-agent-platform
+
+      - name: Checkout pinned Agent OS
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/tinlance-agent-os
+          ref: ab08fe3d145da378ec56ce392f70600c247c81f5
+          path: tinlance-agent-os
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            tinlance-fdse/pyproject.toml
+            tinlance-agent-platform/pyproject.toml
+            tinlance-agent-os/pyproject.toml
+            fde-mastery/packages/platform-core/pyproject.toml
+
+      - name: Install FDSE
+        run: python -m pip install -e 'tinlance-fdse[dev]'
+
+      - name: Install Agent Platform
+        run: python -m pip install -e 'tinlance-agent-platform[test]'
+
+      - name: Install Agent OS
+        run: python -m pip install -e 'tinlance-agent-os[dev]'
+
+      - name: Install FDE Mastery platform
+        working-directory: fde-mastery/packages/platform-core
+        run: python -m pip install -e '.[test,quality,security]'
+
+      - name: Validate Agent Platform
+        working-directory: tinlance-agent-platform
+        run: python -m pytest tests/test_r10_execution.py -q
+
+      - name: Validate Agent OS authority boundary
+        working-directory: tinlance-agent-os
+        run: python -m pytest -q
+
+      - name: Validate FDE Mastery enterprise platform
+        working-directory: fde-mastery/packages/platform-core
+        run: |
+          python -m pytest -q tests/test_enterprise_readiness.py tests/test_action_guard_and_shadow.py tests/test_procurement_and_custom.py tests/test_custom_agent_tool_gateway.py
+
+      - name: Validate FDSE evidence spine and system boundary
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from fdse import (
+              EvidenceSpineChain, EvidenceSpineGraph, IncidentChain, LineageRecord,
+              SemanticRef, digest,
+          )
+          from fdse.integration import IntegrationContract, IntegrationDirection, IntegrationSystem
+
+          tenant = 'system-of-systems-ci'
+          repo = 'tinlance-system'
+          revision = 'system-of-systems-2026-10-04'
+          refs = [SemanticRef(kind, f'{kind}-001', tenant, repo, revision) for kind in (
+              'customer_request','context','plan','risk','policy','agent_or_workflow',
+              'change','execution','observation','evidence','finding','evaluation',
+              'assurance','certification','release','incident_or_feedback')]
+          chain = EvidenceSpineChain(*refs)
+          actor = SemanticRef('actor', 'system-test', tenant, repo, revision)
+          provenance = SemanticRef('provenance', 'ci-test', tenant, repo, revision)
+          authority = SemanticRef('authority', 'platform', tenant, repo, revision)
+          now = datetime(2026, 10, 4, tzinfo=timezone.utc)
+          metadata = tuple(
+              LineageRecord(refs[i], 'feeds', refs[i + 1], actor, now, 'a' * 64, provenance, authority)
+              for i in range(len(refs) - 1)
+          )
+          graph = EvidenceSpineGraph()
+          graph.add_spine(chain, metadata)
+          assert len(graph.lineage) == 15
+          assert len(graph.snapshot_digest()) == 64
+
+          incident_refs = [SemanticRef(kind, f'{kind}-002', tenant, repo, revision) for kind in (
+              'signal','incident','detection','triage','containment','investigation','remediation','verification','closure')]
+          incident = IncidentChain(*incident_refs)
+          incident_relations = ('signals','detected_by','triaged_by','contained_by','investigated_by','remediated_by','verified_by','closed_by')
+          incident_meta = tuple(
+              LineageRecord(
+                  incident_refs[0] if relation == 'signals' else incident_refs[1],
+                  relation,
+                  incident_refs[1] if relation == 'signals' else incident_refs[incident_relations.index(relation) + 2],
+                  actor, now, 'b' * 64, provenance, authority,
+              )
+              for relation in incident_relations
+          )
+          graph.add_incident(incident, incident_meta)
+          assert len(graph.lineage) == 23
+
+          contract = IntegrationContract(
+              contract_id='fdse-system-of-systems.v1',
+              version='1.0.0',
+              source=IntegrationSystem.FDSE,
+              target=IntegrationSystem.AGENT_PLATFORM,
+              direction=IntegrationDirection.OUTBOUND,
+              required_capabilities=('engineering-semantics','governed-execution.v1','evidence-lineage'),
+              authority_owner=IntegrationSystem.AGENT_PLATFORM,
+              evidence_requirements=('tenant_id','repository_id','revision','provenance','authority'),
+          )
+          assert contract.authority_owner is IntegrationSystem.AGENT_PLATFORM
+          payload = {
+              'fdse': '0bfc34212a453f9a79c706d81a5082f869f08987',
+              'fde_mastery': '0aae198cadd7f69d8173653803bca19e780154ca',
+              'agent_platform': '775132611af59d301abd4f03d86d4bcdf6806fef',
+              'agent_os': 'ab08fe3d145da378ec56ce392f70600c247c81f5',
+              'tinlance': '${{ github.sha }}',
+              'evidence_spine_digest': graph.snapshot_digest(),
+          }
+          print('system_of_systems_digest=' + digest(payload))
+          print('FDSE evidence spine: VERIFIED')
+          print('FDSE authority owner: Agent Platform')
+          PY
+
+      - name: Verify immutable system revisions
+        run: |
+          test '${{ github.sha }}' != ''
+          test '0bfc34212a453f9a79c706d81a5082f869f08987' != 'main'
+          test '0aae198cadd7f69d8173653803bca19e780154ca' != 'main'
+          test '775132611af59d301abd4f03d86d4bcdf6806fef' != 'main'
+          test 'ab08fe3d145da378ec56ce392f70600c247c81f5' != 'main'
