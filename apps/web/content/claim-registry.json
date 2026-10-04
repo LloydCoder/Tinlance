@@ -119,6 +119,19 @@
       "critical": true
     },
     {
+      "id": "claim_agent_platform_repository_status",
+      "text": "Tinlance maintains a public Agent Platform repository containing the governed-execution.v1 authority contract and repository-level enterprise assurance sequence.",
+      "claimClass": "ARCHITECTURE",
+      "capability": "agent-platform-authority",
+      "evidence": [
+        "ev_agent_platform_r10_contract"
+      ],
+      "status": "PASS",
+      "scope": "Public Agent Platform repository",
+      "limitations": "Repository-level completion does not establish a live production deployment, customer integration or independent assurance.",
+      "critical": true
+    },
+    {
       "id": "claim_no_compliance_certification",
       "text": "Tinlance does not claim SOC 2, ISO 27001, PCI DSS or similar certification without a verified compliance record.",
       "claimClass": "COMPLIANCE",
