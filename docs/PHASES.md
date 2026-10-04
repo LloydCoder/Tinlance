@@ -90,6 +90,21 @@ I3 merge evidence includes the FDE Mastery → FDSE journey, engineering evidenc
 - runtime/build/security evidence;
 - deployment and CI evidence.
 
+### II — FDSE ↔ FDE Mastery Integration
+
+**Complete.** Implemented and merged in PR #120 as `cd49b4f351ff93185f463c6b81be4b979c9e7aff`. The final integration matrix passed all blocking repository gates, including the dedicated FDSE/FDE Mastery cross-repository gate.
+
+- pinned FDSE integration contract revision;
+- verified Tinlance FDE API → FDE Mastery execution across all eight supported domains;
+- mapped execution results into FDSE E5 `IntegrationEvidence`;
+- required exactly one deterministic VERIFIED evidence record for `fdse-fde-mastery-execution.v1`;
+- verified tenant-boundary and idempotency negative cases;
+- preserved FDE Mastery as domain execution authority;
+- preserved FDSE as engineering integration/evidence semantics owner;
+- added `docs/FDSE-FDE-MASTERY-INTEGRATION.md` as the canonical Phase II boundary document.
+
+The phase establishes contract/integration verification. It does not claim customer-production deployment or independent certification.
+
 ## Later cross-system validation
 
 After I1–I7, the remaining FDSE initiative continues through cross-repository integration with FDE Mastery and Agent Platform, system-of-systems validation, enterprise validation, customer/production validation and final certification/GA. Those stages are not silently included in I1.
