@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tinlance.com/schemas/fdse.phase-vi.customer-evidence.v1",
+  "title": "FDSE Phase VI External Customer Evidence",
+  "type": "object",
+  "required": ["schema","status","evidence_class","customer","environment","revisions","authorization","repository","ci_cd","security","operations","acceptance"],
+  "properties": {
+    "schema": {"const": "fdse.phase-vi.customer-evidence.v1"},
+    "status": {"enum": ["PENDING_EXTERNAL_VALIDATION","VERIFIED","REJECTED"]},
+    "evidence_class": {"const": "external-customer"},
+    "customer": {
+      "type": "object",
+      "required": ["identifier","technical_owner_role"],
+      "properties": {
+        "identifier": {"type": "string"},
+        "technical_owner_role": {"type": "string"}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "required": ["environment_id","deployment_target","tenant_isolation"],
+      "properties": {
+        "environment_id": {"type": "string"},
+        "deployment_target": {"type": "string"},
+        "tenant_isolation": {"type": "string"}
+      }
+    },
+    "revisions": {
+      "type": "object",
+      "required": ["application","tinlance","fdse"],
+      "properties": {
+        "application": {"type": "string"},
+        "tinlance": {"type": "string"},
+        "fdse": {"type": "string"}
+      }
+    },
+    "authorization": {"type": "object"},
+    "repository": {"type": "object"},
+    "ci_cd": {"type": "object"},
+    "security": {"type": "object"},
+    "operations": {"type": "object"},
+    "acceptance": {"type": "object"}
+  }
+}

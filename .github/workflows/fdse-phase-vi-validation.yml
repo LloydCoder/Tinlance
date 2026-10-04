@@ -145,11 +145,13 @@ jobs:
         run: |
           set -euo pipefail
           test -f docs/FDSE-PHASE-VI-VALIDATION.md
+          test -f docs/FDSE-PRODUCTION-READINESS-REVIEW.md
           grep -Fq "VI1" docs/FDSE-PHASE-VI-VALIDATION.md
           grep -Fq "VI2" docs/FDSE-PHASE-VI-VALIDATION.md
           grep -Fq "VI7" docs/FDSE-PHASE-VI-VALIDATION.md
           grep -Fq "Phase VII cannot begin" docs/FDSE-PHASE-VI-VALIDATION.md
           grep -Fq "NIST SP 800-61 Rev. 3" docs/FDSE-PHASE-VI-VALIDATION.md
+          grep -Fq "Decision: PENDING" docs/FDSE-PRODUCTION-READINESS-REVIEW.md
       - name: Stop local production server
         if: always()
         run: |
