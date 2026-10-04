@@ -142,6 +142,20 @@
       "status": "ACTIVE"
     },
     {
+      "id": "ev_agent_platform_r10_contract",
+      "capabilitySlug": "agent-platform-authority",
+      "evidenceType": "ARCHITECTURE",
+      "source": "external_repository",
+      "repository": "LloydCoder/tinlance-agent-platform",
+      "path": "docs/R10-GOVERNED-EXECUTION.md",
+      "commit": "775132611af59d301abd4f03d86d4bcdf6806fef",
+      "workflow": "Agent Platform repository CI / R10 certification",
+      "result": "CONTRACT_IMPLEMENTED_REFERENCE_AUTHORITY",
+      "scope": "Public governed-execution.v1 contract and repository-level authority boundary.",
+      "limitations": "This is repository-level contract/reference evidence. It does not prove a live production deployment, external infrastructure readiness or customer integration.",
+      "status": "ACTIVE"
+    },
+    {
       "id": "ev_threatfade_public_truth",
       "capabilitySlug": "threatfade-engineering",
       "evidenceType": "DOCUMENTATION",
