@@ -36,10 +36,15 @@ The FDSE repository/domain-contract track is complete at M0–M18 + E1–E6 in L
 
 ### I3 — FDE ↔ FDSE Website Integration
 
-- connect FDE Mastery and FDSE journeys;
-- explain delivery-to-assurance relationship;
-- reconcile assessment/API relationships;
-- preserve repository and production evidence boundaries.
+**Implementation complete on the I3 branch; merge remains gated on CI.**
+
+- FDE Mastery now links directly to the FDSE public boundary;
+- the engineering evidence map records the FDE Mastery → FDSE responsibility relationship;
+- the FDE integration documentation reconciles technical assessment, FDE API execution and FDSE assurance semantics;
+- capability/evidence/claim registries record the public relationship without claiming live runtime integration;
+- repository and production evidence boundaries remain explicit.
+
+I3 completion requires the resulting pull request and all required repository gates to pass before merge.
 
 ### I4 — Agent Platform ↔ FDSE Website Architecture
 
