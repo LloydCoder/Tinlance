@@ -417,7 +417,6 @@ jobs:
 
   production-verification:
     name: Production FDSE verification
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs:
