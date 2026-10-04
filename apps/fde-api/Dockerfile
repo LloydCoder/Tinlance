@@ -14,6 +14,7 @@ COPY apps/fde-api/app ./app
 RUN rm -rf /usr/local/lib/python3.12/site-packages/setuptools* \
            /usr/local/lib/python3.12/site-packages/msgpack* \
     && pip uninstall -y urllib3 || true \
+    && rm -rf /usr/lib/python3/dist-packages/urllib3* /usr/local/lib/python3.12/site-packages/urllib3* \
     && pip install --upgrade pip \
     && pip install . \
     && pip uninstall -y setuptools msgpack || true \
