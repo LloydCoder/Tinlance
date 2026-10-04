@@ -139,7 +139,7 @@
       "id": "cap_fdse_public_architecture",
       "slug": "fdse-public-architecture",
       "name": "FDSE Public Architecture",
-      "description": "Public FDSE engineering intelligence and assurance boundary, including its documented relationship to FDE Mastery.",
+      "description": "Public FDSE engineering intelligence and assurance boundary, including documented relationships to FDE Mastery and the governed Agent Platform authority layer.",
       "category": "engineering-intelligence",
       "status": "IMPLEMENTED",
       "maturity": "TESTED",
@@ -149,11 +149,12 @@
       "publicUrl": "/engineering/fdse",
       "evidenceIds": [
         "ev_fdse_public_architecture",
-        "ev_fdse_fde_website_relationship"
+        "ev_fdse_fde_website_relationship",
+        "ev_fdse_agent_platform_contract"
       ],
       "customerVisible": true,
       "commerciallyAvailable": false,
-      "limitations": "This capability documents the public website architecture and delivery-to-assurance relationship; it does not claim live FDSE production integration with Agent Platform or FDE Mastery."
+      "limitations": "This capability documents the public website architecture and responsibility contracts; it does not claim live FDSE production integration with Agent Platform or FDE Mastery."
     },
     {
       "id": "cap_threatfade_engineering",

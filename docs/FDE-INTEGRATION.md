@@ -75,6 +75,14 @@ This is a website and architecture relationship, not a claim that the live FDE e
 
 The public technical-assessment journey is the entry point for environment-specific discovery. Repository architecture and CI evidence establish implementation status, but production integration requires separate deployment evidence.
 
+## Agent Platform authority boundary
+
+The FDE API and FDE Mastery remain the domain execution boundary. Generic consequential execution authority is owned by the Tinlance Agent Platform rather than by FDE Mastery or FDSE.
+
+FDSE can define engineering requirements such as required evidence, evaluation, approval or assurance conditions. The Agent Platform remains responsible for binding identity/tenant/capability/policy/risk/approval to the actual governed execution and for enforcing runtime, tool, sandbox, secret, budget, evidence and audit controls.
+
+The public architecture documents this responsibility contract. It does not imply that the live FDE API currently invokes FDSE or that a production FDSE-to-Agent-Platform connection has been verified.
+
 ## Supported domains
 
 The current Tinlance gateway allowlist is:
