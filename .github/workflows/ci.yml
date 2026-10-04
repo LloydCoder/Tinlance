@@ -447,8 +447,10 @@ jobs:
         run: |
           set -euo pipefail
           headers="$(curl --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors -D - -o /dev/null https://tinlance.com/engineering/fdse)"
-          grep -Eiq '^HTTP/[0-9.]+ 308$' <<<"$headers"
-          grep -Eiq '^location: https://www\\.tinlance\\.com/engineering/fdse$' <<<"$headers"
+          normalized_headers="$(printf '%s\\n' "$headers" | tr -d '\\r')"
+          printf '%s\\n' "$normalized_headers"
+          grep -Eiq '^HTTP/[0-9.]+ 308$' <<<"$normalized_headers"
+          grep -Eiq '^location: https://www\\.tinlance\\.com/engineering/fdse/?$' <<<"$normalized_headers"
 
   enterprise-gate:
     name: Enterprise CI gate
