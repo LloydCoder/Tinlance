@@ -12,7 +12,7 @@ The FDSE repository/domain-contract track is complete at M0–M18 + E1–E6 in L
 
 ### I1 — FDSE Public Architecture
 
-**Implementation complete on the working branch; merge/CI gate pending.**
+**Complete.** Implemented, merged as `cba044eb28f015072d114d57b71d5bb75f9579a3`, and covered by the required repository gates. The public page still does not claim live FDSE production integration.
 
 - canonical /engineering/fdse route;
 - explicit FDSE responsibility boundary;
