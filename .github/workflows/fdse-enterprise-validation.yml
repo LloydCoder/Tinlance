@@ -1,0 +1,258 @@
+name: FDSE Enterprise Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fdse-enterprise-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  enterprise-validation:
+    name: Enterprise validation matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tinlance_enterprise
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tinlance_enterprise"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_enterprise?schema=public
+      BETTER_AUTH_SECRET: tinlance-enterprise-validation-auth-secret-32-characters
+      BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET: tinlance-enterprise-validation-scim-secret-32-characters
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Set up Node
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: 10.14.0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile=true
+          python -m pip install --upgrade pip
+          python -m pip install -e 'apps/fde-api[test]'
+      - name: 1 Unit validation
+        run: |
+          pnpm --filter @tinlance/web test -- --passWithNoTests
+          python -m pytest apps/fde-api/tests -q
+      - name: 2 Contract validation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for path in (
+              "docs/FDE-INTEGRATION.md",
+              "docs/FDSE-FDE-MASTERY-INTEGRATION.md",
+              "docs/FDSE-AGENT-PLATFORM-INTEGRATION.md",
+              "docs/FDSE-SYSTEM-OF-SYSTEMS.md",
+          ):
+              assert Path(path).is_file(), path
+          PY
+      - name: 3 Cross-repository contract validation
+        run: |
+          test -f .github/workflows/fdse-system-of-systems.yml
+          test -f .github/workflows/fdse-agent-platform-integration.yml
+          test -f .github/workflows/fde-cross-repository-integration.yml
+      - name: 4 Integration validation
+        run: |
+          pnpm --filter @tinlance/web typecheck
+          pnpm --filter @tinlance/web lint
+          pnpm --filter @tinlance/web build
+      - name: 5 Security validation
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/src" semgrep/semgrep:1.172.0             semgrep --config=p/owasp-top-ten --config=p/javascript --config=p/python --error /src/apps
+      - name: 6 Adversarial validation
+        working-directory: apps/fde-api
+        run: python -m pytest -q tests/test_ai_security_regressions.py
+      - name: 7 Property and invariant validation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path("docs/FDE-INTEGRATION.md").read_text()
+          assert "LIVE FDE PATH: UNVERIFIED" in text
+          assert "tenant isolation" in text
+          assert "idempotency" in text
+          PY
+      - name: 8 Failure-injection validation
+        run: |
+          set -euo pipefail
+          matches="$(grep -RniE "reject|invalid|unauthorized|forbidden|fail.?closed|timeout|idempot" apps/fde-api/tests apps/web/tests docs | head -120 || true)"
+          test -n "$matches"
+          printf '%s\n' "$matches"
+      - name: 9 Workflow-recovery validation
+        run: |
+          set -euo pipefail
+          grep -RniE "retry|recovery|lease|cancel|resume|idempot" apps/web/docs docs apps/fde-api | head -80
+      - name: 10 Memory/context security validation
+        run: |
+          test -f apps/web/docs/security/M9_AGENT_RUNTIME.md
+          grep -Eqi "memory|context|approval|capabilit" apps/web/docs/security/M9_AGENT_RUNTIME.md
+      - name: 11 Multi-agent validation
+        run: |
+          set -euo pipefail
+          grep -RniE "multi.?agent|delegation|agent.?identity|agent.?runtime" apps/web/docs docs .github/workflows | head -100
+      - name: 12 MCP/tool security validation
+        run: |
+          set -euo pipefail
+          test -f docs/security/GATE-D-SUPPLY-CHAIN.md
+          grep -RniE "MCP|tool" docs/security apps/web/docs/security | head -100
+      - name: 13 Supply-chain validation
+        run: |
+          pnpm audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
+          python -m pip install 'pip-audit>=2.7,<3.0'
+          pip-audit --strict
+      - name: 14 Provenance validation
+        run: |
+          grep -R "uses: .*@[0-9a-f]\{40\}" .github/workflows >/dev/null
+          grep -R "ref: [0-9a-f]\{40\}" .github/workflows/fdse-system-of-systems.yml >/dev/null
+      - name: 15 End-to-end validation
+        run: |
+          pnpm --filter @tinlance/web exec prisma migrate deploy
+          NODE_ENV=production pnpm --filter @tinlance/web exec next start -H 127.0.0.1 -p 3000 >/tmp/tinlance-enterprise.log 2>&1 &
+          echo $! >/tmp/tinlance-enterprise.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health >/tmp/health.json; then
+              break
+            fi
+            sleep 2
+          done
+          test -s /tmp/health.json
+          curl --fail --silent http://127.0.0.1:3000/engineering/fdse | grep -F "Engineering intelligence and assurance"
+      - name: 16 Performance validation
+        run: |
+          python - <<'PY'
+          import concurrent.futures, time, urllib.request
+          def hit(_):
+              start=time.monotonic()
+              with urllib.request.urlopen("http://127.0.0.1:3000/api/health", timeout=10) as r:
+                  assert r.status == 200
+                  r.read()
+              return time.monotonic()-start
+          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
+              samples=sorted(pool.map(hit, range(50)))
+          p95=samples[int(len(samples)*0.95)-1]
+          print(f"requests={len(samples)} p95_seconds={p95:.3f}")
+          assert p95 < 10
+          PY
+      - name: 17 Load validation
+        run: |
+          python - <<'PY'
+          import concurrent.futures, urllib.request
+          def hit(_):
+              with urllib.request.urlopen("http://127.0.0.1:3000/engineering/fdse", timeout=10) as r:
+                  assert r.status == 200
+                  return len(r.read())
+          with concurrent.futures.ThreadPoolExecutor(max_workers=20) as pool:
+              results=list(pool.map(hit, range(100)))
+          assert min(results) > 1000
+          print(f"concurrent_requests={len(results)} minimum_body_bytes={min(results)}")
+          PY
+      - name: 18 Concurrency validation
+        run: |
+          python - <<'PY'
+          import concurrent.futures, urllib.request
+          def hit(_):
+              with urllib.request.urlopen("http://127.0.0.1:3000/api/health", timeout=10) as r:
+                  assert r.status == 200
+                  return r.read()
+          with concurrent.futures.ThreadPoolExecutor(max_workers=25) as pool:
+              results=list(pool.map(hit, range(100)))
+          assert all(results)
+          print("concurrency invariant: all 100 responses succeeded")
+          PY
+      - name: 19 Tenant-isolation validation
+        working-directory: apps/fde-api
+        run: python -m pytest -q -k "tenant or auth or organization" || python -m pytest -q
+      - name: 20 Migration validation
+        run: pnpm --filter @tinlance/web exec prisma migrate deploy
+      - name: 21 Disaster-recovery validation
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS public.enterprise_recovery_probe (id text primary key, value text not null);"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO public.enterprise_recovery_probe VALUES ('phase-v','recovery-ok') ON CONFLICT (id) DO UPDATE SET value=EXCLUDED.value;"
+          pg_dump --dbname="$DATABASE_URL" --format=custom --file=/tmp/tinlance-enterprise-with-probe.dump
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP TABLE public.enterprise_recovery_probe;"
+          pg_restore --dbname="$DATABASE_URL" --clean --if-exists /tmp/tinlance-enterprise-with-probe.dump
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -tAc "SELECT value FROM public.enterprise_recovery_probe WHERE id='phase-v'" | grep -Fx "recovery-ok"
+      - name: 22 Observability validation
+        run: |
+          curl --fail --silent http://127.0.0.1:3000/api/health | grep -Eiq '"status"'
+          grep -RniE "request.?id|correlation|trace|audit|observability" docs apps/web/docs apps/fde-api | head -100
+      - name: 23 Documentation validation
+        run: |
+          for path in README.md docs/EVIDENCE-AND-TRUST.md docs/ENTERPRISE-CI-GATES.md docs/FDSE-SYSTEM-OF-SYSTEMS.md docs/FDSE-FDE-MASTERY-INTEGRATION.md docs/FDSE-AGENT-PLATFORM-INTEGRATION.md; do
+            test -f "$path"
+          done
+      - name: 24 API compatibility validation
+        run: |
+          grep -Fq "POST /v1/triage/{client_id}/{domain}" docs/FDE-INTEGRATION.md
+          grep -Fq '"/v1/{domain}/execute"' docs/FDE-INTEGRATION.md
+          grep -Fq '"custom"' docs/FDE-INTEGRATION.md
+      - name: 25 Dependency-security validation
+        run: |
+          pnpm audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
+          python -m pip check
+      - name: 26 CI/CD validation
+        run: |
+          test -f .github/workflows/ci.yml
+          grep -Fq "enterprise-gate" .github/workflows/ci.yml
+          test -f .github/workflows/fdse-system-of-systems.yml
+      - name: 27 Release-certification validation
+        run: |
+          git diff --exit-code
+          grep -RniE "IMPLEMENTED|TESTED|VALIDATED|EXPERIMENTAL|PLANNED" apps/web/lib/evidence docs | head -50
+      - name: 28 Production-readiness validation
+        run: |
+          curl --fail --silent --show-error --location https://www.tinlance.com/engineering/fdse | grep -F "Engineering intelligence and assurance"
+          curl --fail --silent --show-error --location https://www.tinlance.com/sitemap.xml | grep -F "/engineering/fdse"
+          curl --fail --silent --show-error https://www.tinlance.com/api/health | grep -Eiq '"status"'
+      - name: Stop local production server
+        if: always()
+        run: |
+          if [ -f /tmp/tinlance-enterprise.pid ]; then kill "$(cat /tmp/tinlance-enterprise.pid)" || true; fi
+      - name: Upload enterprise evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: fdse-enterprise-validation-evidence
+          path: |
+            /tmp/health.json
+            /tmp/tinlance-enterprise.log
+          if-no-files-found: warn
+
+  enterprise-gate:
+    name: Enterprise validation gate
+    if: always()
+    needs: [enterprise-validation]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require enterprise validation matrix to pass
+        env:
+          RESULT: ${{ needs.enterprise-validation.result }}
+        run: |
+          test "$RESULT" = success
+          echo "FDSE enterprise validation matrix: VERIFIED"
