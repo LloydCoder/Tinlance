@@ -14,6 +14,7 @@ Primary public routes:
 - `/products` — public product ecosystem, with evidence/status boundaries.
 - `/fde-mastery` — public FDE Mastery explanation and domain contracts.
 - `/engineering` — current architecture and public engineering evidence.
+- `/engineering/fdse` — FDSE engineering intelligence and assurance boundary.
 - `/security` — security architecture, controls and verification baseline.
 - `/about` — company, FDE philosophy and ecosystem context.
 - `/work` — typed public engineering/open-source evidence and case-study taxonomy.
@@ -75,6 +76,8 @@ M1 Commercial Engine → M3 Customer Workspace → M5 API Platform
                                            M14 Productization
 
 M5 → FDE API → FDE Mastery
+FDE Mastery → FDSE (engineering intelligence / assurance)
+FDSE → Agent Platform (governed execution contract)
 ThreatFade = distinct security product / public engineering evidence
 ```
 
@@ -186,6 +189,7 @@ The security verification baseline is OWASP ASVS 5.0, with additional AI/agent s
 - [`apps/web/docs/security/M7_AGENT_SECURITY_GATEWAY.md`](./apps/web/docs/security/M7_AGENT_SECURITY_GATEWAY.md) — M7 control plane.
 - [`apps/web/docs/security/M8_AGENT_EVALUATION_PLATFORM.md`](./apps/web/docs/security/M8_AGENT_EVALUATION_PLATFORM.md) — M8 assurance plane.
 - [`docs/FDE-INTEGRATION.md`](./docs/FDE-INTEGRATION.md) — FDE boundary.
+- [`docs/FDSE-WEBSITE-INTEGRATION.md`](./docs/FDSE-WEBSITE-INTEGRATION.md) — FDSE public architecture and integration boundary.
 - [`docs/ENTERPRISE-CI-GATES.md`](./docs/ENTERPRISE-CI-GATES.md) — blocking CI/security controls.
 - [`docs/security/GATE-D-SUPPLY-CHAIN.md`](./docs/security/GATE-D-SUPPLY-CHAIN.md) — dependency review, full-history secret scanning and Dependabot supply-chain controls.
 - [`docs/security/GATE-E-PRODUCTION.md`](./docs/security/GATE-E-PRODUCTION.md)
