@@ -1,0 +1,220 @@
+name: FDSE Agent Platform Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fdse-agent-platform-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    name: FDSE → Agent Platform R10
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Tinlance
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Checkout pinned FDSE
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/tinlance-fdse
+          ref: 0bfc34212a453f9a79c706d81a5082f869f08987
+          path: tinlance-fdse
+
+      - name: Checkout pinned Agent Platform
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/tinlance-agent-platform
+          ref: 775132611af59d301abd4f03d86d4bcdf6806fef
+          path: tinlance-agent-platform
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            tinlance-fdse/pyproject.toml
+            tinlance-agent-platform/pyproject.toml
+
+      - name: Install FDSE and Agent Platform
+        working-directory: .
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "tinlance-fdse[dev]"
+          pip install -e "tinlance-agent-platform[test]"
+
+      - name: Run authoritative Agent Platform R10 conformance
+        working-directory: tinlance-agent-platform
+        run: |
+          python -m pytest tests/test_r10_execution.py -q
+
+      - name: Verify FDSE → Agent Platform contract
+        run: |
+          python - <<'PY'
+          from uuid import UUID, uuid4
+
+          from fdse.integration import (
+              IntegrationContract,
+              IntegrationEvidence,
+              IntegrationDirection,
+              IntegrationStatus,
+              IntegrationSystem,
+              SystemOfSystemsGraph,
+          )
+          from fdse.evidence import digest
+          from tinlance_agent_platform_api import APIRequest, AgentPlatformAPI, APIResponse
+          from tinlance_agent_platform_execution import CONTRACT_VERSION, ExecutionRequest
+
+          TENANT = "fdse-ci-tenant"
+          SUBJECT = "fdse-ci-principal"
+
+          contract = IntegrationContract(
+              contract_id="fdse-agent-platform-governed-execution.v1",
+              version="1.0.0",
+              source=IntegrationSystem.FDSE,
+              target=IntegrationSystem.AGENT_PLATFORM,
+              direction=IntegrationDirection.OUTBOUND,
+              required_capabilities=(
+                  "authenticated-tenant-binding",
+                  "governed-execution.v1",
+                  "capability-version-binding",
+                  "approval-policy-boundary",
+                  "idempotent-consequential-execution",
+                  "evidence-and-audit-causality",
+              ),
+              authority_owner=IntegrationSystem.AGENT_PLATFORM,
+              evidence_requirements=(
+                  "fdse_contract_version",
+                  "platform_contract_version",
+                  "tenant_id",
+                  "request_id",
+                  "idempotency_key",
+                  "execution_fingerprint",
+              ),
+          )
+
+          graph = SystemOfSystemsGraph()
+          graph.add_contract(contract)
+
+          # The FDSE integration contract must fail closed until evidence is
+          # explicitly attached.
+          try:
+              graph.require_verified(contract.contract_id, contract.version)
+          except ValueError:
+              pass
+          else:
+              raise AssertionError("unverified FDSE → Agent Platform contract did not fail closed")
+
+          request = ExecutionRequest(
+              request_id="fdse-r10-request-001",
+              idempotency_key="fdse-r10-idempotency-001",
+              tenant_id=TENANT,
+              principal_id=SUBJECT,
+              agent_id=UUID("11111111-1111-4111-8111-111111111111"),
+              run_id=UUID("22222222-2222-4222-8222-222222222222"),
+              capability_id="fdse.engineering.change",
+              capability_version="1.0.0",
+              tool_name="fdse-reference-tool",
+              tool_version="1.0.0",
+              action="engineering.plan",
+              resource="revision:abc123",
+              input={"revision": "abc123", "required_evidence": ["tests", "review"]},
+              requested_timeout_seconds=30,
+          )
+          assert request.contract_version == CONTRACT_VERSION == "governed-execution.v1"
+          assert len(request.fingerprint) == 64
+          assert request.fingerprint == request.__class__(**{
+              **request.__dict__,
+          }).fingerprint if hasattr(request, "__dict__") else request.fingerprint
+
+          # Validate the Platform's authenticated API boundary independently:
+          # client-supplied identity must match the authenticated principal.
+          class Principal:
+              tenant_id = TENANT
+              subject_id = SUBJECT
+
+          class Resolver:
+              def resolve(self, token: str):
+                  assert token == "fdse-ci-token"
+                  return Principal()
+
+          calls = []
+
+          class Handler:
+              def handle(self, api_request):
+                  calls.append(api_request)
+                  return APIResponse("accepted", {"operation": api_request.operation})
+
+          api = AgentPlatformAPI(Handler())
+          api_request = APIRequest(
+              TENANT,
+              SUBJECT,
+              "runs.create",
+              {"fdse_contract": contract.contract_id},
+              request_id="fdse-api-request-001",
+              idempotency_key="fdse-api-idempotency-001",
+          )
+          first = api.dispatch_authenticated(api_request, "fdse-ci-token", Resolver())
+          second = api.dispatch_authenticated(api_request, "fdse-ci-token", Resolver())
+          assert first == second
+          assert len(calls) == 1
+
+          bad_request = APIRequest(
+              "other-tenant",
+              SUBJECT,
+              "runs.create",
+              {},
+              request_id="fdse-api-request-002",
+              idempotency_key="fdse-api-idempotency-002",
+          )
+          try:
+              api.dispatch_authenticated(bad_request, "fdse-ci-token", Resolver())
+          except PermissionError:
+              pass
+          else:
+              raise AssertionError("authenticated tenant mismatch did not fail closed")
+
+          evidence = IntegrationEvidence(
+              contract_id=contract.contract_id,
+              status=IntegrationStatus.VERIFIED,
+              evidence_id="fdse-agent-platform-r10-reference",
+              revision="agent-platform:775132611af59d301abd4f03d86d4bcdf6806fef",
+              payload_digest=digest({
+                  "fdse_revision": "0bfc34212a453f9a79c706d81a5082f869f08987",
+                  "platform_revision": "775132611af59d301abd4f03d86d4bcdf6806fef",
+                  "contract_version": contract.version,
+                  "platform_contract_version": CONTRACT_VERSION,
+                  "tenant_id": TENANT,
+                  "request_id": request.request_id,
+                  "idempotency_key": request.idempotency_key,
+                  "execution_fingerprint": request.fingerprint,
+              }),
+          )
+          graph.add_evidence(evidence)
+          assert graph.require_verified(contract.contract_id, contract.version) == evidence
+          assert len(graph.snapshot_digest()) == 64
+
+          print("FDSE → Agent Platform R10 contract: VERIFIED")
+          print(f"graph_digest={graph.snapshot_digest()}")
+          PY
+
+      - name: Upload integration diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: fdse-agent-platform-integration-diagnostics
+          path: |
+            tinlance-fdse/docs/architecture/AUDIT-2026-10-03.md
+            tinlance-agent-platform/docs/R10-GOVERNED-EXECUTION.md
+          if-no-files-found: warn
