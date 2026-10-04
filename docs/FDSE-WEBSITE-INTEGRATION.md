@@ -2,6 +2,8 @@
 
 ## Status
 
+The I7 gate is intentionally evaluated from an external GitHub-hosted runner against the canonical production origin.
+
 Phase I1 — FDSE Public Architecture is complete at the repository level. The implementation is merged and the repository gates for the merge revision are green.
 
 This document describes the public-information boundary. It does not claim that FDSE is already integrated with the live Tinlance production runtime, Agent Platform, or FDE Mastery execution path.
@@ -78,17 +80,17 @@ These references inform terminology and review criteria only. They do not establ
 
 - I1 — FDSE Public Architecture: complete.
 - I2 — FDSE Product / Service Presentation: complete; merged in PR #111 as `398a8eb4944ab4ec1d32c7b7a3b0a4a7ff67d6cc`.
-- I3 — FDE ↔ FDSE Website Integration: implementation complete on the current branch; merge gated on CI.
-- I4 — Agent Platform ↔ FDSE Website Architecture: implementation complete on the current branch; merge gated on CI.
-- I5 — Public Evidence / Claim Reconciliation: implementation complete on the current branch; merge gated on CI.
-- I6 — Website Engineering / QA: implementation complete on the current branch; repository CI verification in progress.
-- I7 — Production Verification: pending.
+- I3 — FDE ↔ FDSE Website Integration: complete; merged and CI-verified.
+- I4 — Agent Platform ↔ FDSE Website Architecture: complete; merged and CI-verified.
+- I5 — Public Evidence / Claim Reconciliation: complete; merged and CI-verified.
+- I6 — Website Engineering / QA: complete; merged and CI-verified.
+- I7 — Production Verification: blocking production-verification CI gate added; completes only when the canonical production smoke checks pass.
 
 The Vercel project currently has an external provisioning failure affecting new preview deployments before the build starts. This is infrastructure/quota-side evidence, not an application build failure. Repository CI remains the authoritative merge gate for repository changes; production verification remains a later gated phase and must not be inferred from repository CI.
 
 Each phase remains separately gated on implementation and CI evidence.
 
-I6 verification includes the blocking CI route/SEO smoke test and the production deployment route check performed against the canonical `www.tinlance.com` deployment. Preview deployments remain subject to the Vercel project's current external provisioning condition.
+I6 verification includes the blocking CI route/SEO smoke test. I7 is the distinct production gate: on every main push it verifies the canonical `www.tinlance.com` FDSE route, sitemap, robots.txt and apex-domain canonicalization from a GitHub-hosted runner. A production deployment is not considered verified merely because a Vercel deployment reports READY.
 
 ## I5 reconciliation findings
 

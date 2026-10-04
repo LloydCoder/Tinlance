@@ -415,6 +415,40 @@ jobs:
         run: |
           if [ -f /tmp/tinlance-next.pid ]; then kill "$(cat /tmp/tinlance-next.pid)" || true; fi
 
+  production-verification:
+    name: Production FDSE verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - web
+      - fde-api
+      - ai-security-regression
+      - m8-evaluation
+      - container-validation
+      - sbom
+      - security-static
+      - dast
+    steps:
+      - name: Verify canonical production FDSE route
+        run: |
+          set -euo pipefail
+          base="https://www.tinlance.com"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 3 --retry-all-errors -o /tmp/fdse.html -w 'FDSE HTTP %{http_code}\n' "$base/engineering/fdse"
+          grep -Fq -- "Engineering intelligence and assurance" /tmp/fdse.html
+      - name: Verify canonical sitemap and robots
+        run: |
+          set -euo pipefail
+          base="https://www.tinlance.com"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 3 --retry-all-errors -o /tmp/sitemap.xml "$base/sitemap.xml"
+          grep -Fq -- "https://www.tinlance.com/engineering/fdse" /tmp/sitemap.xml
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 3 --retry-all-errors -o /tmp/robots.txt "$base/robots.txt"
+          grep -Fq -- "Sitemap: https://www.tinlance.com/sitemap.xml" /tmp/robots.txt
+      - name: Verify production canonicalization
+        run: |
+          set -euo pipefail
+          headers="$(curl --silent --show-error --location --retry 5 --retry-delay 3 --retry-all-errors -D - -o /dev/null https://tinlance.com/engineering/fdse)"
+          grep -Eiq '^HTTP/[0-9.]+ 200$' <<<"$headers"
+
   enterprise-gate:
     name: Enterprise CI gate
     if: always()
@@ -428,6 +462,7 @@ jobs:
       - sbom
       - security-static
       - dast
+      - production-verification
     steps:
       - name: Require every blocking gate to pass
         env:
