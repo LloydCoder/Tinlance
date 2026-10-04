@@ -1,6 +1,8 @@
 name: FDSE Enterprise Validation
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
   merge_group:
