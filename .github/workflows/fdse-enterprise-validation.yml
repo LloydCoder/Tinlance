@@ -127,7 +127,7 @@ jobs:
         run: |
           pnpm audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
           python -m pip install 'pip-audit>=2.7,<3.0'
-          pip-audit --strict
+          pip-audit --strict --skip-editable
       - name: 14 Provenance validation
         run: |
           grep -R "uses: .*@[0-9a-f]\{40\}" .github/workflows >/dev/null
