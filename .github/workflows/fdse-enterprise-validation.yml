@@ -217,7 +217,7 @@ jobs:
           grep -Fq "POST /v1/triage/{client_id}/{domain}" docs/FDE-INTEGRATION.md
           grep -Fq "POST /v1/execute" apps/fde-api/README.md
           grep -Fq '"cybersecurity"' apps/fde-api/README.md
-          grep -Fq '"custom"' apps/fde-api/README.md
+          grep -Fq -- '- `custom`' apps/fde-api/README.md
           grep -Fq '"procurement"' apps/fde-api/README.md
       - name: 25 Dependency-security validation
         run: |
