@@ -12,7 +12,7 @@ This phase verifies compatibility and evidence boundaries in a deterministic Git
 |---|---|
 | Tinlance | current PR/main revision under test |
 | FDSE | `0bfc34212a453f9a79c706d81a5082f869f08987` |
-| FDE Mastery | `0aae198cadd7f69d8173653803bca19e780154ca` |
+| FDE Mastery | `370fea68bdb74182f0893a5a4421f147ed139597` |
 | Agent Platform | `775132611af59d301abd4f03d86d4bcdf6806fef` |
 | Agent Platform SDK | `2307c705047200ebaede73f0bd628da38542d31f` |
 | Agent OS | `ab08fe3d145da378ec56ce392f70600c247c81f5` |
