@@ -105,7 +105,7 @@ Phase II establishes contract/integration verification. It does not claim custom
 
 ### Phase III — FDSE ↔ Agent Platform Integration
 
-**In progress.** The implementation is on the `feat/fdse-agent-platform-integration-v1` branch and is gated by `.github/workflows/fdse-agent-platform-integration.yml`.
+**Complete.** Implemented and merged in PR #121 as merge commit `f0621a8ad67f2c489d863a41266ca249416f6c6f`. The dedicated R10 gate and the complete Tinlance CI matrix passed before merge.
 
 Sub-gates:
 
@@ -115,11 +115,13 @@ Sub-gates:
 - III4 — tenant mismatch and unverified-integration fail-closed checks;
 - III5 — deterministic VERIFIED integration evidence and graph digest.
 
-Completion requires implementation, documentation, CI/workflow success and merge evidence.
+Completion was gated by implementation, documentation, CI/workflow success and merge evidence.
 
 ### Phase IV — Full Tinlance system-of-systems validation
 
-Planned after Phase III: FDSE, FDE Mastery, Tinlance FDE API, Agent Platform/SDK, Agent OS, GitHub/CI, scanners, artifact registries, provenance/attestation, deployment, observability and customer-environment boundaries.
+**In progress.** Implementation is on the `feat/fdse-system-of-systems-validation` branch and is gated by `.github/workflows/fdse-system-of-systems.yml`.
+
+The gate pins FDSE, FDE Mastery, Agent Platform and Agent OS to immutable revisions; runs their relevant validation suites; verifies the complete FDSE evidence spine and incident lineage; and checks that Agent Platform remains the authority owner.
 
 ### Phase V — Enterprise validation
 
