@@ -289,6 +289,7 @@ jobs:
               hashlib.sha256,
           ).hexdigest()
 
+          execution_results = []
           for domain in domains:
               request_id = str(uuid.uuid4())
               response = requests.post(
@@ -315,16 +316,36 @@ jobs:
               assert body["result"]["domain"] == domain, body
               assert body["result"]["client_id"] == tenant, body
               assert body["result"]["request_id"], body
-              evidence = IntegrationEvidence(
-                  contract_id=contract.contract_id,
-                  status=IntegrationStatus.VERIFIED,
-                  evidence_id=f"fde-mastery-{domain}-{body['result']['request_id']}",
-                  revision="fde-mastery-main",
-                  payload_digest=digest({"domain": domain, "tenant_id": tenant, "result": body["result"]}),
+              execution_results.append(
+                  {
+                      "domain": domain,
+                      "tenant_id": tenant,
+                      "status": body["status"],
+                      "result": body["result"],
+                  }
               )
-              graph.add_evidence(evidence)
-              assert graph.require_verified(contract.contract_id, contract.version) == evidence
               print(f"{domain}: PASS")
+
+          # FDSE's integration graph requires one VERIFIED evidence record per
+          # contract. Aggregate the complete multi-domain execution result into
+          # that single deterministic evidence record rather than creating one
+          # VERIFIED record per domain.
+          evidence = IntegrationEvidence(
+              contract_id=contract.contract_id,
+              status=IntegrationStatus.VERIFIED,
+              evidence_id="fde-mastery-all-domains",
+              revision="fde-mastery-main",
+              payload_digest=digest(
+                  {
+                      "contract_id": contract.contract_id,
+                      "contract_version": contract.version,
+                      "tenant_id": tenant,
+                      "domains": execution_results,
+                  }
+              ),
+          )
+          graph.add_evidence(evidence)
+          assert graph.require_verified(contract.contract_id, contract.version) == evidence
 
           snapshot = graph.snapshot_digest()
           assert len(snapshot) == 64
