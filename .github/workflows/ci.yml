@@ -358,16 +358,16 @@ jobs:
             local expected="$2"
             local body
             body="$(curl --fail --silent --show-error --location "http://127.0.0.1:3000${path}")"
-            printf '%s' "$body" | grep -Fq "$expected"
+            [[ "$body" == *"$expected"* ]]
           }
           check_route "/engineering/fdse" "Engineering intelligence and assurance"
           check_route "/engineering" "A public architecture map with a claim-to-evidence boundary."
           check_route "/fde-mastery" "FDE Mastery"
           check_route "/products" "Products with explicit evidence boundaries"
           sitemap="$(curl --fail --silent --show-error --location http://127.0.0.1:3000/sitemap.xml)"
-          printf '%s' "$sitemap" | grep -Fq "https://www.tinlance.com/engineering/fdse"
+          [[ "$sitemap" == *"https://www.tinlance.com/engineering/fdse"* ]]
           robots="$(curl --fail --silent --show-error --location http://127.0.0.1:3000/robots.txt)"
-          printf '%s' "$robots" | grep -Fq "Sitemap: https://www.tinlance.com/sitemap.xml"
+          [[ "$robots" == *"Sitemap: https://www.tinlance.com/sitemap.xml"* ]]
 
       - name: Run OWASP ZAP baseline scan
         run: |
