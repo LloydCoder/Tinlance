@@ -17,8 +17,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   web:
@@ -238,42 +238,39 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL,HIGH
           ignorefile: .trivyignore
+      - name: Generate web SBOM
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26
+        with:
+          image: tinlance-web:ci
+          format: cyclonedx-json
+          output-file: tinlance-web.sbom.json
+          upload-artifact: false
+          upload-release-assets: false
+      - name: Generate FDE API SBOM
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26
+        with:
+          image: tinlance-fde-api:ci
+          format: cyclonedx-json
+          output-file: tinlance-fde-api.sbom.json
+          upload-artifact: false
+          upload-release-assets: false
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: tinlance-sboms
+          path: |
+            tinlance-web.sbom.json
+            tinlance-fde-api.sbom.json
+          if-no-files-found: error
 
   sbom:
     name: SBOM
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     needs: [container-validation]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
-      - name: Build web image for SBOM
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
-          context: .
-          file: apps/web/Dockerfile
-          tags: tinlance-web:sbom
-          build-args: |
-            BETTER_AUTH_SECRET=${{ env.BETTER_AUTH_SECRET }}
-            BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET=${{ env.BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET }}
-          load: true
-      - name: Build FDE API image for SBOM
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
-        with:
-          context: .
-          file: apps/fde-api/Dockerfile
-          tags: tinlance-fde-api:sbom
-          load: true
-      - uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26
-        with:
-          image: tinlance-web:sbom
-          format: cyclonedx-json
-          output-file: tinlance-web.sbom.json
-      - uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26
-        with:
-          image: tinlance-fde-api:sbom
-          format: cyclonedx-json
-          output-file: tinlance-fde-api.sbom.json
+          name: tinlance-sboms
       - name: Validate SBOM documents
         run: |
           python - <<'PY'
@@ -285,11 +282,6 @@ jobs:
               assert data.get('specVersion'), name
               assert data.get('components'), name
           PY
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: tinlance-sboms
-          path: '*.sbom.json'
-          if-no-files-found: error
 
   security-static:
     name: Static security scan
@@ -358,6 +350,25 @@ jobs:
           done
           cat /tmp/tinlance-next.log
           exit 1
+      - name: Smoke-test public FDSE routes and SEO surfaces
+        run: |
+          set -euo pipefail
+          check_route() {
+            local path="$1"
+            local expected="$2"
+            local body
+            body="$(curl --fail --silent --show-error --location "http://127.0.0.1:3000${path}")"
+            grep -Fq -- "$expected" <<<"$body"
+          }
+          check_route "/engineering/fdse" "Engineering intelligence and assurance"
+          check_route "/engineering" "A public architecture map with a claim-to-evidence boundary."
+          check_route "/fde-mastery" "FDE Mastery"
+          check_route "/products" "Products with explicit evidence boundaries"
+          sitemap="$(curl --fail --silent --show-error --location http://127.0.0.1:3000/sitemap.xml)"
+          grep -Fq -- "https://www.tinlance.com/engineering/fdse" <<<"$sitemap"
+          robots="$(curl --fail --silent --show-error --location http://127.0.0.1:3000/robots.txt)"
+          grep -Fq -- "Sitemap: https://www.tinlance.com/sitemap.xml" <<<"$robots"
+
       - name: Run OWASP ZAP baseline scan
         run: |
           set -euo pipefail
