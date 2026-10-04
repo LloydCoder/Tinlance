@@ -35,3 +35,7 @@ Re-check the upstream advisory and the `@next/eslint-plugin-next` dependency tre
 ## Evidence
 
 The exception is based on the upstream GitHub Advisory Database record for GHSA-vfj7-8cjw-p6xm and pnpm's documented GHSA-specific `audit --ignore` behavior.
+
+## Container scanner exception: urllib3 CVE attribution
+
+The FDE API image has a direct urllib3>=2.8.0,<3.0 dependency and the build installs 2.8.0. CI executes an image-level metadata assertion requiring exactly one urllib3 distribution at version 2.8.0. Trivy nevertheless attributes CVE-2026-97687 and CVE-2026-97689 to installed version 2.7.0 while simultaneously reporting the 2.8.0 METADATA file. Trivy documents that third-party SBOM inputs can produce inaccurate detection. These two CVEs are therefore temporarily suppressed only for the FDE API image, with expiry 2026-12-31. All other HIGH/CRITICAL findings remain blocking.
