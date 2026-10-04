@@ -56,6 +56,7 @@ jobs:
         run: |
           pnpm install --frozen-lockfile=true
           pnpm --filter @tinlance/web exec prisma generate
+          pnpm --filter @tinlance/web exec prisma migrate deploy
           python -m pip install --upgrade pip
           python -m pip install -e 'apps/fde-api[test]'
       - name: 1 Unit validation
