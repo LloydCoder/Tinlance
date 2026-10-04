@@ -230,6 +230,50 @@ jobs:
           test -f .github/workflows/fdse-system-of-systems.yml
       - name: 27 Release-certification validation
         run: |
+          set -euo pipefail
+          changed="$(git diff --name-only)"
+          unexpected="$(printf '%s\\n' "$changed" | grep -vE '^(apps/web/next-env\\.d\\.ts|package\\.json)
+      - name: 28 Production-readiness validation
+        run: |
+          curl --fail --silent --show-error --location https://www.tinlance.com/engineering/fdse | grep -F "Engineering intelligence and assurance"
+          curl --fail --silent --show-error --location https://www.tinlance.com/sitemap.xml | grep -F "/engineering/fdse"
+          curl --fail --silent --show-error https://www.tinlance.com/api/health | grep -Eiq '"status"'
+      - name: Stop local production server
+        if: always()
+        run: |
+          if [ -f /tmp/tinlance-enterprise.pid ]; then kill "$(cat /tmp/tinlance-enterprise.pid)" || true; fi
+      - name: Upload enterprise evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: fdse-enterprise-validation-evidence
+          path: |
+            /tmp/health.json
+            /tmp/tinlance-enterprise.log
+          if-no-files-found: warn
+
+  enterprise-gate:
+    name: Enterprise validation gate
+    if: always()
+    needs: [enterprise-validation]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require enterprise validation matrix to pass
+        env:
+          RESULT: ${{ needs.enterprise-validation.result }}
+        run: |
+          test "$RESULT" = success
+          echo "FDSE enterprise validation matrix: VERIFIED"
+ || true)"
+          if [ -n "$unexpected" ]; then
+            printf 'Unexpected tracked working-tree mutations:\\n%s\\n' "$unexpected"
+            git diff -- "$unexpected" || true
+            exit 1
+          fi
+          # Next.js route generation and pnpm's legacy audit-ignore compatibility
+          # may mutate these two tracked files during validation. Restore them
+          # before the final release-tree cleanliness assertion.
+          git restore --source=HEAD -- apps/web/next-env.d.ts package.json
           git diff --exit-code
           grep -RniE "IMPLEMENTED|TESTED|VALIDATED|EXPERIMENTAL|PLANNED" apps/web/lib/evidence docs | sed -n '1,50p'
       - name: 28 Production-readiness validation
