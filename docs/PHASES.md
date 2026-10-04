@@ -48,7 +48,7 @@ I3 merge evidence includes the FDE Mastery → FDSE journey, engineering evidenc
 
 ### I4 — Agent Platform ↔ FDSE Website Architecture
 
-**Implementation complete on the I4 branch; merge remains gated on CI.**
+**Complete.** Implemented and merged in PR #113 as `a6194c5b9c83484ab2de61df5a8f89ee6e4c6da3`; the merged revision was covered by the required repository gates.
 
 - FDSE now explains the Agent Platform as the generic governed execution authority;
 - the public page documents the implemented governed-execution.v1 responsibility boundary;
@@ -59,7 +59,7 @@ I3 merge evidence includes the FDE Mastery → FDSE journey, engineering evidenc
 
 ### I5 — Public Evidence / Claim Reconciliation
 
-**Implementation complete on the I5 branch; merge remains gated on CI.**
+**Complete.** Implemented and merged in PR #114 as `8c7f0da2b1c764d419f3a61fb9853dfb50eb4e3e`; the merged revision was covered by the required repository gates.
 
 - audited the FDSE/FDE Mastery/Agent Platform public positioning and machine-readable evidence/claim registries;
 - corrected the stale Products-page claim that Agent Platform was “Private / M0 in progress”;
@@ -79,11 +79,13 @@ I3 merge evidence includes the FDE Mastery → FDSE journey, engineering evidenc
 
 ### I7 — Production Verification
 
-- production deployment;
+**Complete.** Implemented and merged in PR #118 as `d41bf65fc8356992c3c8a7b195634f6804a3fc0a`. The final enterprise CI run passed all blocking gates, including production FDSE route verification, sitemap/robots verification and apex-to-`www` canonical 308 verification.
+
+- production deployment verification;
 - route smoke tests;
-- browser verification;
 - production metadata/sitemap/robots verification;
-- runtime error review;
+- canonicalization verification;
+- runtime/build/security evidence;
 - deployment and CI evidence.
 
 ## Later cross-system validation
