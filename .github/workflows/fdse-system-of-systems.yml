@@ -87,6 +87,8 @@ jobs:
 
       - name: Run FDE Mastery domain contract suite
         working-directory: fde-mastery
+        env:
+          PYTHONPATH: packages/platform-core
         run: |
           python -m pytest tests -q
 
