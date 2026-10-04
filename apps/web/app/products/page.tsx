@@ -11,13 +11,14 @@ export const metadata: Metadata = {
   title: "Products",
   description: "Explore Tinlance products and productized engineering platforms with explicit evidence boundaries.",
   alternates: { canonical: "/products" },
-  openGraph: { title: "Products | Tinlance", description: "ThreatFade, FDE Mastery and governed agent infrastructure from Tinlance.", url: "/products", type: "website", images: socialImages },
+  openGraph: { title: "Products | Tinlance", description: "ThreatFade, FDE Mastery, FDSE and governed agent infrastructure from Tinlance.", url: "/products", type: "website", images: socialImages },
   twitter: { card: "summary_large_image", title: "Products | Tinlance", description: "Public products and productized engineering capabilities from Tinlance.", images: [socialImageUrl] },
 };
 
 const products = [
   { name: "ThreatFade", status: "Public / Open Core", evidence: evidenceRecords.threatfadeQuicBaseline, problem: "Adversarial activity can intentionally become less observable.", capability: "Evidence-first detection and investigation for signal reduction, including C2 quieting, LOTL fade and GNSS interference scenarios.", href: "https://threatfade.com", repo: "https://github.com/LloydCoder/tinlance-threatfade", label: "Visit ThreatFade" },
   { name: "FDE Mastery", status: "Public / Engineering Platform", evidence: evidenceRecords.fdeMasteryEngineering, problem: "AI workflows need domain contracts, controls and evidence rather than model/API experiments alone.", capability: "A reusable FDE platform spanning eight first-class domains with identity, authorization, policy, durable workflows, evaluation, observability and controlled high-impact actions.", href: "https://github.com/LloydCoder/fde-mastery", repo: "https://github.com/LloydCoder/fde-mastery", label: "View FDE Mastery" },
+  { name: "FDSE", status: "Engineering / Enterprise Capability", evidence: evidenceRecords.fdsePublicArchitecture, problem: "Forward-deployed engineering needs a consistent way to structure context, risk, policy, change, evidence and assurance across delivery workflows.", capability: "Tinlance's engineering intelligence and assurance layer for engineering context, risk, policy, workflow, evidence, evaluation, security, supply-chain and lineage semantics.", href: "/engineering/fdse", repo: "https://github.com/LloydCoder/tinlance-fdse", label: "Explore FDSE" },
   { name: "Tinlance Agent Platform", status: "Private / M0 in progress", evidence: null, problem: "Governed agent execution needs generic security and execution primitives without giving models implicit authority.", capability: "A private proprietary control substrate. Public implementation details are intentionally limited while the foundation is being built.", href: "/engineering", repo: undefined, label: "View public architecture" },
 ];
 
