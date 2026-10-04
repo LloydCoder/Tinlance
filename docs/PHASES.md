@@ -146,17 +146,17 @@ Completed 28-layer validation: unit, contract, cross-repository contract, integr
 
 ### Phase VI — Customer / Production Validation
 
-**Next active phase.** Phase VI converts the enterprise validation contract into bounded real-world operational evidence:
+**In progress.** The Phase-VI automated operational validation gate is implemented in `.github/workflows/fdse-phase-vi-validation.yml` and covers the automatable evidence for VI1 and VI3–VI7.
 
-- VI1 — Internal Tinlance E2E
-- VI2 — Controlled customer environment
-- VI3 — Real repository validation
-- VI4 — Real CI/CD validation
-- VI5 — Security and supply-chain validation
-- VI6 — Operational/SLO validation
-- VI7 — Production readiness review
+- VI1 — Internal Tinlance E2E — automated gate implemented
+- VI2 — Controlled customer environment — external/customer evidence required
+- VI3 — Real repository validation — automated gate implemented
+- VI4 — Real CI/CD validation — automated gate implemented
+- VI5 — Security and supply-chain validation — automated gate implemented
+- VI6 — Operational/SLO validation — automated production observations implemented
+- VI7 — Production readiness review — evidence checklist implemented; final acceptance remains operational
 
-Phase VI must use real deployment/repository boundaries where available and must not manufacture customer evidence from synthetic CI fixtures.
+The canonical boundary is `docs/FDSE-PHASE-VI-VALIDATION.md`. The workflow deliberately does not manufacture VI2 customer evidence from synthetic CI fixtures or Tinlance's own repository.
 
 ### Phase VII — Enterprise Certification & GA
 
