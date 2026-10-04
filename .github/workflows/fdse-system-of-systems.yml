@@ -95,8 +95,9 @@ jobs:
           from datetime import datetime, timezone
           from fdse import (
               EvidenceSpineChain, EvidenceSpineGraph, IncidentChain, LineageRecord,
-              SemanticRef, digest,
+              SemanticRef,
           )
+          from fdse.evidence import digest
           from fdse.integration import IntegrationContract, IntegrationDirection, IntegrationSystem
 
           tenant = 'system-of-systems-ci'
@@ -123,15 +124,18 @@ jobs:
           incident_refs = [SemanticRef(kind, f'{kind}-002', tenant, repo, revision) for kind in (
               'signal','incident','detection','triage','containment','investigation','remediation','verification','closure')]
           incident = IncidentChain(*incident_refs)
-          incident_relations = ('signals','detected_by','triaged_by','contained_by','investigated_by','remediated_by','verified_by','closed_by')
           incident_meta = tuple(
-              LineageRecord(
-                  incident_refs[0] if relation == 'signals' else incident_refs[1],
-                  relation,
-                  incident_refs[1] if relation == 'signals' else incident_refs[incident_relations.index(relation) + 2],
-                  actor, now, 'b' * 64, provenance, authority,
+              LineageRecord(source, relation, target, actor, now, 'b' * 64, provenance, authority)
+              for source, relation, target in (
+                  (incident_refs[0], 'signals', incident_refs[1]),
+                  (incident_refs[1], 'detected_by', incident_refs[2]),
+                  (incident_refs[1], 'triaged_by', incident_refs[3]),
+                  (incident_refs[1], 'contained_by', incident_refs[4]),
+                  (incident_refs[1], 'investigated_by', incident_refs[5]),
+                  (incident_refs[1], 'remediated_by', incident_refs[6]),
+                  (incident_refs[1], 'verified_by', incident_refs[7]),
+                  (incident_refs[1], 'closed_by', incident_refs[8]),
               )
-              for relation in incident_relations
           )
           graph.add_incident(incident, incident_meta)
           assert len(graph.lineage) == 23
