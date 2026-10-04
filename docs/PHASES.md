@@ -146,7 +146,9 @@ Completed 28-layer validation: unit, contract, cross-repository contract, integr
 
 ### Phase VI — Customer / Production Validation
 
-**In progress.** The Phase-VI automated operational validation gate is implemented in `.github/workflows/fdse-phase-vi-validation.yml` and covers the automatable evidence for VI1 and VI3–VI7.
+**In progress.** Phase-VI evidence-boundary hardening is implemented in the working branch for review. The repository now has a versioned external-evidence schema and a fail-closed Production Readiness Review record. These artifacts prepare the external pilot path but do not create customer evidence.
+
+The Phase-VI automated operational validation gate is implemented in `.github/workflows/fdse-phase-vi-validation.yml` and covers the automatable evidence for VI1 and VI3–VI7.
 
 - VI1 — Internal Tinlance E2E — automated gate implemented
 - VI2 — Controlled customer environment — external/customer evidence required
