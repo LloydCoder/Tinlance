@@ -2,6 +2,8 @@
 
 ## Status
 
+The I7 gate is intentionally evaluated from an external GitHub-hosted runner against the canonical production origin.
+
 Phase I1 — FDSE Public Architecture is complete at the repository level. The implementation is merged and the repository gates for the merge revision are green.
 
 This document describes the public-information boundary. It does not claim that FDSE is already integrated with the live Tinlance production runtime, Agent Platform, or FDE Mastery execution path.
