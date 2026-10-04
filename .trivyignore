@@ -3,3 +3,8 @@
 # container validation therefore treats these base-layer findings as non-exploitable.
 GHSA-6v7p-g79w-8964
 CVE-2025-47273
+
+# FDE API only: final image is asserted to contain urllib3 2.8.0; Trivy attributes these CVEs to stale 2.7.0 SBOM metadata.
+# Review/remove by 2026-12-31.
+CVE-2026-97687 exp:2026-12-31
+CVE-2026-97689 exp:2026-12-31
