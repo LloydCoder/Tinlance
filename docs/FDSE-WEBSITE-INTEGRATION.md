@@ -81,10 +81,10 @@ These references inform terminology and review criteria only. They do not establ
 - I3 — FDE ↔ FDSE Website Integration: implementation complete on the current branch; merge gated on CI.
 - I4 — Agent Platform ↔ FDSE Website Architecture: implementation complete on the current branch; merge gated on CI.
 - I5 — Public Evidence / Claim Reconciliation: implementation complete on the current branch; merge gated on CI.
-- I6 — Website Engineering / QA: pending.
+- I6 — Website Engineering / QA: implementation complete on the current branch; repository CI verification in progress.
 - I7 — Production Verification: pending.
 
-The Vercel project has an external provisioning failure affecting new deployments before the build starts. Repository CI remains the authoritative merge gate for I3; production verification remains a later gated phase and must not be inferred from repository CI.
+The Vercel project currently has an external provisioning failure affecting new preview deployments before the build starts. This is infrastructure/quota-side evidence, not an application build failure. Repository CI remains the authoritative merge gate for repository changes; production verification remains a later gated phase and must not be inferred from repository CI.
 
 Each phase remains separately gated on implementation and CI evidence.
 
