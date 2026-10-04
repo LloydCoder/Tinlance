@@ -22,29 +22,38 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout Tinlance
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Checkout current FDE Mastery main
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: LloydCoder/fde-mastery
           ref: main
           path: fde-mastery
 
+      - name: Checkout pinned FDSE integration contract
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: LloydCoder/tinlance-fdse
+          ref: 0bfc34212a453f9a79c706d81a5082f869f08987
+          path: tinlance-fdse
+
       - name: Set up Python
-        uses: actions/setup-python@v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: |
             apps/fde-api/pyproject.toml
             fde-mastery/packages/platform-core/pyproject.toml
+            tinlance-fdse/pyproject.toml
 
       - name: Install both execution layers
         run: |
           python -m pip install --upgrade pip
           pip install -e "apps/fde-api[test]"
           pip install -e "fde-mastery/packages/platform-core"
+          pip install -e "tinlance-fdse"
           pip install "pyjwt[crypto]>=2.13,<3" "uvicorn>=0.34,<1" requests
 
       - name: Create deterministic local OIDC/JWKS provider
@@ -155,6 +164,15 @@ jobs:
           import time
           import uuid
           import requests
+          from fdse.integration import (
+              IntegrationContract,
+              IntegrationDirection,
+              IntegrationEvidence,
+              IntegrationStatus,
+              IntegrationSystem,
+              SystemOfSystemsGraph,
+          )
+          from fdse.evidence import digest
 
           domains = (
               "cybersecurity", "finance", "healthtech", "logistics",
@@ -235,6 +253,36 @@ jobs:
           }
           tenant = "org123"
           timestamp = str(int(time.time()))
+          contract = IntegrationContract(
+              contract_id="fdse-fde-mastery-execution.v1",
+              version="1.0.0",
+              source=IntegrationSystem.FDE_MASTERY,
+              target=IntegrationSystem.FDSE,
+              direction=IntegrationDirection.OUTBOUND,
+              required_capabilities=(
+                  "tenant-scoped-domain-execution",
+                  "request-identity-preservation",
+                  "result-integrity-digest",
+                  "revision-bound-evidence",
+              ),
+              authority_owner=IntegrationSystem.FDE_MASTERY,
+              evidence_requirements=(
+                  "request_id",
+                  "tenant_id",
+                  "domain",
+                  "execution_status",
+                  "result_digest",
+                  "fde_mastery_revision",
+              ),
+          )
+          graph = SystemOfSystemsGraph()
+          graph.add_contract(contract)
+          try:
+              graph.require_verified(contract.contract_id, contract.version)
+          except ValueError:
+              pass
+          else:
+              raise AssertionError("unverified FDSE integration contract must fail closed")
           signature = hmac.new(
               b"ci-tenant-signing-secret-32-bytes-minimum",
               f"{timestamp}.{tenant}".encode(),
@@ -267,7 +315,52 @@ jobs:
               assert body["result"]["domain"] == domain, body
               assert body["result"]["client_id"] == tenant, body
               assert body["result"]["request_id"], body
+              evidence = IntegrationEvidence(
+                  contract_id=contract.contract_id,
+                  status=IntegrationStatus.VERIFIED,
+                  evidence_id=f"fde-mastery-{domain}-{body['result']['request_id']}",
+                  revision="fde-mastery-main",
+                  payload_digest=digest({"domain": domain, "tenant_id": tenant, "result": body["result"]}),
+              )
+              graph.add_evidence(evidence)
+              assert graph.require_verified(contract.contract_id, contract.version) == evidence
               print(f"{domain}: PASS")
+
+          snapshot = graph.snapshot_digest()
+          assert len(snapshot) == 64
+          assert graph.require_verified(contract.contract_id, contract.version).status is IntegrationStatus.VERIFIED
+          print(f"FDSE integration contract: VERIFIED; graph_digest={snapshot}")
+
+          # Negative boundary checks: tenant binding and idempotency remain enforced by Tinlance FDE API.
+          bad_tenant = requests.post(
+              "http://127.0.0.1:8000/v1/custom/execute",
+              headers={
+                  "Authorization": "Bearer ci-service-token",
+                  "Idempotency-Key": "negative-tenant",
+                  "X-Request-ID": str(uuid.uuid4()),
+                  "X-Tinlance-Tenant": "wrong-tenant",
+                  "X-Tinlance-Tenant-Timestamp": timestamp,
+                  "X-Tinlance-Tenant-Signature": signature,
+              },
+              json={"tenant_id": tenant, "payload": payloads["custom"]},
+              timeout=20,
+          )
+          assert bad_tenant.status_code == 403, (bad_tenant.status_code, bad_tenant.text)
+
+          missing_idempotency = requests.post(
+              "http://127.0.0.1:8000/v1/custom/execute",
+              headers={
+                  "Authorization": "Bearer ci-service-token",
+                  "X-Request-ID": str(uuid.uuid4()),
+                  "X-Tinlance-Tenant": tenant,
+                  "X-Tinlance-Tenant-Timestamp": timestamp,
+                  "X-Tinlance-Tenant-Signature": signature,
+              },
+              json={"tenant_id": tenant, "payload": payloads["custom"]},
+              timeout=20,
+          )
+          assert missing_idempotency.status_code == 400, (missing_idempotency.status_code, missing_idempotency.text)
+          print("Negative boundary checks: PASS")
           PY
 
       - name: Upload cross-repository diagnostics
