@@ -109,7 +109,7 @@ jobs:
       - name: 9 Workflow-recovery validation
         run: |
           set -euo pipefail
-          grep -RniE "retry|recovery|lease|cancel|resume|idempot" apps/web/docs docs apps/fde-api | head -80
+          grep -RniE "retry|recovery|lease|cancel|resume|idempot" apps/web/docs docs apps/fde-api | sed -n '1,80p'
       - name: 10 Memory/context security validation
         run: |
           test -f apps/web/docs/security/M9_AGENT_RUNTIME.md
@@ -117,12 +117,12 @@ jobs:
       - name: 11 Multi-agent validation
         run: |
           set -euo pipefail
-          grep -RniE "multi.?agent|delegation|agent.?identity|agent.?runtime" apps/web/docs docs .github/workflows | head -100
+          grep -RniE "multi.?agent|delegation|agent.?identity|agent.?runtime" apps/web/docs docs .github/workflows | sed -n '1,100p'
       - name: 12 MCP/tool security validation
         run: |
           set -euo pipefail
           test -f docs/security/GATE-D-SUPPLY-CHAIN.md
-          grep -RniE "MCP|tool" docs/security apps/web/docs/security | head -100
+          grep -RniE "MCP|tool" docs/security apps/web/docs/security | sed -n '1,100p'
       - name: 13 Supply-chain validation
         run: |
           pnpm audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
@@ -203,7 +203,7 @@ jobs:
       - name: 22 Observability validation
         run: |
           curl --fail --silent http://127.0.0.1:3000/api/health | grep -Eiq '"status"'
-          grep -RniE "request.?id|correlation|trace|audit|observability" docs apps/web/docs apps/fde-api | head -100
+          grep -RniE "request.?id|correlation|trace|audit|observability" docs apps/web/docs apps/fde-api | sed -n '1,100p'
       - name: 23 Documentation validation
         run: |
           for path in README.md docs/EVIDENCE-AND-TRUST.md docs/ENTERPRISE-CI-GATES.md docs/FDSE-SYSTEM-OF-SYSTEMS.md docs/FDSE-FDE-MASTERY-INTEGRATION.md docs/FDSE-AGENT-PLATFORM-INTEGRATION.md; do
@@ -226,7 +226,7 @@ jobs:
       - name: 27 Release-certification validation
         run: |
           git diff --exit-code
-          grep -RniE "IMPLEMENTED|TESTED|VALIDATED|EXPERIMENTAL|PLANNED" apps/web/lib/evidence docs | head -50
+          grep -RniE "IMPLEMENTED|TESTED|VALIDATED|EXPERIMENTAL|PLANNED" apps/web/lib/evidence docs | sed -n '1,50p'
       - name: 28 Production-readiness validation
         run: |
           curl --fail --silent --show-error --location https://www.tinlance.com/engineering/fdse | grep -F "Engineering intelligence and assurance"
