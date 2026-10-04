@@ -26,6 +26,8 @@ The FDSE repository/domain-contract track is complete at M0–M18 + E1–E6 in L
 
 ### I2 — FDSE Product / Service Presentation
 
+**Implementation in progress.**
+
 - commercial/product positioning;
 - capability presentation;
 - assessment relationship;
