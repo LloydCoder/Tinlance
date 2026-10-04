@@ -116,7 +116,7 @@ export const evidenceRecords = {
     source: "Tinlance FDSE website implementation and public FDSE repository",
     sourceUrl: "https://www.tinlance.com/engineering/fdse",
     repository: "LloydCoder/Tinlance",
-    commit: "CURRENT_HEAD",
+    commit: "1413df562f701af1a108b12a54ab379b80449d64",
     methodology: "Repository implementation, CI verification and explicit responsibility-boundary review.",
     result: "The public FDSE architecture route is implemented and repository CI-verified.",
     limitations: "Architecture and repository evidence do not establish live production integration, customer outcomes, certification or independent assurance.",
