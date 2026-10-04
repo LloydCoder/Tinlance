@@ -43,5 +43,6 @@ describe("public repository links", () => {
   it("pins the two public engineering repositories", () => {
     expect(caseStudies.map((study) => study.sourceUrl)).toContain("https://github.com/LloydCoder/tinlance-threatfade");
     expect(caseStudies.map((study) => study.sourceUrl)).toContain("https://github.com/LloydCoder/fde-mastery");
+    expect(evidenceTypeLabel.ARCHITECTURE).toBe("Architecture");
   });
 });
