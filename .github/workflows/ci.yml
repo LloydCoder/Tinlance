@@ -337,12 +337,12 @@ jobs:
       - run: pnpm --filter @tinlance/web build
       - name: Start production web server
         working-directory: apps/web
-        run: NODE_ENV=production pnpm exec next start -H 127.0.0.1 -p 3000 > /tmp/tinlance-next.log 2>&1 & echo $! > /tmp/tinlance-next.pid
+        run: nohup env NODE_ENV=production pnpm exec next start -H 127.0.0.1 -p 3000 > /tmp/tinlance-next.log 2>&1 </dev/null & echo $! > /tmp/tinlance-next.pid
       - name: Wait for application readiness
         run: |
           set -euo pipefail
           for attempt in $(seq 1 60); do
-            if curl --fail --silent --show-error http://127.0.0.1:3000/api/health > /tmp/health.json; then
+            if curl --fail --silent --show-error http://127.0.0.1:3000/api/ready > /tmp/health.json; then
               cat /tmp/health.json
               exit 0
             fi
