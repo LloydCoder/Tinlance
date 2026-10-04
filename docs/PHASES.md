@@ -140,13 +140,23 @@ The gate pins FDSE, FDE Mastery, Agent Platform and Agent OS to immutable revisi
 
 ### Phase V — Enterprise validation
 
-**In progress.** The 28-layer executable validation matrix is implemented on the `feat/fdse-enterprise-validation-v1` branch and is gated by `.github/workflows/fdse-enterprise-validation.yml`. The initial run reached layer 13 before failing because the locally installed editable `tinlance-fde-api` project was presented to `pip-audit` as a PyPI distribution; the gate is being corrected to use the documented `--skip-editable` behavior without weakening dependency auditing.
+**Complete.** The 28-layer executable validation matrix is implemented, documented and green on the rebased Phase-V revision. The authoritative gate passed all 28 layers, including release certification and production-readiness checks, on the PR merge ref and feature branch. Repository CI evidence remains distinct from customer-production evidence and independent certification.
 
-Planned 28-layer validation: unit, contract, cross-repository contract, integration, security, adversarial, property/invariant, failure injection, workflow recovery, memory/context security, multi-agent, MCP/tool security, supply chain, provenance, E2E, performance, load, concurrency, tenant isolation, migration, disaster recovery, observability, documentation, API compatibility, dependency security, CI/CD, release certification and production readiness.
+Completed 28-layer validation: unit, contract, cross-repository contract, integration, security, adversarial, property/invariant, failure injection, workflow recovery, memory/context security, multi-agent, MCP/tool security, supply chain, provenance, E2E, performance, load, concurrency, tenant isolation, migration, disaster recovery, observability, documentation, API compatibility, dependency security, CI/CD, release certification and production readiness.
 
 ### Phase VI — Customer / Production Validation
 
-Planned internal Tinlance E2E, controlled customer environment, real repository/CI validation, security/supply-chain validation, operational/SLO validation and production-readiness review.
+**Next active phase.** Phase VI converts the enterprise validation contract into bounded real-world operational evidence:
+
+- VI1 — Internal Tinlance E2E
+- VI2 — Controlled customer environment
+- VI3 — Real repository validation
+- VI4 — Real CI/CD validation
+- VI5 — Security and supply-chain validation
+- VI6 — Operational/SLO validation
+- VI7 — Production readiness review
+
+Phase VI must use real deployment/repository boundaries where available and must not manufacture customer evidence from synthetic CI fixtures.
 
 ### Phase VII — Enterprise Certification & GA
 
