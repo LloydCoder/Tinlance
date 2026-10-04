@@ -48,7 +48,7 @@ describe("public repository links", () => {
       status: "TESTED",
       evidenceType: "ARCHITECTURE",
       repository: "LloydCoder/Tinlance",
-      commit: "1413df562f701af1a108b12a54ab379b80449d64",
+      commit: "a6194c5b9c83484ab2de61df5a8f89ee6e4c6da3",
     });
     expect(evidenceRecords.fdsePublicArchitecture.sourceUrl).toBe("https://www.tinlance.com/engineering/fdse");
   });
