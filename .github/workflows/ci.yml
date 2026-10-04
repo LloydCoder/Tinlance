@@ -446,8 +446,12 @@ jobs:
       - name: Verify production canonicalization
         run: |
           set -euo pipefail
-          headers="$(curl --silent --show-error --location --retry 5 --retry-delay 3 --retry-all-errors -D - -o /dev/null https://tinlance.com/engineering/fdse)"
-          grep -Eiq '^HTTP/[0-9.]+ 200$' <<<"$headers"
+          headers="$(curl --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors -D - -o /dev/null https://tinlance.com/engineering/fdse)"
+          normalized_headers="$(printf '%s\\n' "$headers" | tr -d '\\r')"
+          grep -Eiq '^HTTP/[^[:space:]]+[[:space:]]+308([[:space:]]|$)' <<<"$normalized_headers"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 3 --retry-all-errors -o /tmp/apex-fdse.html https://tinlance.com/engineering/fdse
+          grep -Fq -- "Engineering intelligence and assurance" /tmp/apex-fdse.html
+
 
   enterprise-gate:
     name: Enterprise CI gate
