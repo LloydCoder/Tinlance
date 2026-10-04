@@ -45,7 +45,7 @@ Current public guidance used for the gate includes NIST AI RMF 1.0, NIST SSDF 1.
 
 Synthetic performance/load is a CI characterization, not a production capacity claim.
 
-The PostgreSQL recovery test validates dump/restore behavior in the CI database fixture. It is not proof of the live Neon backup/restore configuration.
+The PostgreSQL recovery test validates dump/drop/restore behavior in the CI database fixture using a native PostgreSQL connection URL without Prisma's `schema=public` query parameter. It is not proof of the live Neon backup/restore configuration.
 
 Production checks validate the current public origin only. They do not prove a live customer FDSE execution path; docs/FDE-INTEGRATION.md continues to mark the authenticated live FDE path as unverified until it is actually observed.
 
