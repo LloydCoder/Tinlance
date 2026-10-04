@@ -88,6 +88,8 @@ The Vercel project currently has an external provisioning failure affecting new 
 
 Each phase remains separately gated on implementation and CI evidence.
 
+I6 verification includes the blocking CI route/SEO smoke test and the production deployment route check performed against the canonical `www.tinlance.com` deployment. Preview deployments remain subject to the Vercel project's current external provisioning condition.
+
 ## I5 reconciliation findings
 
 The public Products page previously described Tinlance Agent Platform as “Private / M0 in progress”. That statement was stale relative to the public Agent Platform repository, which documents the governed-execution.v1 contract and the completed M0-M29 repository engineering sequence. The public status is now scoped as **Public / Repository Contract** with explicit limitations for external production deployment and customer integration.
