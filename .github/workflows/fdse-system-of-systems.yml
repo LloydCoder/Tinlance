@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: LloydCoder/fde-mastery
-          ref: 0aae198cadd7f69d8173653803bca19e780154ca
+          ref: 370fea68bdb74182f0893a5a4421f147ed139597
           path: fde-mastery
 
       - name: Checkout pinned Agent Platform
@@ -75,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C tinlance-fdse rev-parse HEAD)" = "0bfc34212a453f9a79c706d81a5082f869f08987"
-          test "$(git -C fde-mastery rev-parse HEAD)" = "0aae198cadd7f69d8173653803bca19e780154ca"
+          test "$(git -C fde-mastery rev-parse HEAD)" = "370fea68bdb74182f0893a5a4421f147ed139597"
           test "$(git -C tinlance-agent-platform rev-parse HEAD)" = "775132611af59d301abd4f03d86d4bcdf6806fef"
           test "$(git -C tinlance-agent-platform-sdk rev-parse HEAD)" = "2307c705047200ebaede73f0bd628da38542d31f"
           test "$(git -C tinlance-agent-os rev-parse HEAD)" = "ab08fe3d145da378ec56ce392f70600c247c81f5"
