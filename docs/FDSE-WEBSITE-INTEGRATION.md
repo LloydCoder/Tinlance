@@ -54,12 +54,12 @@ The public positioning is consistent with established engineering risk-managemen
 
 - I1 — FDSE Public Architecture: complete.
 - I2 — FDSE Product / Service Presentation: complete; merged in PR #111 as `398a8eb4944ab4ec1d32c7b7a3b0a4a7ff67d6cc`.
-- I3 — FDE ↔ FDSE Website Integration: next.
+- I3 — FDE ↔ FDSE Website Integration: implementation complete on the current branch; merge gated on CI.
 - I4 — Agent Platform ↔ FDSE Website Architecture: pending.
 - I5 — Public Evidence / Claim Reconciliation: pending.
 - I6 — Website Engineering / QA: pending.
 - I7 — Production Verification: pending.
 
-The Vercel project currently has an external provisioning failure affecting new deployments before the build starts. Repository CI is independent and green for the I2 merge revision; production verification remains a later gated phase.
+The Vercel project has an external provisioning failure affecting new deployments before the build starts. Repository CI remains the authoritative merge gate for I3; production verification remains a later gated phase and must not be inferred from repository CI.
 
 Each phase remains separately gated on implementation and CI evidence.

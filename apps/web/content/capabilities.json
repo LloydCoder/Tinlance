@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "verifiedAt": "2026-10-04T06:22:28Z",
+  "verifiedAt": "2026-10-04T00:00:00Z",
   "capabilities": [
     {
       "id": "cap_fde_assessment",
@@ -139,7 +139,7 @@
       "id": "cap_fdse_public_architecture",
       "slug": "fdse-public-architecture",
       "name": "FDSE Public Architecture",
-      "description": "Public FDSE engineering intelligence and assurance responsibility boundary published by Tinlance.",
+      "description": "Public FDSE engineering intelligence and assurance boundary, including its documented relationship to FDE Mastery.",
       "category": "engineering-intelligence",
       "status": "IMPLEMENTED",
       "maturity": "TESTED",
@@ -148,11 +148,12 @@
       "repositoryPath": "apps/web/app/engineering/fdse/page.tsx",
       "publicUrl": "/engineering/fdse",
       "evidenceIds": [
-        "ev_fdse_public_architecture"
+        "ev_fdse_public_architecture",
+        "ev_fdse_fde_website_relationship"
       ],
       "customerVisible": true,
       "commerciallyAvailable": false,
-      "limitations": "This capability documents the public architecture boundary; it does not claim live FDSE production integration with Agent Platform or FDE Mastery."
+      "limitations": "This capability documents the public website architecture and delivery-to-assurance relationship; it does not claim live FDSE production integration with Agent Platform or FDE Mastery."
     },
     {
       "id": "cap_threatfade_engineering",

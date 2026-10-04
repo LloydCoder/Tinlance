@@ -55,6 +55,26 @@ The gateway propagates the tenant/client identifier as the path parameter, prese
 
 The `fde-mastery` v1 facade reuses its established triage implementation; it is not a second execution engine.
 
+## FDSE relationship
+
+The public Tinlance architecture connects FDE Mastery to FDSE as two complementary responsibility layers:
+
+```text
+Technical Assessment
+      ↓
+Tinlance / FDE API
+      ↓
+FDE Mastery — domain engineering and delivery
+      ↓
+FDSE — engineering intelligence and assurance semantics
+      ↓
+Evidence / Evaluation / Assurance
+```
+
+This is a website and architecture relationship, not a claim that the live FDE execution path already invokes FDSE in production. The authenticated FDE API remains the execution boundary into FDE Mastery. FDSE owns engineering meaning around context, risk, policy, change, evidence, evaluation and assurance; it does not replace the FDE API or generic governed execution authority.
+
+The public technical-assessment journey is the entry point for environment-specific discovery. Repository architecture and CI evidence establish implementation status, but production integration requires separate deployment evidence.
+
 ## Supported domains
 
 The current Tinlance gateway allowlist is:
