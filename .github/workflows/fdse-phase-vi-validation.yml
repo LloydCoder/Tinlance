@@ -1,0 +1,180 @@
+name: FDSE Phase VI Operational Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fdse-phase-vi-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phase-vi-validation:
+    name: Phase VI operational validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tinlance_phase_vi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tinlance_phase_vi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_phase_vi?schema=public
+      PSQL_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_phase_vi
+      BETTER_AUTH_SECRET: tinlance-phase-vi-validation-auth-secret-32-characters
+      BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET: tinlance-phase-vi-validation-scim-secret-32-characters
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: 10.14.0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install
+        run: |
+          pnpm install --frozen-lockfile=true
+          pnpm --filter @tinlance/web exec prisma generate
+          pnpm --filter @tinlance/web exec prisma migrate deploy
+          python -m pip install --upgrade pip
+          python -m pip install -e 'apps/fde-api[test]'
+      - name: VI1 Internal Tinlance E2E
+        run: |
+          set -euo pipefail
+          pnpm --filter @tinlance/web typecheck
+          pnpm --filter @tinlance/web lint
+          pnpm --filter @tinlance/web build
+          pnpm --filter @tinlance/web exec next start -H 127.0.0.1 -p 3000 >/tmp/tinlance-phase-vi.log 2>&1 &
+          echo $! >/tmp/tinlance-phase-vi.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health >/tmp/phase-vi-health.json; then break; fi
+            sleep 2
+          done
+          test -s /tmp/phase-vi-health.json
+          curl --fail --silent http://127.0.0.1:3000/engineering/fdse | grep -F "Engineering intelligence and assurance"
+          curl --fail --silent http://127.0.0.1:3000/sitemap.xml | grep -F "/engineering/fdse"
+      - name: VI3 Real repository validation
+        run: |
+          set -euo pipefail
+          test -d .git
+          test -n "$(git rev-parse HEAD)"
+          test -n "$(git rev-parse --verify HEAD^{commit})"
+          test -f .github/workflows/ci.yml
+          test -f .github/workflows/fdse-system-of-systems.yml
+          test -f .github/workflows/fdse-enterprise-validation.yml
+          git status --short
+      - name: VI4 Real CI/CD validation
+        run: |
+          set -euo pipefail
+          for workflow in             .github/workflows/ci.yml             .github/workflows/fdse-system-of-systems.yml             .github/workflows/fdse-enterprise-validation.yml; do
+            grep -Eq '^  (push|pull_request|merge_group|workflow_dispatch):' "$workflow"
+          done
+          grep -R "uses: .*@[0-9a-f]\{40\}" .github/workflows >/dev/null
+      - name: VI5 Security and supply-chain validation
+        run: |
+          set -euo pipefail
+          pnpm audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
+          python -m pip install 'pip-audit>=2.10,<3.0'
+          python -m pip uninstall -y tinlance-fde-api
+          pip-audit --strict
+          python -m pip check
+          grep -R "uses: .*@[0-9a-f]\{40\}" .github/workflows >/dev/null
+      - name: VI6 Operational and SLO validation
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import concurrent.futures
+          import json
+          import time
+          import urllib.request
+
+          def health(_):
+              start = time.monotonic()
+              request = urllib.request.Request(
+                  "https://www.tinlance.com/api/health",
+                  headers={"User-Agent": "Tinlance-FDSE-Phase-VI/1.0"},
+              )
+              with urllib.request.urlopen(request, timeout=10) as response:
+                  body = response.read()
+                  assert response.status == 200
+                  return time.monotonic() - start, body
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
+              samples = list(pool.map(health, range(20)))
+
+          latencies = sorted(sample[0] for sample in samples)
+          bodies = [sample[1] for sample in samples]
+          p95 = latencies[int(len(latencies) * 0.95) - 1]
+          assert all(bodies)
+          assert p95 < 10
+          print(json.dumps({
+              "samples": len(samples),
+              "p95_seconds": round(p95, 3),
+              "all_http_200": True,
+          }))
+          PY
+          curl --fail --silent --show-error --location https://www.tinlance.com/engineering/fdse             | grep -F "Engineering intelligence and assurance"
+      - name: VI7 Production Readiness Review evidence
+        run: |
+          set -euo pipefail
+          test -f docs/FDSE-PHASE-VI-VALIDATION.md
+          grep -Fq "VI1" docs/FDSE-PHASE-VI-VALIDATION.md
+          grep -Fq "VI2" docs/FDSE-PHASE-VI-VALIDATION.md
+          grep -Fq "VI7" docs/FDSE-PHASE-VI-VALIDATION.md
+          grep -Fq "Phase VII cannot begin" docs/FDSE-PHASE-VI-VALIDATION.md
+          grep -Fq "NIST SP 800-61 Rev. 3" docs/FDSE-PHASE-VI-VALIDATION.md
+      - name: Stop local production server
+        if: always()
+        run: |
+          if [ -f /tmp/tinlance-phase-vi.pid ]; then
+            kill "$(cat /tmp/tinlance-phase-vi.pid)" || true
+          fi
+      - name: Upload operational evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: fdse-phase-vi-operational-evidence
+          path: |
+            /tmp/phase-vi-health.json
+            /tmp/tinlance-phase-vi.log
+          if-no-files-found: warn
+
+  phase-vi-gate:
+    name: Phase VI automated gate
+    if: always()
+    needs: [phase-vi-validation]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require automated Phase VI evidence to pass
+        env:
+          RESULT: ${{ needs.phase-vi-validation.result }}
+        run: |
+          test "$RESULT" = success
+          echo "FDSE Phase VI automated evidence: VERIFIED"
