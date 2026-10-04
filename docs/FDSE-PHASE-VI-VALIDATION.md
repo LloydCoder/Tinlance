@@ -55,7 +55,7 @@ Validate the real GitHub Actions lifecycle, including source revision, workflow 
 
 ## VI5 — Security and supply chain
 
-Re-run the release security controls against the real release candidate:
+The release boundary must produce inspectable evidence for:
 
 - static analysis;
 - dependency audit;
@@ -65,24 +65,37 @@ Re-run the release security controls against the real release candidate:
 - provenance/attestation;
 - release-tree integrity.
 
+The Phase-VI automation now exercises the repository-side portions directly and records an explicit limitation when cryptographic release attestation is not issued by the validation job. An attestation gap is therefore never silently represented as a passed provenance claim.
+
 SLSA v1.2 treats provenance as verifiable information connecting an artifact to the moving parts that produced it. FDSE therefore treats provenance as release evidence rather than a documentation-only claim.
 
 ## VI6 — Operational/SLO validation
 
-Production observations must be expressed as user-relevant reliability evidence:
+Separate short-window automated production observations from sustained operational evidence.
+
+Automated observations may record:
 
 - availability;
 - latency;
-- error rate;
-- capacity/load behavior;
+- observed error rate;
+- a bounded concurrency/load sample.
+
+They are explicitly classified as observations, not sustained SLO certification.
+
+Operational/customer evidence must additionally cover:
+
 - monitoring;
 - alertability;
+- capacity;
 - recovery;
-- change/rollback behavior.
+- change/rollback behavior;
+- defined user-relevant SLOs.
 
 CI characterization must not be promoted to production SLO evidence.
 
 ## VI7 — Production Readiness Review
+
+The canonical human acceptance record is `docs/FDSE-PRODUCTION-READINESS-REVIEW.md`. The file's existence is not evidence that a review occurred. The decision remains fail-closed until VI2 and the required operational/customer evidence are present.
 
 The final Phase-VI operational gate must review:
 
