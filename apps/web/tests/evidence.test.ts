@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EVIDENCE_STATUS_META, EVIDENCE_STATUSES, EVIDENCE_TYPES, evidenceStatus } from "../lib/evidence/taxonomy";
+import { EVIDENCE_STATUS_META, EVIDENCE_STATUSES, EVIDENCE_TYPES, evidenceRecords, evidenceStatus } from "../lib/evidence/taxonomy";
 import { architectureModules, caseStudies, evidenceTypeLabel } from "../lib/evidence/registry";
 
 describe("evidence taxonomy", () => {
@@ -44,5 +44,12 @@ describe("public repository links", () => {
     expect(caseStudies.map((study) => study.sourceUrl)).toContain("https://github.com/LloydCoder/tinlance-threatfade");
     expect(caseStudies.map((study) => study.sourceUrl)).toContain("https://github.com/LloydCoder/fde-mastery");
     expect(evidenceTypeLabel.ARCHITECTURE).toBe("Architecture");
+    expect(evidenceRecords.fdsePublicArchitecture).toMatchObject({
+      status: "TESTED",
+      evidenceType: "ARCHITECTURE",
+      repository: "LloydCoder/Tinlance",
+      commit: "1413df562f701af1a108b12a54ab379b80449d64",
+    });
+    expect(evidenceRecords.fdsePublicArchitecture.sourceUrl).toBe("https://www.tinlance.com/engineering/fdse");
   });
 });
