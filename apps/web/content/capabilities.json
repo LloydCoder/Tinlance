@@ -157,6 +157,25 @@
       "limitations": "This capability documents the public website architecture and responsibility contracts; it does not claim live FDSE production integration with Agent Platform or FDE Mastery."
     },
     {
+      "id": "cap_agent_platform_authority",
+      "slug": "agent-platform-authority",
+      "name": "Tinlance Agent Platform",
+      "description": "Public governed-execution authority contract and reference platform for identity, tenancy, authorization, policy, approval, runtime, tools/MCP, sandbox, secrets, budgets, evidence and audit.",
+      "category": "agent-infrastructure",
+      "status": "IMPLEMENTED",
+      "maturity": "TESTED",
+      "availability": "PUBLIC",
+      "repository": "LloydCoder/tinlance-agent-platform",
+      "repositoryPath": "docs/R10-GOVERNED-EXECUTION.md",
+      "publicUrl": "/engineering",
+      "evidenceIds": [
+        "ev_agent_platform_r10_contract"
+      ],
+      "customerVisible": true,
+      "commerciallyAvailable": false,
+      "limitations": "Repository-level contract and reference implementation evidence. External production infrastructure, deployment adapters, customer integration and independent assurance require separate evidence."
+    },
+    {
       "id": "cap_threatfade_engineering",
       "slug": "threatfade-engineering",
       "name": "ThreatFade Engineering",

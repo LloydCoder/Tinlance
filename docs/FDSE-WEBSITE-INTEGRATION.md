@@ -69,10 +69,16 @@ The public page links to the Agent Platform repository and R10 contract as inspe
 - I2 — FDSE Product / Service Presentation: complete; merged in PR #111 as `398a8eb4944ab4ec1d32c7b7a3b0a4a7ff67d6cc`.
 - I3 — FDE ↔ FDSE Website Integration: implementation complete on the current branch; merge gated on CI.
 - I4 — Agent Platform ↔ FDSE Website Architecture: implementation complete on the current branch; merge gated on CI.
-- I5 — Public Evidence / Claim Reconciliation: pending.
+- I5 — Public Evidence / Claim Reconciliation: implementation complete on the current branch; merge gated on CI.
 - I6 — Website Engineering / QA: pending.
 - I7 — Production Verification: pending.
 
 The Vercel project has an external provisioning failure affecting new deployments before the build starts. Repository CI remains the authoritative merge gate for I3; production verification remains a later gated phase and must not be inferred from repository CI.
 
 Each phase remains separately gated on implementation and CI evidence.
+
+## I5 reconciliation findings
+
+The public Products page previously described Tinlance Agent Platform as “Private / M0 in progress”. That statement was stale relative to the public Agent Platform repository, which documents the governed-execution.v1 contract and the completed M0-M29 repository engineering sequence. The public status is now scoped as **Public / Repository Contract** with explicit limitations for external production deployment and customer integration.
+
+The same evidence discipline remains in force for FDSE and FDE Mastery: repository implementation and contract evidence are not treated as customer production proof or independent certification.

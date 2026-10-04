@@ -59,10 +59,14 @@ I3 merge evidence includes the FDE Mastery → FDSE journey, engineering evidenc
 
 ### I5 — Public Evidence / Claim Reconciliation
 
-- audit every FDSE-related public claim;
-- map claims to evidence records;
-- reconcile website, README and architecture documentation;
-- remove unsupported or stale claims.
+**Implementation complete on the I5 branch; merge remains gated on CI.**
+
+- audited the FDSE/FDE Mastery/Agent Platform public positioning and machine-readable evidence/claim registries;
+- corrected the stale Products-page claim that Agent Platform was “Private / M0 in progress”;
+- added an explicit Agent Platform repository/R10 evidence record and public capability record;
+- reconciled repository-level implementation/contract status with production-deployment limitations;
+- preserved the rule that repository evidence is not customer proof, production deployment evidence or independent certification;
+- verified the public FDE Mastery, FDSE and Agent Platform relationship claims against their source repositories.
 
 ### I6 — Website Engineering / QA
 
