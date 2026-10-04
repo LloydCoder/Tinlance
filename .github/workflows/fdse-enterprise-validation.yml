@@ -131,7 +131,10 @@ jobs:
           pnpm audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
           python -m pip install 'pip-audit>=2.7,<3.0'
           python -m pip freeze --local --exclude-editable > /tmp/tinlance-python-audit-requirements.txt
-          ! grep -Eiq '^tinlance-fde-api([=[:space:]@]|$)' /tmp/tinlance-python-audit-requirements.txt
+          if grep -Eiq '^tinlance-fde-api([=[:space:]@]|$)' /tmp/tinlance-python-audit-requirements.txt; then
+            echo "Editable FDE API package leaked into the frozen dependency audit set" >&2
+            exit 1
+          fi
           pip-audit --strict -r /tmp/tinlance-python-audit-requirements.txt
       - name: 14 Provenance validation
         run: |
@@ -142,7 +145,7 @@ jobs:
           pnpm --filter @tinlance/web exec prisma migrate deploy
           NODE_ENV=production pnpm --filter @tinlance/web exec next start -H 127.0.0.1 -p 3000 >/tmp/tinlance-enterprise.log 2>&1 &
           echo $! >/tmp/tinlance-enterprise.pid
-          for attempt in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             if curl --fail --silent http://127.0.0.1:3000/api/health >/tmp/health.json; then
               break
             fi
