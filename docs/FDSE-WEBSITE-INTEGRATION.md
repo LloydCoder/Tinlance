@@ -63,6 +63,17 @@ The public FDSE page now documents the Agent Platform as the generic governed ex
 
 The public page links to the Agent Platform repository and R10 contract as inspectable architecture evidence.
 
+## Research basis
+
+The public framing uses established risk-management and software-supply-chain vocabulary without claiming certification or compliance by reference:
+
+- NIST AI RMF 1.0 is a voluntary framework for managing AI risks and is currently being revised; Tinlance uses it as risk-management vocabulary, not as a certification claim.
+- NIST SP 800-218 SSDF 1.1 provides secure software-development practices, including provenance-oriented release practices.
+- OWASP Top 10 for Agentic Applications 2026 identifies agentic-specific risks including identity/privilege abuse, agentic supply-chain vulnerabilities, unexpected code execution, memory/context poisoning, insecure inter-agent communication and cascading failures.
+- SLSA v1.2 defines supply-chain security levels, source/build tracks and provenance/attestation concepts.
+
+These references inform terminology and review criteria only. They do not establish that Tinlance or FDSE is certified, compliant, independently assured or deployed in a customer's production environment.
+
 ## Integration phase status
 
 - I1 — FDSE Public Architecture: complete.
