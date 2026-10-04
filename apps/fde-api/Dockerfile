@@ -1,10 +1,11 @@
-FROM python:3.12-slim AS runtime
+FROM python:3.12-slim-bookworm AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 WORKDIR /app
 RUN apt-get update \
     && apt-get upgrade -y \
+    && apt-get purge -y python3-urllib3 || true \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 app \
     && useradd --system --uid 10001 --gid 10001 app
@@ -12,6 +13,8 @@ COPY apps/fde-api/pyproject.toml ./
 COPY apps/fde-api/app ./app
 RUN rm -rf /usr/local/lib/python3.12/site-packages/setuptools* \
            /usr/local/lib/python3.12/site-packages/msgpack* \
+    && pip uninstall -y urllib3 || true \
+    && rm -rf /usr/lib/python3/dist-packages/urllib3* /usr/local/lib/python3.12/site-packages/urllib3* \
     && pip install --upgrade pip \
     && pip install . \
     && pip uninstall -y setuptools msgpack || true \

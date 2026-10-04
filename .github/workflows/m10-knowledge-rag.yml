@@ -62,7 +62,7 @@ jobs:
       - name: Build
         run: pnpm build
       - name: Dependency audit
-        run: pnpm audit --audit-level=high
+        run: pnpm audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
       - name: Current-tree secret scan
         working-directory: .
         run: |

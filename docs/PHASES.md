@@ -2,68 +2,74 @@
 
 Tinlance uses gated delivery. A phase is complete only when implementation, documentation, validation, required CI checks and the resulting merge evidence are complete.
 
-## Foundation and public platform history
+## Historical foundation
 
-The original Phase 0–9 implementation sequence established the public website, conversion system, identity, billing/operations, FDE boundary and enterprise hardening. Those historical phase records remain useful for provenance but are no longer the current phase ledger.
+The original Phase 0–9 sequence and M0–M14 implementation records remain historical provenance. They are not the active FDSE integration ledger.
 
-## M0 — Legacy Site Discovery and Migration
+## Current FDSE integration track
 
-**Complete.** Legacy Tinlance routes were inventoried and classified, direct permanent redirects were implemented, canonical SEO signals were preserved, historical ThreatFade evidence was reconciled, and the migration certificate was merged. DNS cutover was explicitly excluded.
+The FDSE repository/domain-contract track is complete at M0–M18 + E1–E6 in LloydCoder/tinlance-fdse. The Tinlance website integration is a separate gated track and must not be represented as complete merely because the FDSE repository is complete.
 
-Certificate: [`docs/migrations/LEGACY_SITE_MIGRATION_CERTIFICATE.md`](./migrations/LEGACY_SITE_MIGRATION_CERTIFICATE.md).
+### I1 — FDSE Public Architecture
 
-## M1 — Commercial Engine
+**Implementation complete on the working branch; merge/CI gate pending.**
 
-**Complete.** The current commercial data model and workflow support assessment, qualification, booking, opportunities, proposals, acceptance and client onboarding without replacing the existing authentication, tenancy, billing or FDE boundaries.
+- canonical /engineering/fdse route;
+- explicit FDSE responsibility boundary;
+- FDE Mastery relationship;
+- Agent Platform relationship without claiming live production integration;
+- evidence/status discipline;
+- engineering-hub navigation;
+- sitemap inclusion;
+- claim/evidence registry entries;
+- website integration boundary documentation.
 
-## M2 — Authority Engine
+### I2 — FDSE Product / Service Presentation
 
-**Current implementation phase.** M2 covers public authority rather than M1 commercial automation or future product layers.
+- commercial/product positioning;
+- capability presentation;
+- assessment relationship;
+- implementation/test/validation/planned status;
+- no unsupported standalone FDSE pricing or production claims.
 
-### Scope
+### I3 — FDE ↔ FDSE Website Integration
 
-- technical SEO and canonical discovery;
-- AI/search crawler policy and machine-readable entity clarity;
-- research model and evidence provenance;
-- case-study model with evidence gating;
-- insights/guides/documentation authority routes;
-- internal linking and assessment CTAs;
-- content freshness and review metadata;
-- documentation reconciliation and current architecture truth;
-- authority validation tests.
+- connect FDE Mastery and FDSE journeys;
+- explain delivery-to-assurance relationship;
+- reconcile assessment/API relationships;
+- preserve repository and production evidence boundaries.
 
-### Implemented in the M2 branch
+### I4 — Agent Platform ↔ FDSE Website Architecture
 
-- canonical authority content model;
-- research index and evidence-scoped ThreatFade research;
-- reusable case-study schema without fabricated customer outcomes;
-- guide and public documentation hubs;
-- Organization/WebSite/Breadcrumb/Article JSON-LD;
-- explicit Google/Bing/OpenAI crawler policy;
-- canonical sitemap expansion;
-- optional generated `/llms.txt` orientation aid;
-- article provenance and freshness fields;
-- authority governance and research policy documentation;
-- canonical current architecture documentation;
-- documentation reconciliation of the stale FDE route/domain description and README phase ledger.
+- explain governed execution authority;
+- document the FDSE ↔ Agent Platform contract;
+- clearly distinguish defined architecture from implemented/integrated production behavior.
 
-### Exit criteria
+### I5 — Public Evidence / Claim Reconciliation
 
-- M2 implementation tests green.
-- Existing enterprise CI/security gates remain blocking and green.
-- Main branch contains the merged M2 implementation.
-- Production deployment for the M2 commit is successful.
-- Representative public authority routes, robots, sitemap, metadata, structured data and assessment CTAs are verified in production.
-- M0 redirects remain green.
-- No material documentation contradiction remains in the audited current docs.
+- audit every FDSE-related public claim;
+- map claims to evidence records;
+- reconcile website, README and architecture documentation;
+- remove unsupported or stale claims.
 
-## Post-M2 boundaries
+### I6 — Website Engineering / QA
 
-The following remain future phases and are not silently included in M2:
+- responsive UI;
+- accessibility;
+- SEO/metadata;
+- route/link integrity;
+- automated tests;
+- build/typecheck/lint/security gates.
 
-- MCP implementation;
-- AI sales agent;
-- autonomous content publishing;
-- customer knowledge/RAG system;
-- AI Security Gateway/control plane;
-- full revenue intelligence platform.
+### I7 — Production Verification
+
+- production deployment;
+- route smoke tests;
+- browser verification;
+- production metadata/sitemap/robots verification;
+- runtime error review;
+- deployment and CI evidence.
+
+## Later cross-system validation
+
+After I1–I7, the remaining FDSE initiative continues through cross-repository integration with FDE Mastery and Agent Platform, system-of-systems validation, enterprise validation, customer/production validation and final certification/GA. Those stages are not silently included in I1.
