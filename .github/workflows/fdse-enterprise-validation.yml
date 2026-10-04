@@ -36,6 +36,7 @@ jobs:
           --health-retries 20
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_enterprise?schema=public
+      PSQL_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tinlance_enterprise
       BETTER_AUTH_SECRET: tinlance-enterprise-validation-auth-secret-32-characters
       BETTER_AUTH_SCIM_CREDENTIAL_HASH_SECRET: tinlance-enterprise-validation-scim-secret-32-characters
     steps:
@@ -196,12 +197,12 @@ jobs:
         run: pnpm --filter @tinlance/web exec prisma migrate deploy
       - name: 21 Disaster-recovery validation
         run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS public.enterprise_recovery_probe (id text primary key, value text not null);"
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO public.enterprise_recovery_probe VALUES ('phase-v','recovery-ok') ON CONFLICT (id) DO UPDATE SET value=EXCLUDED.value;"
-          pg_dump --dbname="$DATABASE_URL" --format=custom --file=/tmp/tinlance-enterprise-with-probe.dump
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP TABLE public.enterprise_recovery_probe;"
-          pg_restore --dbname="$DATABASE_URL" --clean --if-exists /tmp/tinlance-enterprise-with-probe.dump
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -tAc "SELECT value FROM public.enterprise_recovery_probe WHERE id='phase-v'" | grep -Fx "recovery-ok"
+          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS public.enterprise_recovery_probe (id text primary key, value text not null);"
+          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO public.enterprise_recovery_probe VALUES ('phase-v','recovery-ok') ON CONFLICT (id) DO UPDATE SET value=EXCLUDED.value;"
+          pg_dump --dbname="$PSQL_DATABASE_URL" --format=custom --file=/tmp/tinlance-enterprise-with-probe.dump
+          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP TABLE public.enterprise_recovery_probe;"
+          pg_restore --dbname="$PSQL_DATABASE_URL" --clean --if-exists /tmp/tinlance-enterprise-with-probe.dump
+          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -tAc "SELECT value FROM public.enterprise_recovery_probe WHERE id='phase-v'" | grep -Fx "recovery-ok"
       - name: 22 Observability validation
         run: |
           curl --fail --silent http://127.0.0.1:3000/api/health | grep -Eiq '"status"'
