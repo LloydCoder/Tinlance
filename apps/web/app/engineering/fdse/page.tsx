@@ -1,0 +1,52 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowUpRight, ExternalLink } from "lucide-react";
+import { JsonLd, breadcrumbSchema } from "../../../components/json-ld";
+import { EvidenceStatusBadge } from "../../../components/evidence-status";
+import { socialImageUrl, socialImages } from "../../../lib/metadata";
+
+export const metadata: Metadata = {
+  title: "FDSE — Forward-Deployed Software Engineering Intelligence",
+  description: "FDSE is Tinlance's engineering intelligence and assurance layer for context, risk, policy, evidence, evaluation, security, supply-chain and engineering lineage.",
+  alternates: { canonical: "/engineering/fdse" },
+  openGraph: { title: "FDSE — Forward-Deployed Software Engineering Intelligence | Tinlance", description: "Engineering intelligence and assurance for forward-deployed software engineering.", url: "/engineering/fdse", type: "website", images: socialImages },
+  twitter: { card: "summary_large_image", title: "FDSE — Forward-Deployed Software Engineering Intelligence | Tinlance", description: "Engineering intelligence and assurance for forward-deployed software engineering.", images: [socialImageUrl] },
+};
+
+const layers = [
+  ["FDE Mastery", "Domain engineering and delivery capabilities.", "/fde-mastery"],
+  ["FDSE", "Engineering context, risk, policy, workflow, evidence, evaluation and assurance semantics.", "/engineering/fdse"],
+  ["Agent Platform", "Governed execution authority for identity, authorization, approvals, tools, sandboxing, budgets and audit.", null],
+  ["Customer systems", "Repositories, CI/CD, services and operational environments where engineering work occurs.", null],
+] as const;
+
+const semantics = [
+  ["Context", "Bind engineering work to the tenant, repository and immutable revision under consideration."],
+  ["Risk", "Relate assets, threats, scenarios, controls, evidence, findings, treatment and residual risk."],
+  ["Policy", "Relate requirements, constraints, guardrails, approvals and exceptions."],
+  ["Change", "Relate change, impact, risk, required evidence, evaluation, approval and verification."],
+  ["Evidence", "Preserve provenance and distinguish observations, evidence, findings, evaluations and assurance."],
+  ["Security & supply chain", "Represent agentic security, dependency, build, artifact, provenance, attestation and verification semantics."],
+];
+
+export default function FdsePage() {
+  return (
+    <main>
+      <JsonLd data={breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Engineering", path: "/engineering" }, { name: "FDSE", path: "/engineering/fdse" }])} />
+      <section className="section-v2 dark-section"><div className="container" style={{ paddingTop: "7rem", paddingBottom: "6rem" }}>
+        <p className="kicker kicker-dark">TINLANCE / FDSE</p>
+        <h1 style={{ maxWidth: "980px" }}>Engineering intelligence and assurance for forward-deployed software engineering.</h1>
+        <p style={{ maxWidth: "800px", fontSize: "1.2rem", marginTop: "1.5rem" }}>FDSE is Tinlance's engineering-semantic layer. It structures context, risk, policy, workflow, evidence, evaluation, assurance, security, supply-chain and lineage concerns around engineering work without becoming the generic execution authority.</p>
+        <div style={{ marginTop: "1.5rem" }}><EvidenceStatusBadge status="IMPLEMENTED" /></div>
+        <div className="hero-actions" style={{ marginTop: "2rem" }}><Link className="button button-accent button-large" href="/assessment">Start a technical assessment <ArrowUpRight size={18} aria-hidden="true" /></Link><a className="button button-outline button-large" href="https://github.com/LloydCoder/tinlance-fdse" target="_blank" rel="noreferrer" aria-label="FDSE public GitHub repository">FDSE repository <ExternalLink size={17} aria-hidden="true" /></a></div>
+      </div></section>
+      <section className="section-v2"><div className="container"><div className="section-intro-v2"><div><p className="kicker">01 / SYSTEM BOUNDARY</p><h2>Engineering semantics.<br /><span>Governed execution.</span></h2></div><p>FDSE does not replace Tinlance's execution platform. The public architecture separates engineering meaning from generic authority so claims remain scoped to the component that owns them.</p></div>
+        <div className="architecture-module-list" aria-label="FDSE responsibility boundary">{layers.map(([name, purpose, href], index) => <article key={name} className="capability-card architecture-module"><span className="capability-index">{String(index + 1).padStart(2, "0")}</span><div><h3 style={{ marginBottom: "6px" }}>{name}</h3><p>{purpose}</p>{href && <Link className="text-link" href={href} style={{ marginTop: "10px" }}>Explore {name}</Link>}</div>{index < layers.length - 1 && <span aria-hidden="true" style={{ position: "absolute", left: "44px", bottom: "-18px", zIndex: 2 }}>↓</span>}</article>)}</div>
+        <p style={{ marginTop: "18px", color: "#626a64", fontSize: ".88rem" }}>This is a public responsibility map, not a production topology. The FDSE ↔ Agent Platform relationship is an architectural contract; live production integration is only claimed when independently verified.</p>
+      </div></section>
+      <section className="section-v2 proof-section"><div className="container"><div className="section-intro-v2 compact"><div><p className="kicker">02 / ENGINEERING SEMANTICS</p><h2>What FDSE <span>means.</span></h2></div><p>FDSE provides the domain language and evidence relationships needed to reason about engineering work consistently across delivery and assurance workflows.</p></div><div className="capability-grid">{semantics.map(([title, text]) => <article className="capability-card" key={title}><span className="capability-index">FDSE</span><div className="capability-card-body"><h3>{title}</h3><p>{text}</p></div></article>)}</div></div></section>
+      <section className="section-v2"><div className="container"><div className="section-intro-v2 compact"><div><p className="kicker">03 / FDE RELATIONSHIP</p><h2>FDE Mastery <span>delivers.</span> FDSE <span>assures.</span></h2></div><p>FDE Mastery remains the domain engineering and delivery layer. FDSE supplies engineering intelligence and assurance semantics around that work; neither is a substitute for the other.</p></div><div className="assessment-card"><div><p className="kicker">FDE → FDSE</p><h2>Turn engineering work into <span>traceable evidence.</span></h2><p>Customer requests can be connected to context, risk, policy, changes, evidence, evaluation and assurance while execution authority remains governed by the appropriate platform boundary.</p></div><Link className="button button-accent button-large" href="/fde-mastery">Explore FDE Mastery <ArrowUpRight size={18} aria-hidden="true" /></Link></div></div></section>
+      <section className="section-v2 proof-section"><div className="container"><div className="section-intro-v2 compact"><div><p className="kicker">04 / EVIDENCE STATUS</p><h2>Repository evidence is <span>not customer proof.</span></h2></div><p>The repository establishes implementation and contract evidence. Production capability, customer outcomes and independent validation require their own evidence records.</p></div><div className="capability-grid">{[["IMPLEMENTED","Present in the current repository implementation."],["TESTED","Covered by automated or reproducible tests."],["VALIDATED","Supported by documented validation beyond ordinary implementation/testing."],["PLANNED","Intentionally identified for future implementation."]].map(([status, text]) => <article className="capability-card" key={status}><span className="capability-index">STATUS</span><div className="capability-card-body"><h3>{status}</h3><p>{text}</p></div></article>)}</div><p style={{ marginTop: "2rem" }}>See the <Link className="text-link" href="/engineering">full engineering evidence map</Link> and <Link className="text-link" href="/assessment">technical assessment</Link> for environment-specific validation.</p></div></section>
+    </main>
+  );
+}
