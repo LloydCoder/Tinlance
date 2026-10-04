@@ -55,7 +55,7 @@ Production checks validate the current public origin only. They do not prove a l
 
 ## Python dependency-audit boundary
 
-The FDE API is installed into CI as an editable local package (`pip install -e 'apps/fde-api[test]'`). The released `pip-audit 2.10.1` supports `--skip-editable`, but its current released behavior can still fail while collecting an editable distribution; upstream has an unreleased fix for this path. To keep the gate deterministic without suppressing dependency findings, CI first generates a requirements snapshot with `pip freeze --local --exclude-editable`, asserts that the local `tinlance-fde-api` project is absent, and audits that snapshot with `pip-audit --strict -r`. This excludes only the local project distribution while retaining its installed third-party dependencies and test dependencies for vulnerability auditing. citeturn3search0turn3search5
+The FDE API is installed into CI as an editable local package (`pip install -e 'apps/fde-api[test]'`). The Phase-V gate then removes only the local editable project distribution before running `pip-audit --strict`. This mirrors the existing authoritative FDE API CI pattern: the local project itself is not a published PyPI dependency, while its installed third-party dependencies remain in the environment and are still audited. Current pip-audit 2.10.1 documents `--skip-editable` as an available option, but the explicit uninstall is retained here because the repository's existing CI already uses and verifies that deterministic boundary.
 
 ## Completion gate
 
