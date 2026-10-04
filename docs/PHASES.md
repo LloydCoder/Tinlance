@@ -70,6 +70,8 @@ I3 merge evidence includes the FDE Mastery → FDSE journey, engineering evidenc
 
 ### I6 — Website Engineering / QA
 
+**Complete.** Implemented and merged as part of Phase I; the merged revision passed the required repository gates.
+
 - responsive UI;
 - accessibility;
 - SEO/metadata;
