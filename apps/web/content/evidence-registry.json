@@ -114,6 +114,20 @@
       "status": "ACTIVE"
     },
     {
+      "id": "ev_fdse_fde_website_relationship",
+      "capabilitySlug": "fdse-public-architecture",
+      "evidenceType": "SOURCE_CODE",
+      "source": "repository",
+      "repository": "LloydCoder/Tinlance",
+      "path": "apps/web/app/fde-mastery/page.tsx",
+      "commit": "CURRENT_HEAD",
+      "workflow": "CI / FDSE website integration",
+      "result": "CI_REQUIRED",
+      "scope": "Public FDE Mastery → FDSE delivery-to-assurance relationship and journey link",
+      "limitations": "This evidence proves the documented public relationship in the repository; it does not establish live runtime integration or customer production outcomes.",
+      "status": "ACTIVE"
+    },
+    {
       "id": "ev_threatfade_public_truth",
       "capabilitySlug": "threatfade-engineering",
       "evidenceType": "DOCUMENTATION",
