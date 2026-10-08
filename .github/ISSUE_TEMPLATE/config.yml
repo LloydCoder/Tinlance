@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/LloydCoder/Tinlance/blob/main/SECURITY.md
+    about: Report vulnerabilities privately; do not open a public issue.
+  - name: Support
+    url: https://github.com/LloydCoder/Tinlance/blob/main/SUPPORT.md
+    about: Read the support and routing guide before opening an issue.
+  - name: Code of Conduct
+    url: https://github.com/LloydCoder/Tinlance/blob/main/CODE_OF_CONDUCT.md
+    about: Report sensitive conduct concerns privately.
