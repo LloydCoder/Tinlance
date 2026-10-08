@@ -1,0 +1,47 @@
+name: Feature request
+description: Propose a focused improvement to Tinlance.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem and measurable outcome. Tinlance prioritizes evidence-backed changes over roadmap-count expansion.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user, engineering, security, or operational problem exists today?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should become possible or better?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: Describe the smallest complete solution you recommend.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Security and architecture impact
+      description: Note tenant, authorization, data, API, AI, MCP, or operational implications.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I searched existing issues and documentation.
+          required: true
+        - label: This proposal does not disclose confidential information.
+          required: true
