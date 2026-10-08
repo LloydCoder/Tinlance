@@ -1,7 +1,7 @@
 {
   "name": "tinlance",
   "private": true,
-  "packageManager": "pnpm@10.14.0",
+  "packageManager": "pnpm@10.34.6",
   "scripts": {
     "dev": "pnpm --filter @tinlance/web dev",
     "build": "turbo run build",
@@ -11,14 +11,6 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "security:audit": "pnpm audit --audit-level=high"
-  },
-  "pnpm": {
-    "overrides": {
-      "sharp": ">=0.35.4",
-      "js-yaml": ">=4.3.2",
-      "postcss": ">=8.5.18",
-      "deepmerge-ts": ">=8.0.0"
-    }
   },
   "devDependencies": {
     "prettier": "3.9.6",

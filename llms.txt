@@ -1,0 +1,70 @@
+# Tinlance
+
+> Public repository index for the Tinlance AI engineering, FDE, security, automation, API, and customer-platform codebase. The repository is public for engineering transparency and is proprietary; public visibility does not grant an open-source reuse license.
+
+## Start here
+
+- [README](README.md): Repository purpose, architecture, local setup, security boundaries, and contribution guidance.
+- [Contributing](CONTRIBUTING.md): Development workflow and pull-request requirements.
+- [Security](SECURITY.md): Private vulnerability reporting and security baseline.
+- [Support](SUPPORT.md): Issue and support routing.
+- [Code of Conduct](CODE_OF_CONDUCT.md): Participation and enforcement policy.
+- [Changelog](CHANGELOG.md): Repository and documentation history.
+- [Documentation index](docs/README.md): Diátaxis-oriented navigation across the existing documentation set.
+
+## Architecture
+
+- [Canonical architecture](docs/architecture/tinlance-architecture.md): Current platform boundaries and relationships.
+- [Architecture decisions](docs/decisions/README.md): Accepted architectural decisions.
+- [FDE integration](docs/FDE-INTEGRATION.md): Tinlance to FDE API to FDE Mastery boundary.
+- [Evidence and trust](docs/EVIDENCE-AND-TRUST.md): Public evidence taxonomy and claim discipline.
+
+## Platform
+
+- [API v1](docs/api/README.md): Stable customer and integration API contract.
+- [API changelog](docs/api/CHANGELOG.md): v1 compatibility and release history.
+- [M3 Customer Workspace](docs/customer-workspace/M3_CUSTOMER_WORKSPACE.md): Projects, assessments, findings, evidence, reports, and remediation.
+- [M4 Automation](docs/automation/M4_FDE_AUTOMATION.md): Durable FDE workflow automation.
+- [M6 MCP security](apps/web/docs/security/M9_AGENT_RUNTIME.md): Runtime and tool-boundary security documentation.
+- [M7 AI Security Gateway](docs/security/m7-ai-security-gateway.md): Policy, risk, approval, and audit control plane.
+- [M8 Agent Evaluation](apps/web/docs/security/M8_AGENT_EVALUATION.md): Evaluation and regression assurance.
+- [M9 Agent Runtime](apps/web/docs/security/M9_AGENT_RUNTIME.md): Controlled identity-bound execution.
+- [M10 Knowledge/RAG](apps/web/docs/security/M10_KNOWLEDGE_RAG.md): Retrieval, tenancy, and knowledge controls.
+- [M13 Knowledge Moat](docs/m13-proprietary-knowledge-moat.md): Permissioned cross-customer intelligence.
+- [M14 Productization](docs/m14-consulting-software-flywheel.md): Consulting-to-software productization lifecycle.
+
+## API and SDKs
+
+- [API reference](docs/api/README.md): Stable API behavior and security boundaries.
+- [OpenAPI contract](docs/api/openapi/v1.json): Machine-readable v1 contract.
+- [Python SDK](packages/sdk-python/README.md): Official Python client.
+- [TypeScript SDK](packages/sdk-typescript/package.json): Official TypeScript client package metadata.
+
+## Operations and security
+
+- [Enterprise CI gates](docs/ENTERPRISE-CI-GATES.md): Blocking validation expectations.
+- [Supply-chain gate](docs/security/GATE-D-SUPPLY-CHAIN.md): Dependency and secret-scan controls.
+- [Production gate](docs/security/GATE-E-PRODUCTION.md): Production verification.
+- [Scale/SaaS gate](docs/security/GATE-F-SCALE-SAAS.md): Scale and production contracts.
+
+## Public product surfaces
+
+- [Tinlance website](https://www.tinlance.com/): Public commercial and engineering authority.
+- [Technical assessment](https://www.tinlance.com/assessment): Canonical assessment entry point.
+- [Engineering](https://www.tinlance.com/engineering): Public architecture and evidence map.
+- [Security](https://www.tinlance.com/security): Public security posture.
+- [Documentation](https://www.tinlance.com/documentation): Public documentation entry point.
+
+## Authority boundaries
+
+- FDE Mastery remains the methodology and execution-platform authority for FDE capabilities.
+- Tinlance remains the public commercial and customer-facing platform.
+- The FDE API is the authenticated service boundary between them.
+- M7 is the authorization/security control plane; M6 is the MCP/tool boundary; M8 is evaluation authority; M9 is controlled agent execution.
+- Evidence status distinguishes implementation, testing, validation, experimentation, and planning.
+
+## Optional
+
+- [API inventory](docs/api/inventory.md): Endpoint inventory.
+- [Design system](docs/design-system.md): Current visual system and implementation guidance.
+- [Roadmap](docs/PHASES.md): Delivery phase ledger.

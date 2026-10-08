@@ -1,214 +1,275 @@
-# Tinlance
+<div align="center">
+  <img src="apps/web/app/icon.svg" width="72" height="72" alt="Tinlance">
+  <h1>Tinlance</h1>
+  <p><strong>AI engineering and Forward-Deployed Engineering for teams that need to ship secure, production-oriented AI systems around real business workflows.</strong></p>
+</div>
 
-> Production-oriented AI engineering and Forward-Deployed Engineering for enterprise automation, AI security, and intelligent systems.
+<div align="center">
 
-Tinlance is a production-oriented engineering platform with an explicit public authority layer, tenant-aware authorization, persistent data, authenticated service-to-service execution, automated security validation, and a separate FDE execution layer.
+[![CI](https://github.com/LloydCoder/Tinlance/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/LloydCoder/Tinlance/actions/workflows/ci.yml)
+[![Secret Scan](https://github.com/LloydCoder/Tinlance/actions/workflows/secret-scan.yml/badge.svg?branch=main)](https://github.com/LloydCoder/Tinlance/actions/workflows/secret-scan.yml)
+[![Production Smoke](https://github.com/LloydCoder/Tinlance/actions/workflows/gate-e-production-smoke.yml/badge.svg?branch=main)](https://github.com/LloydCoder/Tinlance/actions/workflows/gate-e-production-smoke.yml)
 
-## Public foundation
+</div>
 
-The public site uses a canonical assessment funnel and exposes the engineering architecture without publishing private runtime details.
+> [!IMPORTANT]
+> Tinlance is publicly visible for engineering transparency and verification, but the repository is **proprietary**. Public visibility does not grant an open-source reuse license. See [LICENSE](./LICENSE).
 
-Primary public routes:
+## Visual proof
 
-- `/assessment` — canonical technical assessment funnel.
-- `/products` — public product ecosystem, with evidence/status boundaries.
-- `/fde-mastery` — public FDE Mastery explanation and domain contracts.
-- `/engineering` — current architecture and public engineering evidence.
-- `/engineering/fdse` — FDSE engineering intelligence and assurance boundary.
-- `/security` — security architecture, controls and verification baseline.
-- `/about` — company, FDE philosophy and ecosystem context.
-- `/work` — typed public engineering/open-source evidence and case-study taxonomy.
+![Tinlance platform visual](apps/web/app/opengraph-image.svg)
 
-Production canonical URLs resolve to `https://www.tinlance.com`. Preview environments use their Vercel URL when no explicit `NEXT_PUBLIC_SITE_URL` is configured; local development falls back to `http://localhost:3000`. Canonical metadata, Open Graph URLs, structured data, sitemap and robots all use the same site URL resolver.
+The visual above is generated from the current application code. It is a product/architecture visual, not live telemetry or simulated operational data. The live public engineering surface is [tinlance.com/engineering](https://www.tinlance.com/engineering).
 
-## Evidence & trust
+## Why Tinlance
 
-Tinlance uses one public evidence vocabulary across engineering, products, security, FDE Mastery and work:
+Tinlance connects commercial discovery, customer delivery, engineering execution, security controls, evaluation, and productization without creating parallel authorities for identity, authorization, audit, or execution.
 
-- **IMPLEMENTED** — exists in the current implementation; not automatically production validated.
-- **TESTED** — covered by automated or reproducible tests demonstrating the stated behavior.
-- **VALIDATED** — supported by documented validation beyond ordinary implementation/testing, with scope stated.
-- **EXPERIMENTAL** — implemented for research/evaluation; production suitability has not been established.
-- **PLANNED** — intentionally identified for future implementation and not currently implemented.
+| Differentiator | What it means in this repository |
+|---|---|
+| Evidence-first | Public claims are classified as IMPLEMENTED, TESTED, VALIDATED, EXPERIMENTAL, or PLANNED. |
+| Governed execution | Agents and automation operate through explicit identity, authorization, policy, approval, and audit boundaries. |
+| FDE boundary | Tinlance owns the customer-facing platform; the authenticated FDE API separates the web application from FDE Mastery execution. |
+| Security in the loop | Dependency audit, secret scanning, SAST, DAST, SBOM, container validation, and AI/agent regression gates are part of CI. |
+| Productization path | M1/M3/M4/M5/M6/M7/M8/M9/M10/M11/M12/M13/M14 are represented as bounded platform capabilities rather than unrelated feature silos. |
 
-The authoritative implementation is `apps/web/lib/evidence/taxonomy.ts`, with public records in `apps/web/lib/evidence/registry.ts` and accessible rendering in `apps/web/components/evidence-status.tsx`.
+## Quick start
 
-Public claims follow this discipline:
+The fastest way to inspect the web application locally:
 
-```text
-Claim → Evidence Status → Evidence Metadata → Source/Repository
-      → Methodology → Result → Scope → Limitations
-```
+~~~bash
+git clone https://github.com/LloydCoder/Tinlance.git
+cd Tinlance
+corepack enable
+pnpm install --frozen-lockfile
+pnpm --filter @tinlance/web dev
+~~~
 
-The public/private boundary is explicit. Private repositories, credentials, customer PII, internal endpoints and sensitive infrastructure are not published as evidence.
+Open http://localhost:3000.
 
-Case studies are typed as customer case study, engineering case study, open-source validation, research validation, synthetic evaluation or architecture case study. Customer proof is never inferred from repository tests, synthetic datasets or engineering history.
+The public pages are designed to run without production credentials. Authenticated, database-backed, billing, email, FDE, and customer-workspace flows require the corresponding environment and service configuration.
 
-See [`docs/EVIDENCE-AND-TRUST.md`](./docs/EVIDENCE-AND-TRUST.md).
+## Installation
 
-## Current architecture
+### Prerequisites
 
-The canonical current architecture is [`docs/architecture/tinlance-architecture.md`](./docs/architecture/tinlance-architecture.md).
+| Component | Current repository requirement |
+|---|---|
+| Node.js | 22.x in CI |
+| pnpm | 10.14.0 |
+| Python | 3.12 for apps/fde-api |
+| PostgreSQL | 16 for application CI/migrations |
+| Docker | Required for container, SBOM, Trivy, and ZAP validation |
 
-The public `/engineering` map represents M1, M3, M4, M5, M6, M7, M8, M9, M10, M11, M12, M13 and M14. It is a public responsibility/control abstraction, not a linear infrastructure diagram or production topology. M4 Automation and M6 MCP are shown as cross-cutting relationships; FDE API/FDE Mastery form the FDE execution boundary; ThreatFade is a distinct product and evidence source.
+### Web application
 
-```text
-M1 Commercial Engine → M3 Customer Workspace → M5 API Platform
-                                      │
-                     ┌────────────────┴────────────────┐
-                     ▼                                 ▼
-               M7 Security                         M4 Automation
-                     │                                 │
-              M6 MCP / tools ────────────────→ M5 / Core
-                     │
-                     ▼
-               M8 Evaluation → M9 Agent Runtime ↔ M10 Knowledge/RAG
-                     │                              │
-                     └──────────→ M11 Sales Engineer
-                                                   │
-                                                   ▼
-                                           M12 Revenue Intelligence
-                                                   │
-                                                   ▼
-                                           M13 Knowledge Moat
-                                                   │
-                                                   ▼
-                                           M14 Productization
+~~~bash
+corepack enable
+pnpm install --frozen-lockfile
+pnpm --filter @tinlance/web dev
+~~~
 
-M5 → FDE API → FDE Mastery
-FDE Mastery → FDSE (engineering intelligence / assurance)
-FDSE → Agent Platform (governed execution contract)
-ThreatFade = distinct security product / public engineering evidence
-```
+### FDE API
 
-The arrows describe public control/data relationships and reading order, not a claim that every node is a hard runtime dependency of the next.
+~~~bash
+cd apps/fde-api
+python -m venv .venv
+source .venv/bin/activate
+pip install -e '.[test]'
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+~~~
 
-## M14 Consulting → Software Flywheel
+The FDE API exposes liveness at /health and readiness at /ready. Interactive API documentation is disabled by default and can be enabled deliberately with FDE_ENABLE_DOCS=true.
 
-M14 turns authorized delivery evidence into a controlled productization workflow:
+### Docker
 
-```text
-Observation → Pattern → Recurrence → Opportunity → Playbook → Experiment
-     → Evaluation/Security → Productization decision → Reusable capability
-```
+The repository contains production-oriented Dockerfiles at apps/web/Dockerfile and apps/fde-api/Dockerfile. CI builds both images and validates non-root execution, health checks, vulnerability scans, and SBOM generation.
 
-M14 does not create a parallel CRM, analytics, knowledge store, workflow engine, authorization layer or agent runtime. Customer records remain in M3; cross-customer intelligence remains governed by M13; commercial truth remains in M12; M4 executes workflows; M7 authorizes sensitive actions; M8 evaluates automated/AI behavior.
+## Usage
 
-See [`docs/m14-consulting-software-flywheel.md`](./docs/m14-consulting-software-flywheel.md).
+### Basic web development
 
-## M9 Agent Runtime
+~~~bash
+pnpm --filter @tinlance/web dev
+~~~
 
-M9 is the controlled execution plane for identity-bound agents. It provides immutable agent versions, explicit capabilities, durable bounded executions, controlled memory, action-bound human approvals, cancellation/recovery state and complete runtime evidence.
+Use the public routes to inspect the commercial and engineering surface:
 
-M9 does **not** replace M7 or M6:
+- /assessment
+- /engineering
+- /engineering/fdse
+- /fde-mastery
+- /products
+- /security
+- /work
 
-```text
-Agent → M9 Runtime → M7 authorization → M6 MCP boundary → M5/Core
-```
+### Run the main validation suite
 
-Model output, memory and tool output are untrusted. M7 remains the authorization authority; M6 remains the MCP/tool boundary; M8 remains the evaluation and regression authority.
+~~~bash
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+pnpm format:check
+~~~
 
-See [`apps/web/docs/security/M9_AGENT_RUNTIME.md`](./apps/web/docs/security/M9_AGENT_RUNTIME.md).
+### FDE API validation
 
-## M7 AI Security Gateway
+~~~bash
+cd apps/fde-api
+pip install -e '.[test]'
+pytest -q
+ruff check .
+python -m pip check
+~~~
 
-M7 is Tinlance's cross-cutting AI security control plane for identity, tenant context, permissions, policy, deterministic risk, approvals/step-up, revocation, rate/resource controls, output filtering and auditability.
+The FDE API is an authenticated service boundary. Production execution requires a service credential, tenant-context signing, allowed-host configuration, and upstream FDE Mastery authentication. Do not expose those credentials in source or client-side code.
 
-```text
-Identity → Tenant → Principal → Permission → Policy → Risk
-       → Approval/Step-up → Execution → Output → Audit
-```
+## Configuration
 
-M7 extends existing Better Auth, workspace authorization, M5 API authentication, M6 MCP authorization and the existing `AuditEvent` ledger rather than introducing parallel identity or audit systems. Policy failure is fail-closed.
+The application uses optional development configuration but validates a stricter set in production.
 
-See [`apps/web/docs/security/m7-ai-security-gateway.md`](./apps/web/docs/security/m7-ai-security-gateway.md) and [`apps/web/docs/security/m7-threat-model.md`](./apps/web/docs/security/m7-threat-model.md).
+| Variable | Purpose | Default / requirement |
+|---|---|---|
+| NEXT_PUBLIC_APP_URL | Canonical application origin | Optional in development; required in production |
+| BETTER_AUTH_URL | Better Auth origin | Optional in development; must match NEXT_PUBLIC_APP_URL in production |
+| BETTER_AUTH_SECRET | Session/signing secret | Optional in development; at least 32 characters in production |
+| DATABASE_URL | Neon/PostgreSQL connection | Required for database-backed flows and production |
+| UPSTASH_REDIS_REST_URL | Distributed rate limiting | Required in production |
+| UPSTASH_REDIS_REST_TOKEN | Distributed rate limiting credential | Required in production |
+| PAYSTACK_SECRET_KEY | Billing integration | Required only when billing flows are enabled |
+| RESEND_API_KEY | Transactional email | Required only when email flows are enabled |
+| RESEND_FROM_EMAIL | Transactional sender | Required only when email flows are enabled |
+| CRON_SECRET | Internal scheduled-worker protection | Required when outbox/cron production flows are enabled |
+| FDE_ALLOWED_HOSTS | FDE API trusted-host allowlist | localhost,127.0.0.1,testserver by default |
+| FDE_SERVICE_TOKEN | Tinlance-to-FDE API authentication | Required for authenticated execution |
+| FDE_ENV | FDE API execution mode | production by default |
+| FDE_ENABLE_DOCS | Enables FastAPI docs | false by default |
 
-## Repository layout
+Never place secrets in NEXT_PUBLIC_* variables.
 
-- `apps/web` — Tinlance's Next.js application.
-- `apps/web/prisma` — PostgreSQL schema and migrations.
-- `apps/fde-api` — authenticated Python FastAPI gateway for FDE execution.
-- `docs/authority` — Authority Engine, content governance, SEO, AI discovery and research policy.
-- `docs/architecture` — canonical architecture and ADRs.
-- `docs` — security, operations, analytics, release and integration documentation.
+## Features
 
-## FDE boundary
+| Area | Current capability |
+|---|---|
+| Identity | Better Auth, sessions, organizations, memberships, invitations, RBAC |
+| Customer workspace | Projects → assessments → findings → evidence → reports → remediation |
+| Commercial | Assessments, leads, opportunities, proposals, booking, billing |
+| API | Stable v1 contract, scoped organization credentials, idempotency, ETags, webhooks |
+| FDE | Authenticated FastAPI gateway with tenant/domain validation and upstream OAuth |
+| MCP | Registry, policy, security, server, approvals, and governed tool boundary |
+| AI security | M7 policy/risk/approval/audit control plane |
+| Evaluation | M8 deterministic and regression assurance |
+| Agent runtime | M9 identity-bound executions, bounded capabilities, memory, approvals, recovery, evidence |
+| Knowledge | M10 tenant-scoped knowledge and retrieval controls |
+| Intelligence | M13 permissioned knowledge-moat workflow |
+| Productization | M14 observation → pattern → opportunity → playbook → evaluation → productization |
+| SDKs | TypeScript and Python clients for the stable API surface |
+| CI/security | Tests, typecheck, lint, formatting, dependency audit, secret scan, Semgrep, ZAP, Trivy, SBOM, container validation |
 
-Tinlance remains the public commercial/customer-facing layer. FDE Mastery remains the methodology and execution-platform authority.
+## Architecture
 
-The canonical FDE Mastery contract is:
+The repository is a monorepo:
 
-```http
-POST /v1/triage/{client_id}/{domain}
-```
+~~~text
+Tinlance
+├── apps/web        Next.js application, portal, admin, and API
+├── apps/fde-api    Authenticated FastAPI execution gateway
+├── packages/       TypeScript and Python SDKs
+├── docs/           Architecture, API, security, operations, authority, and evidence
+└── .github/        CI, security, dependency automation, issue forms
+~~~
 
-Tinlance preserves its public gateway contract and translates through the authenticated FDE boundary. The eight supported domains remain:
+The central execution relationship is:
 
-- `cybersecurity`
-- `finance`
-- `healthtech`
-- `logistics`
-- `legal`
-- `revops`
-- `procurement`
-- `custom`
+~~~text
+Tinlance web
+    |
+    +--> M5 API / Core
+    |       |
+    |       +--> M7 Security / authorization
+    |       +--> M6 MCP / tools
+    |       +--> M8 Evaluation
+    |       +--> M9 Agent Runtime
+    |       +--> M10 Knowledge
+    |
+    +--> FDE API --> FDE Mastery
+~~~
 
-M9 agents cannot choose or fabricate tenant/client identity; tenant context is resolved server-side before FDE execution.
+M7 remains the authorization/security authority. M6 remains the MCP/tool boundary. M8 remains evaluation authority. M9 is the controlled execution plane. The arrows are responsibility relationships, not a claim that every capability is a hard runtime dependency.
 
-See [`docs/FDE-INTEGRATION.md`](./docs/FDE-INTEGRATION.md).
+## Security and trust boundaries
 
-## Authentication and authorization
+Tinlance treats browser input, webhooks, email, AI/model output, MCP messages, tool output, and external API responses as untrusted.
 
-Tinlance uses **Better Auth + Neon PostgreSQL** as its authentication authority and persistent identity store. Authorization is enforced server-side; hiding a UI element is never considered an authorization boundary.
+Key rules:
 
-## Engineering and security standards
+- Authorization is server-side.
+- Customer resources have explicit organization/tenant boundaries.
+- High-impact operations use idempotency and/or approval controls.
+- Secrets remain server-side.
+- FDE execution is separated behind an authenticated service boundary.
+- Production FDE execution uses upstream OAuth 2.0 client credentials.
+- Auditability and request correlation are preserved across boundaries.
+- Unrestricted AI-to-database access is not permitted.
+- Unrestricted shell, arbitrary filesystem access, arbitrary HTTP, and autonomous red-team execution are not enabled by the M9 runtime.
 
-- TypeScript strict mode and Python 3.12 typing.
-- Automated linting, type checking, tests, formatting, dependency auditing, security scanning, SBOM validation, container validation, and production builds.
-- Secure HTTP headers including CSP and HSTS.
-- Distributed public API rate limiting with Upstash Redis.
-- Typed environment boundaries with explicit production secret validation.
-- Request correlation across application boundaries.
-- PostgreSQL persistence through Prisma with versioned migrations.
-- Server-side tenant scoping.
-- Authenticated FastAPI service-to-service execution boundary.
-- OAuth 2.0 upstream authentication for production FDE execution.
-- Trusted-host enforcement for the FDE API.
-- AI security regression and domain-agent validation in CI.
-- M7 deterministic authorization/risk tests and persisted security-control migration validation.
-- M8 evaluation/regression controls and M9 runtime security gates.
-
-The security verification baseline is OWASP ASVS 5.0, with additional AI/agent security controls appropriate to the execution paths.
+See [SECURITY.md](./SECURITY.md) and the [security documentation](./docs/security/GATE-D-SUPPLY-CHAIN.md).
 
 ## Documentation
 
-- [`docs/EVIDENCE-AND-TRUST.md`](./docs/EVIDENCE-AND-TRUST.md) — public evidence taxonomy, provenance and case-study rules.
-- [`docs/architecture/tinlance-architecture.md`](./docs/architecture/tinlance-architecture.md) — canonical architecture.
-- [`docs/m14-consulting-software-flywheel.md`](./docs/m14-consulting-software-flywheel.md) — M14 productization boundaries, lifecycle and controls.
-- [`apps/web/docs/security/M9_AGENT_RUNTIME.md`](./apps/web/docs/security/M9_AGENT_RUNTIME.md) — M9 runtime architecture and controls.
-- [`apps/web/docs/security/M7_AGENT_SECURITY_GATEWAY.md`](./apps/web/docs/security/M7_AGENT_SECURITY_GATEWAY.md) — M7 control plane.
-- [`apps/web/docs/security/M8_AGENT_EVALUATION_PLATFORM.md`](./apps/web/docs/security/M8_AGENT_EVALUATION_PLATFORM.md) — M8 assurance plane.
-- [`docs/FDE-INTEGRATION.md`](./docs/FDE-INTEGRATION.md) — FDE boundary.
-- [`docs/FDSE-WEBSITE-INTEGRATION.md`](./docs/FDSE-WEBSITE-INTEGRATION.md) — FDSE public architecture and integration boundary.
-- [`docs/ENTERPRISE-CI-GATES.md`](./docs/ENTERPRISE-CI-GATES.md) — blocking CI/security controls.
-- [`docs/security/GATE-D-SUPPLY-CHAIN.md`](./docs/security/GATE-D-SUPPLY-CHAIN.md) — dependency review, full-history secret scanning and Dependabot supply-chain controls.
-- [`docs/security/GATE-E-PRODUCTION.md`](./docs/security/GATE-E-PRODUCTION.md)
-- [`docs/security/GATE-F-SCALE-SAAS.md`](./docs/security/GATE-F-SCALE-SAAS.md) — canonical production origin, legacy-host redirect and live production smoke verification.
+Start with the [documentation index](./docs/README.md).
 
-## Public product relationships
+| Topic | Reference |
+|---|---|
+| Architecture | [Canonical architecture](./docs/architecture/tinlance-architecture.md) |
+| Decisions | [ADRs](./docs/decisions/README.md) |
+| Evidence | [Evidence and trust](./docs/EVIDENCE-AND-TRUST.md) |
+| FDE | [FDE integration](./docs/FDE-INTEGRATION.md) |
+| API | [API v1](./docs/api/README.md) |
+| OpenAPI | [v1 contract](./docs/api/openapi/v1.json) |
+| Customer workspace | [M3](./docs/customer-workspace/M3_CUSTOMER_WORKSPACE.md) |
+| Automation | [M4](./docs/automation/M4_FDE_AUTOMATION.md) |
+| M7 | [AI Security Gateway](./docs/security/m7-ai-security-gateway.md) |
+| M8 | [Agent Evaluation](./apps/web/docs/security/M8_AGENT_EVALUATION.md) |
+| M9 | [Agent Runtime](./apps/web/docs/security/M9_AGENT_RUNTIME.md) |
+| M10 | [Knowledge/RAG](./apps/web/docs/security/M10_KNOWLEDGE_RAG.md) |
+| M13 | [Knowledge Moat](./docs/m13-proprietary-knowledge-moat.md) |
+| M14 | [Productization](./docs/m14-consulting-software-flywheel.md) |
+| CI | [Enterprise CI gates](./docs/ENTERPRISE-CI-GATES.md) |
+| Production | [Gate E](./docs/security/GATE-E-PRODUCTION.md) |
+| Scale | [Gate F](./docs/security/GATE-F-SCALE-SAAS.md) |
 
-ThreatFade remains a distinct Tinlance-developed security product with its own public property and repository. Tinlance links to `https://threatfade.com` and the public ThreatFade repository from appropriate product/engineering surfaces. The ThreatFade web property links back to `https://www.tinlance.com` from its shared footer.
+## Contributing
 
-ThreatFade evidence is scoped to its documented methodology and test population. The public Tinlance site does not convert historical experimental results into universal accuracy, customer-deployment or certification claims.
+See [CONTRIBUTING.md](./CONTRIBUTING.md). Pull requests should be focused, tested, security-aware, and accompanied by documentation when behavior or architecture changes.
 
-## Homepage system map
+## License and acknowledgements
 
-The homepage visual labelled `FDE / SYSTEM MAP` is an architectural presentation only. It is **not live telemetry** and contains no simulated counters, events or operational data. The term `LIVE` should not be used for this visual unless a genuine telemetry source and update semantics are implemented.
+Tinlance is proprietary software owned by Tinlance Limited. See [LICENSE](./LICENSE).
 
-## Release posture
+Third-party libraries remain governed by their own licenses. Dependency metadata and lockfiles are committed to make the software supply chain inspectable.
 
-M9 capabilities remain explicitly bounded. Unrestricted shell, arbitrary filesystem, arbitrary HTTP, direct business-database mutation, unrestricted internet access and autonomous red-team execution are not enabled by this runtime.
+Acknowledgements include the open-source projects that make the platform possible, including Next.js, React, TypeScript, Prisma, Better Auth, FastAPI, Pydantic, Vitest, pnpm, Turborepo, and the security tooling used in CI.
 
-## Security
+## Roadmap and maintenance posture
 
-See [`SECURITY.md`](./SECURITY.md) for vulnerability reporting and the security baseline.
+<details>
+<summary>Roadmap</summary>
+
+The repository maintains a phase ledger in [docs/PHASES.md](./docs/PHASES.md). Current platform work is organized around bounded commercial, customer-workspace, API, automation, MCP, security, evaluation, agent-runtime, knowledge, intelligence, and productization capabilities.
+
+Roadmap entries are not evidence of implementation. Current code, tests, CI, and production verification remain authoritative.
+
+</details>
+
+<details>
+<summary>Support and troubleshooting</summary>
+
+For installation problems, include the exact command, runtime versions, commit SHA, and relevant non-sensitive logs.
+
+For security problems, use [SECURITY.md](./SECURITY.md) rather than a public issue.
+
+For contribution and review requirements, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+</details>

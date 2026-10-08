@@ -43,7 +43,7 @@ Current public guidance used for the gate includes NIST AI RMF 1.0, NIST SSDF 1.
 
 ## Release-tree normalization
 
-The release-certification gate treats source-tree cleanliness as an explicit invariant. The validation toolchain can deterministically mutate two tracked files during CI: Next.js route type generation may update `apps/web/next-env.d.ts`, and pnpm 10's legacy `audit --ignore` compatibility may materialize an audit-ignore configuration in the root `package.json`. The gate records any tracked mutations, fails on unexpected paths, restores only these documented tool-generated mutations from HEAD, and then requires a clean tree. This prevents generated/tooling churn from becoming release content while preserving detection of arbitrary mutations.
+The release-certification gate treats source-tree cleanliness as an explicit invariant. The validation toolchain can deterministically mutate three tracked files during CI: Next.js route type generation may update `apps/web/next-env.d.ts`; pnpm 10's legacy `audit --ignore` compatibility may materialize an audit-ignore configuration in `pnpm-workspace.yaml`; and the root `package.json` may be normalized by the audit tooling. The gate records any tracked mutations, fails on unexpected paths, restores only these documented tool-generated mutations from HEAD, and then requires a clean tree. This prevents generated/tooling churn from becoming release content while preserving detection of arbitrary mutations.
 
 ## Evidence boundary
 
