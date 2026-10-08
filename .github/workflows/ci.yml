@@ -482,25 +482,3 @@ jobs:
           print('All blocking enterprise CI gates passed:', ', '.join(sorted(needs)))
           PY
 
-
-  temporary-lockfile-resolution:
-    name: Temporary lockfile resolution
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: docs/forensic-overhaul-2026-10-08
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.14.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - name: Regenerate lockfile
-        run: pnpm install --lockfile-only --no-frozen-lockfile
-      - name: Print lockfile configuration
-        run: |
-          sed -n '1,30p' pnpm-lock.yaml
-          echo "--- resolved security packages ---"
-          grep -E '^(  )?(sharp|source-map-js|tinypool)@' pnpm-lock.yaml | head -20
