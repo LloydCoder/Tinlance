@@ -235,7 +235,7 @@ jobs:
         run: |
           set -euo pipefail
           changed="$(git diff --name-only)"
-          unexpected="$(printf '%s\n' "$changed" | grep -vE '^(apps/web/next-env\.d\.ts|package\.json)$' || true)"
+          unexpected="$(printf '%s\n' "$changed" | grep -vE '^(apps/web/next-env\.d\.ts|package\.json|pnpm-workspace\.yaml)$' || true)"
           if [ -n "$unexpected" ]; then
             printf 'Unexpected tracked working-tree mutations:\n%s\n' "$unexpected"
             git diff -- "$unexpected" || true
@@ -244,7 +244,7 @@ jobs:
           # Next.js route generation and pnpm's legacy audit-ignore compatibility
           # may mutate these two tracked files during validation. Restore them
           # before the final release-tree cleanliness assertion.
-          git restore --source=HEAD -- apps/web/next-env.d.ts package.json
+          git restore --source=HEAD -- apps/web/next-env.d.ts package.json pnpm-workspace.yaml
           git diff --exit-code
           grep -RniE "IMPLEMENTED|TESTED|VALIDATED|EXPERIMENTAL|PLANNED" apps/web/lib/evidence docs | sed -n '1,50p'
       - name: 28 Production-readiness validation
