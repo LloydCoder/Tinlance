@@ -12,16 +12,6 @@
     "format:check": "prettier --check .",
     "security:audit": "pnpm audit --audit-level=high"
   },
-  "pnpm": {
-    "overrides": {
-      "sharp": ">=0.35.5",
-      "source-map-js": ">=1.2.2",
-      "tinypool": ">=2.1.2",
-      "js-yaml": ">=4.3.2",
-      "postcss": ">=8.5.18",
-      "deepmerge-ts": ">=8.0.0"
-    }
-  },
   "devDependencies": {
     "prettier": "3.9.6",
     "turbo": "^2.10.10",
