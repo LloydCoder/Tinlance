@@ -1,0 +1,20 @@
+SPDX-License-Identifier: LicenseRef-Tinlance-Proprietary
+
+Tinlance Limited — Proprietary Software License
+
+Copyright (c) 2026 Tinlance Limited.
+All rights reserved.
+
+This repository is publicly visible for engineering transparency, technical review,
+and verifiable evidence. Public visibility does not grant a license to use, copy,
+modify, distribute, sublicense, publish, sell, host, or create derivative works
+from the Tinlance software or proprietary implementation.
+
+No open-source or dual license is granted by publication of this repository.
+Commercial, partner, evaluation, contributor, redistribution, hosting, or other
+use rights require prior written authorization from Tinlance Limited.
+
+Third-party dependencies remain subject to their own applicable licenses and
+notices. This license does not alter those third-party rights.
+
+For licensing inquiries, contact hello@tinlance.com.
