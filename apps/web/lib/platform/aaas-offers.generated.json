@@ -1,0 +1,439 @@
+{
+  "schema_version": "1.0.0",
+  "authority": "tsic",
+  "source_system": "tinlance-com",
+  "canonical_owner": "tsic",
+  "commercial_posture": "assessment_led",
+  "default_availability": "assessment_required",
+  "default_pricing": {
+    "model": "quote_required",
+    "public_price": null,
+    "currency": null
+  },
+  "rules": {
+    "offers_bind_only_to_registered_and_certified_capabilities": true,
+    "tenant_scoped_entitlement_required": true,
+    "explicit_approval_required_for_consequential_actions": true,
+    "usage_budget_required": true,
+    "jurisdiction_and_region_policy_required": true,
+    "customer_evidence_required_before_outcome_claims": true,
+    "generic_execution_authority": "agent-platform",
+    "fas_bench_runtime_dependency": false
+  },
+  "offers": [
+    {
+      "id": "governed-agent-infrastructure",
+      "name": "Governed Agent Infrastructure",
+      "category": "agent-platform",
+      "buyer_problem": "Deploy agents with explicit identity, authorization, policy, approvals, budgets, sandboxing and audit.",
+      "summary": "A governed agent execution foundation and developer surface for enterprise workflows.",
+      "runtime_systems": [
+        "agent-platform",
+        "agent-platform-sdk",
+        "agent-os",
+        "agent-developer"
+      ],
+      "evaluation_systems": [],
+      "required_capabilities": [
+        "identity",
+        "authorization",
+        "policy",
+        "runtime",
+        "tools",
+        "sandbox",
+        "secrets",
+        "budgets",
+        "evidence",
+        "audit"
+      ],
+      "commercial_posture": "assessment_led",
+      "availability": "assessment_required",
+      "pricing": {
+        "model": "quote_required",
+        "public_price": null,
+        "currency": null
+      },
+      "authority": {
+        "generic_execution": "agent-platform",
+        "domain_authority": "registered_domain_systems"
+      },
+      "entitlements": {
+        "tenant_scoped": true,
+        "approval_required": true,
+        "usage_budget_required": true,
+        "region_policy_required": true
+      },
+      "evidence_required": [
+        "capability_contract",
+        "security_review",
+        "tenant_isolation_evidence"
+      ],
+      "limitations": [
+        "Production deployment and external provider configuration require separate verification.",
+        "Protocol support alone does not grant tool execution permission."
+      ],
+      "safety_boundaries": {
+        "consequential_actions_require_platform_authorization": true
+      }
+    },
+    {
+      "id": "signal-to-outcome-acquisition",
+      "name": "Signal-to-Outcome Acquisition Agent",
+      "category": "acquisition",
+      "buyer_problem": "Connect market signals to qualified opportunities, governed outreach, delivery and measurable outcomes.",
+      "summary": "A signal-driven acquisition workflow spanning intelligence, targeting, enrichment, outreach, delivery evidence and economic attribution.",
+      "runtime_systems": [
+        "world-intelligence",
+        "tads",
+        "sdea",
+        "reconos",
+        "fadereach",
+        "fdse",
+        "agent-platform",
+        "economic-attribution"
+      ],
+      "evaluation_systems": [
+        "fas-bench"
+      ],
+      "required_capabilities": [
+        "world_intelligence",
+        "acquisition_targeting",
+        "engineering_acquisition_signals",
+        "osint_fusion",
+        "outreach_execution",
+        "engineering_delivery",
+        "economic_attribution"
+      ],
+      "commercial_posture": "assessment_led",
+      "availability": "assessment_required",
+      "pricing": {
+        "model": "quote_required",
+        "public_price": null,
+        "currency": null
+      },
+      "authority": {
+        "generic_execution": "agent-platform",
+        "outreach_domain": "fadereach",
+        "delivery_domain": "fdse"
+      },
+      "entitlements": {
+        "tenant_scoped": true,
+        "approval_required": true,
+        "usage_budget_required": true,
+        "region_policy_required": true
+      },
+      "evidence_required": [
+        "signal_provenance",
+        "consent_and_suppression_state",
+        "delivery_evidence",
+        "outcome_evidence",
+        "economic_attribution"
+      ],
+      "limitations": [
+        "A signal or successful message delivery is not proof of a qualified opportunity, conversion, or recognized revenue.",
+        "Outreach must honor consent, opt-out, and jurisdictional requirements."
+      ],
+      "safety_boundaries": {
+        "outreach_consent_and_suppression_required": true,
+        "customer_outcome_claims_require_evidence": true
+      }
+    },
+    {
+      "id": "content-to-outreach-agent",
+      "name": "Content-to-Outreach Agent",
+      "category": "content-and-acquisition",
+      "buyer_problem": "Generate reusable content assets and connect them to governed outreach workflows.",
+      "summary": "Content package generation through HezCast and outreach orchestration through FadeReach, with governed external publishing.",
+      "runtime_systems": [
+        "hezcast",
+        "fadereach",
+        "agent-platform",
+        "economic-attribution"
+      ],
+      "evaluation_systems": [],
+      "required_capabilities": [
+        "content_generation",
+        "content_package_generation",
+        "content_quality_validation",
+        "outreach_execution",
+        "external_content_publishing",
+        "economic_attribution"
+      ],
+      "commercial_posture": "assessment_led",
+      "availability": "assessment_required",
+      "pricing": {
+        "model": "quote_required",
+        "public_price": null,
+        "currency": null
+      },
+      "authority": {
+        "content_generation": "hezcast",
+        "outreach": "fadereach",
+        "external_publishing": "agent-platform",
+        "generic_execution": "agent-platform"
+      },
+      "entitlements": {
+        "tenant_scoped": true,
+        "approval_required": true,
+        "usage_budget_required": true,
+        "region_policy_required": true
+      },
+      "evidence_required": [
+        "content_provenance",
+        "channel_consent",
+        "publish_approval",
+        "delivery_evidence",
+        "economic_attribution"
+      ],
+      "limitations": [
+        "HezCast content generation does not grant direct external publishing authority.",
+        "Publishing requires scoped Agent Platform authorization, policy checks, idempotency, and audit evidence."
+      ],
+      "safety_boundaries": {
+        "direct_external_publishing_allowed": false,
+        "external_publishing_requires_agent_platform": true
+      }
+    },
+    {
+      "id": "security-detection-and-assurance-agent",
+      "name": "Security Detection and Assurance Agent",
+      "category": "cybersecurity",
+      "buyer_problem": "Connect detection and application-security findings to evidence-backed analyst workflows.",
+      "summary": "ThreatFade detection, BugFlow application-security testing and FAS evidence-first analysis with independent evaluation.",
+      "runtime_systems": [
+        "threatfade",
+        "threatfade-web",
+        "bugflow",
+        "fas",
+        "agent-platform",
+        "fdse-toolkit"
+      ],
+      "evaluation_systems": [
+        "fas-bench"
+      ],
+      "required_capabilities": [
+        "threat_detection_response",
+        "product_presentation",
+        "analyst_workflow",
+        "application_security_testing",
+        "evidence_first_analysis",
+        "delivery_reporting"
+      ],
+      "commercial_posture": "assessment_led",
+      "availability": "assessment_required",
+      "pricing": {
+        "model": "quote_required",
+        "public_price": null,
+        "currency": null
+      },
+      "authority": {
+        "detection": "threatfade",
+        "application_security_testing": "bugflow",
+        "evidence_analysis": "fas",
+        "generic_execution": "agent-platform"
+      },
+      "entitlements": {
+        "tenant_scoped": true,
+        "approval_required": true,
+        "usage_budget_required": true,
+        "region_policy_required": true
+      },
+      "evidence_required": [
+        "authorized_scope",
+        "finding_provenance",
+        "analyst_review",
+        "regression_evaluation",
+        "delivery_evidence"
+      ],
+      "limitations": [
+        "A finding is not a verdict without evidence and validation.",
+        "FAS-Bench is independent evaluation authority, not a production runtime dependency.",
+        "Testing requires explicit authorization and bounded scope."
+      ],
+      "safety_boundaries": {
+        "authorized_scope_required": true,
+        "fas_bench_evaluation_only": true
+      }
+    },
+    {
+      "id": "governed-healthcare-workforce",
+      "name": "Governed Healthcare Operations Workforce",
+      "category": "healthcare-operations",
+      "buyer_problem": "Support healthcare administrative workflows with tenant controls, provenance and clinician review boundaries.",
+      "summary": "A governed healthcare operations workforce around existing EHR workflows; it does not replace clinicians or the EHR.",
+      "runtime_systems": [
+        "hezqara",
+        "agent-platform"
+      ],
+      "evaluation_systems": [],
+      "required_capabilities": [
+        "healthcare_governed_ai_workforce",
+        "identity",
+        "authorization",
+        "policy",
+        "evidence",
+        "audit"
+      ],
+      "commercial_posture": "assessment_led",
+      "availability": "assessment_required",
+      "pricing": {
+        "model": "quote_required",
+        "public_price": null,
+        "currency": null
+      },
+      "authority": {
+        "healthcare_workflows": "hezqara",
+        "generic_execution": "agent-platform"
+      },
+      "entitlements": {
+        "tenant_scoped": true,
+        "approval_required": true,
+        "usage_budget_required": true,
+        "region_policy_required": true
+      },
+      "evidence_required": [
+        "clinic_tenant_isolation",
+        "server_side_authorization",
+        "workflow_provenance",
+        "clinician_review_evidence"
+      ],
+      "limitations": [
+        "Not a diagnosis, triage, symptom-checker, treatment-decision or prescribing engine.",
+        "AI Scribe outputs remain drafts requiring clinician review, editing and approval.",
+        "Regulatory and clinical suitability must be assessed for each deployment."
+      ],
+      "safety_boundaries": {
+        "diagnosis_or_triage": false,
+        "clinical_treatment_decisions": false,
+        "ai_scribe_requires_clinician_review": true
+      }
+    },
+    {
+      "id": "engineering-and-transformation-workforce",
+      "name": "Engineering and Transformation Workforce",
+      "category": "engineering-delivery",
+      "buyer_problem": "Apply repeatable engineering and transformation workflows across complex customer and portfolio environments.",
+      "summary": "FDSE and FDE Mastery delivery routes with domain execution, evidence packaging and economic attribution.",
+      "runtime_systems": [
+        "fdse",
+        "fde-mastery",
+        "fde",
+        "transformation",
+        "fdse-toolkit",
+        "agent-platform",
+        "economic-attribution"
+      ],
+      "evaluation_systems": [
+        "fas-bench"
+      ],
+      "required_capabilities": [
+        "engineering_delivery",
+        "transformation_delivery",
+        "fde_methodology",
+        "domain_execution",
+        "engagement_delivery",
+        "domain_engineering",
+        "portfolio_transformation",
+        "delivery_reporting",
+        "economic_attribution"
+      ],
+      "commercial_posture": "assessment_led",
+      "availability": "assessment_required",
+      "pricing": {
+        "model": "quote_required",
+        "public_price": null,
+        "currency": null
+      },
+      "authority": {
+        "delivery_orchestration": "fdse",
+        "domain_methodology": "fde-mastery",
+        "generic_execution": "agent-platform"
+      },
+      "entitlements": {
+        "tenant_scoped": true,
+        "approval_required": true,
+        "usage_budget_required": true,
+        "region_policy_required": true
+      },
+      "evidence_required": [
+        "engagement_scope",
+        "approved_change_plan",
+        "delivery_evidence",
+        "customer_outcome_evidence",
+        "economic_attribution"
+      ],
+      "limitations": [
+        "Domain-specific execution requires an explicitly scoped engagement and approved capabilities.",
+        "FAS-Bench remains evaluation-only.",
+        "Customer outcomes and ROI must be supported by customer-specific evidence."
+      ],
+      "safety_boundaries": {
+        "approved_change_scope_required": true,
+        "customer_outcome_claims_require_evidence": true,
+        "fas_bench_evaluation_only": true
+      }
+    },
+    {
+      "id": "evidence-first-assurance-agent",
+      "name": "Evidence-First Assurance Agent",
+      "category": "assurance",
+      "buyer_problem": "Turn technical observations and artifacts into traceable findings, evaluation evidence and delivery-ready reports.",
+      "summary": "FAS evidence-first analysis, independent FAS-Bench evaluation and FDSE Toolkit delivery artifacts.",
+      "runtime_systems": [
+        "fas",
+        "fdse-toolkit",
+        "agent-platform"
+      ],
+      "evaluation_systems": [
+        "fas-bench"
+      ],
+      "required_capabilities": [
+        "evidence_first_analysis",
+        "delivery_reporting",
+        "identity",
+        "authorization",
+        "audit"
+      ],
+      "commercial_posture": "assessment_led",
+      "availability": "assessment_required",
+      "pricing": {
+        "model": "quote_required",
+        "public_price": null,
+        "currency": null
+      },
+      "authority": {
+        "evidence_analysis": "fas",
+        "delivery_reporting": "fdse-toolkit",
+        "generic_execution": "agent-platform"
+      },
+      "entitlements": {
+        "tenant_scoped": true,
+        "approval_required": true,
+        "usage_budget_required": true,
+        "region_policy_required": true
+      },
+      "evidence_required": [
+        "source_provenance",
+        "reproducible_evaluation",
+        "finding_verdict_separation",
+        "report_lineage"
+      ],
+      "limitations": [
+        "Observations are not automatically evidence, findings, or verdicts.",
+        "Benchmark evaluation is separate from production analysis.",
+        "Regulatory or assurance certification is not implied by report generation."
+      ],
+      "safety_boundaries": {
+        "observations_are_not_verdicts": true,
+        "fas_bench_evaluation_only": true
+      }
+    }
+  ],
+  "commercial_surface": {
+    "repository": "LloydCoder/Tinlance",
+    "public_route": "/agent-as-a-service",
+    "generated_catalog_path": "apps/web/lib/platform/aaas-offers.generated.json",
+    "primary_cta": "request-assessment",
+    "pricing_disclosure": "quote_required"
+  }
+}
