@@ -150,7 +150,7 @@ export default function AgentAsAServicePage() {
                     <p style={{ marginTop: "1.25rem" }}><strong>Activation:</strong> Technical assessment, scope and jurisdiction review, tenant entitlement, usage budget, then approved provisioning.</p>
                     <p style={{ marginTop: "1rem" }}><strong>Pricing:</strong> Quote after assessment.</p>
                     <p style={{ marginTop: "1rem" }}><strong>Boundary:</strong> {offer.limitations[0]}</p>
-                    <Link className="text-link" href="/assessment" style={{ display: "inline-flex", marginTop: "1.5rem" }}>
+                    <Link className="text-link" href={`/assessment?capability=${encodeURIComponent(offer.name)}`} style={{ display: "inline-flex", marginTop: "1.5rem" }}>
                       Request an assessment <ArrowUpRight size={16} aria-hidden="true" />
                     </Link>
                   </div>
