@@ -39,7 +39,11 @@ export default function AssessmentPage() {
     }).catch(() => undefined);
   }
 
-  useEffect(() => { track("assessment_started", { step: 1 }); }, []);
+  useEffect(() => {
+    const requestedCapability = new URLSearchParams(window.location.search).get("capability");
+    if (requestedCapability) setForm((current) => ({ ...current, capability: requestedCapability.slice(0, 120) }));
+    track("assessment_started", { step: 1 });
+  }, []);
   useEffect(() => {
     if (result) {
       track("assessment_result_viewed", { qualified: result.qualification.status === "QUALIFIED" ? 1 : 0 });
