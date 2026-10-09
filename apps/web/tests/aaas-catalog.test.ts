@@ -13,7 +13,7 @@ type CatalogOffer = {
   safety_boundaries: Record<string, boolean>;
 };
 
-const offers = offerCatalog.offers as CatalogOffer[];
+const offers = offerCatalog.offers as unknown as CatalogOffer[];
 
 describe("canonical AaaS catalog", () => {
   it("has unique offers and explicit assessment-led availability", () => {
