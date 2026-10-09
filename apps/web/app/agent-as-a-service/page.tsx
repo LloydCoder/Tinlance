@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight, ShieldCheck, Workflow, Clapperboard, Radar, HeartPulse, GitPullRequestArrow, FileCheck2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  ShieldCheck,
+  Workflow,
+  Clapperboard,
+  Radar,
+  HeartPulse,
+  GitPullRequestArrow,
+  FileCheck2,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { JsonLd, breadcrumbSchema } from "../../components/json-ld";
 import { socialImageUrl, socialImages } from "../../lib/metadata";

@@ -1,12 +1,26 @@
 import { describe, expect, it } from "vitest";
 import offerCatalog from "../lib/platform/aaas-offers.generated.json";
 
+type CatalogOffer = {
+  id: string;
+  runtime_systems: string[];
+  evaluation_systems: string[];
+  availability: string;
+  commercial_posture: string;
+  pricing: { model: string; public_price: number | null; currency: string | null };
+  entitlements: { tenant_scoped: boolean; approval_required: boolean; usage_budget_required: boolean; region_policy_required: boolean };
+  authority: Record<string, string>;
+  safety_boundaries: Record<string, boolean>;
+};
+
+const offers = offerCatalog.offers as CatalogOffer[];
+
 describe("canonical AaaS catalog", () => {
   it("has unique offers and explicit assessment-led availability", () => {
-    const ids = offerCatalog.offers.map((offer) => offer.id);
+    const ids = offers.map((offer) => offer.id);
     expect(ids.length).toBeGreaterThanOrEqual(5);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const offer of offerCatalog.offers) {
+    for (const offer of offers) {
       expect(offer.availability).toBe("assessment_required");
       expect(offer.commercial_posture).toBe("assessment_led");
       expect(offer.pricing).toEqual({ model: "quote_required", public_price: null, currency: null });
@@ -30,14 +44,14 @@ describe("canonical AaaS catalog", () => {
   });
 
   it("keeps external publishing under Agent Platform authority", () => {
-    const offer = offerCatalog.offers.find((item) => item.id === "content-to-outreach-agent");
+    const offer = offers.find((item) => item.id === "content-to-outreach-agent");
     expect(offer?.runtime_systems).toEqual(expect.arrayContaining(["hezcast", "fadereach", "agent-platform"]));
     expect(offer?.authority.external_publishing).toBe("agent-platform");
     expect(offer?.safety_boundaries.direct_external_publishing_allowed).toBe(false);
   });
 
   it("preserves healthcare non-diagnostic and clinician review boundaries", () => {
-    const offer = offerCatalog.offers.find((item) => item.id === "governed-healthcare-workforce");
+    const offer = offers.find((item) => item.id === "governed-healthcare-workforce");
     expect(offer?.safety_boundaries).toMatchObject({
       diagnosis_or_triage: false,
       clinical_treatment_decisions: false,
