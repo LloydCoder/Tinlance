@@ -22,9 +22,9 @@ describe("canonical AaaS catalog", () => {
 
   it("keeps FAS-Bench evaluation-only", () => {
     for (const offer of offerCatalog.offers) {
-      expect(offer.runtime_systems).not.toContain("fas-bench");
-      if (offer.evaluation_systems.includes("fas-bench")) {
-        expect(offer.runtime_systems).not.toContain("fas-bench");
+      expect(offer.runtime_systems as string[]).not.toContain("fas-bench");
+      if ((offer.evaluation_systems as string[]).includes("fas-bench")) {
+        expect(offer.runtime_systems as string[]).not.toContain("fas-bench");
       }
     }
   });
