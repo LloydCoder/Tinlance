@@ -239,7 +239,7 @@ jobs:
           severity: CRITICAL,HIGH
           ignorefile: .trivyignore
       - name: Generate web SBOM
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c
         with:
           image: tinlance-web:ci
           format: cyclonedx-json
@@ -247,7 +247,7 @@ jobs:
           upload-artifact: false
           upload-release-assets: false
       - name: Generate FDE API SBOM
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c
         with:
           image: tinlance-fde-api:ci
           format: cyclonedx-json
