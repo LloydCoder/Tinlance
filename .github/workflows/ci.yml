@@ -52,7 +52,7 @@ jobs:
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
           version: 10.34.6
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 22
           cache: pnpm
@@ -161,7 +161,7 @@ jobs:
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
           version: 10.34.6
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 22
           cache: pnpm
@@ -239,7 +239,7 @@ jobs:
           severity: CRITICAL,HIGH
           ignorefile: .trivyignore
       - name: Generate web SBOM
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c
         with:
           image: tinlance-web:ci
           format: cyclonedx-json
@@ -247,14 +247,14 @@ jobs:
           upload-artifact: false
           upload-release-assets: false
       - name: Generate FDE API SBOM
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c
         with:
           image: tinlance-fde-api:ci
           format: cyclonedx-json
           output-file: tinlance-fde-api.sbom.json
           upload-artifact: false
           upload-release-assets: false
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: tinlance-sboms
           path: |
@@ -268,7 +268,7 @@ jobs:
     timeout-minutes: 10
     needs: [container-validation]
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: tinlance-sboms
       - name: Validate SBOM documents
@@ -328,7 +328,7 @@ jobs:
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
           version: 10.34.6
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 22
           cache: pnpm
@@ -401,7 +401,7 @@ jobs:
 
       - name: Upload DAST evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: tinlance-ci-dast-evidence
           path: |
