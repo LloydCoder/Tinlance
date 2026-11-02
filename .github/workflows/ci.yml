@@ -88,7 +88,7 @@ jobs:
           done
           exit "$failed"
         working-directory: .
-      - run: pnpm audit --audit-level=high --ignore GHSA-vfj7-8cjw-p6xm
+      - run: pnpm audit --audit-level=high
         working-directory: .
       - run: pnpm build
 
