@@ -19,7 +19,10 @@
   },
   "pnpm": {
     "overrides": {
-      "vite": "7.3.7"
+      "vite": "7.3.7",
+      "tinypool": "2.1.2",
+      "postcss": "8.5.18",
+      "deepmerge-ts": "8.0.0"
     }
   }
 }
