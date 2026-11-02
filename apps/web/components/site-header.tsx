@@ -16,7 +16,14 @@ export function SiteHeader() {
     <header className="site-header">
       <div className="container header-inner">
         <Link className="brand" href="/" aria-label="Tinlance home">
-          <Image src="/brand/tinlance-logo-light.svg" alt="Tinlance" width={234} height={64} priority style={{ width: "auto", height: "40px" }} />
+          <Image
+            src="/brand/tinlance-logo-light.svg"
+            alt="Tinlance"
+            width={234}
+            height={64}
+            priority
+            style={{ width: "auto", height: "40px" }}
+          />
         </Link>
         <nav className="desktop-nav" aria-label="Primary navigation">
           {navigation.map((item) => (
