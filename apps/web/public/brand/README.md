@@ -19,3 +19,7 @@ These SVG assets are transcribed from the Tinlance logo kit supplied for the web
 Use the horizontal light variant on light page surfaces and the dark variant on dark surfaces. Use the app icon for application and browser identity. Preserve the SVG aspect ratio; do not recolor, stretch, or detach the connection nodes from the mark. Prefer these vector assets over recreating the mark with CSS or text.
 
 The site header and footer use the horizontal light logo. The Next.js app icon and web manifest use the standalone app mark. The Open Graph image uses the same palette and mark.
+
+## Web implementation
+
+Use the shared SVGs from the Next.js `public/brand` directory. Keep explicit intrinsic dimensions on `next/image` to reserve layout space, and use the supplied dark variant when a future component places the wordmark on a dark surface.
