@@ -9,7 +9,7 @@ describe("Tinlance brand assets", () => {
   const darkLogo = readAsset("../public/brand/tinlance-logo-dark.svg");
   const appIcon = readAsset("../public/brand/tinlance-app-icon.svg");
 
-  it("uses the current website palette rather than the retired navy-and-mint palette", () => {
+  it("uses the current site palette, not the retired palette", () => {
     for (const asset of [lightLogo, darkLogo, appIcon]) {
       expect(asset).toContain("#C9FF4D");
       expect(asset).toContain("#F4F5F0");
@@ -21,7 +21,7 @@ describe("Tinlance brand assets", () => {
     expect(appIcon).toContain("#0A0D0B");
   });
 
-  it("preserves the supplied horizontal logo's original vector proportions", () => {
+  it("preserves the supplied logo's original proportions", () => {
     expect(lightLogo).toContain('viewBox="0 0 234.466 64"');
     expect(darkLogo).toContain('viewBox="0 0 234.466 64"');
   });
