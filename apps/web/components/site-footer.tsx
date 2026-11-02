@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const columns = [
@@ -18,7 +19,15 @@ export function SiteFooter() {
     <footer className="site-footer">
       <div className="container footer-grid">
         <div className="footer-brand-block">
-          <Link className="brand" href="/" aria-label="Tinlance home"><span className="brand-mark" aria-hidden="true">T</span><span>Tinlance</span></Link>
+          <Link className="brand" href="/" aria-label="Tinlance home">
+            <Image
+              src="/brand/tinlance-logo-light.svg"
+              alt="Tinlance"
+              width={234}
+              height={64}
+              style={{ width: "auto", height: "34px" }}
+            />
+          </Link>
           <p className="footer-copy">AI engineering, security, automation, and forward-deployed systems for teams operating real workflows.</p>
           <div className="footer-open-source" aria-label="Public open-source properties"><span>PUBLIC OPEN SOURCE</span><a href="https://github.com/LloydCoder/tinlance-threatfade" target="_blank" rel="noreferrer">ThreatFade GitHub ↗</a><a href="https://github.com/LloydCoder/fde-mastery" target="_blank" rel="noreferrer">FDE Mastery GitHub ↗</a></div>
         </div>

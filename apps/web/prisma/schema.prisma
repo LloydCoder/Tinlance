@@ -1156,3 +1156,57 @@ model ScimGroupMember {
   @@index([scimUserId])
   @@map("scimGroupMember")
 }
+model DirectorySyncConnection {
+  id                    String    @id
+  organizationId        String
+  providerId            String
+  aliasKey              String
+  provisioningDomainId  String
+  activeOrganizationKey String
+  connectionId          String?
+  creationRequestId     String
+  status                String
+  revision              Int       @default(0)
+  createdAt             DateTime
+  createdByActorId      String
+  updatedAt             DateTime
+  lastActorId           String
+  ssoProviderId         String?
+  ssoProviderRecordId   String?
+  activeSsoProviderKey  String
+  serializedSsoPairing  String?
+  pairingEnforced       Boolean   @default(false)
+  unpairedAt            DateTime?
+  unpairedBy            String?
+  decommissionStartedAt DateTime?
+  decommissionedAt      DateTime?
+  lastError             String?
+
+  @@unique([aliasKey])
+  @@unique([provisioningDomainId])
+  @@unique([activeOrganizationKey])
+  @@unique([connectionId])
+  @@unique([creationRequestId])
+  @@unique([activeSsoProviderKey])
+  @@index([organizationId])
+  @@index([ssoProviderRecordId])
+  @@map("directorySyncConnection")
+}
+model DirectorySyncMembershipProvenance {
+  id                   String   @id
+  membershipKey        String
+  organizationId       String
+  userId               String
+  memberId             String
+  ownership            String
+  provisioningDomainId String
+  createdAt            DateTime
+  updatedAt            DateTime
+
+  @@unique([membershipKey])
+  @@unique([memberId])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([provisioningDomainId])
+  @@map("directorySyncMembershipProvenance")
+}

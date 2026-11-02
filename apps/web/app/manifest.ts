@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "AI engineering, security, automation, and Forward Deployed Engineering.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f6f7f2",
-    theme_color: "#111411",
-    icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml" }],
+    background_color: "#090C0B",
+    theme_color: "#090C0B",
+    icons: [{ src: "/brand/tinlance-app-icon.svg", sizes: "256x256", type: "image/svg+xml" }],
   };
 }
