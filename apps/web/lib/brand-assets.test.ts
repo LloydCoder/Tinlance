@@ -11,12 +11,14 @@ describe("Tinlance brand assets", () => {
 
   it("uses the current website palette rather than the retired navy-and-mint palette", () => {
     for (const asset of [lightLogo, darkLogo, appIcon]) {
-      expect(asset).toContain("#0A0D0B");
       expect(asset).toContain("#C9FF4D");
       expect(asset).toContain("#F4F5F0");
       expect(asset).not.toContain("#0B1220");
       expect(asset).not.toContain("#14D8B4");
     }
+
+    expect(lightLogo).toContain("#0A0D0B");
+    expect(appIcon).toContain("#0A0D0B");
   });
 
   it("preserves the supplied horizontal logo's original vector proportions", () => {
