@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { JsonLd, breadcrumbSchema } from "../../../components/json-ld";
+import { absoluteUrl } from "../../../lib/site";
 
 const services = {
   "ai-engineering": {
@@ -81,7 +82,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       type: "website",
       title: service.title,
       description: service.summary,
-      url: `https://tinlance.com/services/${slug}`,
+      url: absoluteUrl(`/services/${slug}`),
     },
   };
 }
@@ -96,8 +97,8 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
     "@type": "Service",
     name: service.title,
     description: service.summary,
-    provider: { "@id": "https://tinlance.com/#organization" },
-    url: `https://tinlance.com/services/${slug}`,
+    provider: { "@id": absoluteUrl("/#organization") },
+    url: absoluteUrl(`/services/${slug}`),
   };
 
   return (
