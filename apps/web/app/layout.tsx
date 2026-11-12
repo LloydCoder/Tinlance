@@ -18,7 +18,6 @@ export const metadata: Metadata = {
   title: { default: "Tinlance — AI Engineering & Forward-Deployed Engineering", template: "%s | Tinlance" },
   description: "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation for organizations building and securing intelligent systems.",
   applicationName: "Tinlance",
-  alternates: { canonical: "/" },
   robots: previewRobots,
   icons: { icon: "/icon.svg" },
   openGraph: {
