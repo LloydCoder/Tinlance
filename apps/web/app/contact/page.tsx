@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { LeadForm } from "../../components/lead-form";
+import { createCsrfToken } from "../../lib/security/csrf";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -30,7 +33,7 @@ export default function ContactPage() {
             <article className="rounded-2xl border border-neutral-200 p-5"><h3 className="font-semibold">A clear next step</h3><p className="mt-2 text-sm leading-6 text-neutral-600">Tinlance reviews the request and determines whether a technical assessment or another conversation is appropriate. Scope, timing, and commercial terms are agreed separately.</p></article>
           </div>
           <p className="mb-6 text-sm leading-6 text-neutral-600">Do not include credentials, secrets, payment details, or sensitive customer data in this public form. If a request requires confidential technical material, an appropriate secure exchange method can be agreed first.</p>
-          <LeadForm />
+          <LeadForm csrfToken={createCsrfToken()} />
         </div>
       </section>
     </main>
