@@ -22,8 +22,10 @@ const resources = [
 ];
 
 export const metadata = {
-  title: "Resources | Tinlance",
+  title: "Resources",
   description: "Guides, assessments, and engineering intelligence from Tinlance.",
+  alternates: { canonical: "/resources" },
+  openGraph: { title: "Resources | Tinlance", description: "Guides, assessments, and engineering intelligence from Tinlance.", url: "/resources", type: "website" },
 };
 
 export default function ResourcesPage() {
