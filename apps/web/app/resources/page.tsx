@@ -1,31 +1,15 @@
 import Link from "next/link";
 
 const resources = [
-  {
-    title: "AI Agent Security Field Guide",
-    description: "A practical framework for identity, tools, data boundaries, evaluation, and auditability.",
-    type: "Guide",
-    action: "Request the guide",
-  },
-  {
-    title: "Enterprise AI Readiness Assessment",
-    description: "A structured starting point for evaluating architecture, security, operations, and deployment readiness.",
-    type: "Assessment",
-    action: "Start an assessment",
-  },
-  {
-    title: "Tinlance Intelligence",
-    description: "Research and engineering insights for teams building production AI and automation systems.",
-    type: "Newsletter",
-    action: "Join the intelligence list",
-  },
+  { title: "AI Agent Security Field Guide", description: "A practical framework for identity, tools, data boundaries, evaluation, and auditability.", type: "Guide", action: "Request the guide" },
+  { title: "Enterprise AI Readiness Assessment", description: "A structured starting point for evaluating architecture, security, operations, and deployment readiness.", type: "Assessment", action: "Start an assessment" },
+  { title: "Tinlance Intelligence", description: "Research and engineering insights for teams building production AI and automation systems.", type: "Newsletter", action: "Join the intelligence list" },
 ];
 
 export const metadata = {
   title: "Resources",
   description: "Guides, assessments, and engineering intelligence from Tinlance.",
   alternates: { canonical: "/resources" },
-  openGraph: { title: "Resources | Tinlance", description: "Guides, assessments, and engineering intelligence from Tinlance.", url: "/resources", type: "website" },
 };
 
 export default function ResourcesPage() {
