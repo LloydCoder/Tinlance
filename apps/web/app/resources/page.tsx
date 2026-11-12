@@ -26,11 +26,11 @@ const resources = [
 
 export const metadata = {
   title: "Resources",
-  description: "Guides, assessments, and engineering intelligence from Tinlance.",
+  description: "Explore Tinlance guides, assessments, and technical resources for building, deploying, and securing production AI systems.",
   alternates: { canonical: "/resources" },
   openGraph: {
     title: "Resources | Tinlance",
-    description: "Guides, assessments, and engineering intelligence from Tinlance.",
+    description: "Explore Tinlance guides, assessments, and technical resources for building, deploying, and securing production AI systems.",
     url: "/resources",
     type: "website",
   },
