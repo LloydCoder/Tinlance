@@ -28,16 +28,14 @@ The case-studies landing page remains available to users but is noindex until pu
 
 ## Crawler policy
 
-The generated `/robots.txt` allows legitimate search and discovery crawlers to access public content. It excludes private application and API namespaces:
+The generated `/robots.txt` allows legitimate search and discovery crawlers to access public content. It disallows the private application namespaces:
 
 - `/admin`
 - `/portal`
-- `/api`
-- `/v1/`
+
+API and machine-readable OpenAPI endpoints remain crawlable only so crawlers can observe their `X-Robots-Tag: noindex, nofollow` response directive. They are not listed in the sitemap. The public `/docs/api` HTML documentation page remains indexable; the JSON contract is available to developers but is not a search landing page.
 
 Robots directives are crawl controls, not access controls. Authentication and server-side authorization remain authoritative.
-
-API and OpenAPI JSON responses emit `X-Robots-Tag: noindex, nofollow`. The public `/docs/api` HTML documentation page remains indexable; the JSON contract is available to developers but is not a search landing page.
 
 Authentication, tokenized customer workflows, unsubscribe, and empty case-study pages use page-level noindex metadata. Do not use robots.txt to hide a URL that must be crawled for Google to observe a noindex directive.
 
