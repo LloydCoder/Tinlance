@@ -36,7 +36,7 @@ describe("technical SEO and crawler access contract", () => {
     ]) {
       const rule = rules.find((entry) => entry.userAgent === userAgent);
       expect(rule?.allow).toBe("/");
-      expect(rule?.disallow).toEqual(["/admin", "/portal", "/api", "/v1/"]);
+      expect(rule?.disallow).toEqual(["/admin", "/portal"]);
     }
   });
 
@@ -159,6 +159,9 @@ describe("technical SEO and crawler access contract", () => {
   });
 
   it("advertises the actual public OpenAPI route from API metadata", async () => {
+    const openApiResponse = await getOpenApi();
+    expect(openApiResponse.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+
     const response = await getApiMetadata(new Request(`${canonicalOrigin}/v1`));
     const body = (await response.json()) as { openapi: string };
 
