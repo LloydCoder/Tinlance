@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Changelog | Tinlance",
+  title: "Changelog",
   description: "Selected Tinlance product, platform, and engineering updates.",
   alternates: { canonical: "/changelog" },
 };
