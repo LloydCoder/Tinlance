@@ -5,9 +5,9 @@ const columns = [
   {
     title: "Products",
     links: [
-      ["ThreatFade", "https://threatfade.com"],
-      ["FDE Mastery", "https://github.com/LloydCoder/fde-mastery"],
+      ["ThreatFade", "/threatfade"],
       ["Products", "/products"],
+      ["FDE Mastery", "https://github.com/LloydCoder/fde-mastery"],
     ],
   },
   {
@@ -17,7 +17,11 @@ const columns = [
       ["Security & Trust", "/security"],
       ["Evidence / Work", "/work"],
       ["Insights", "/insights"],
+      ["Research", "/research"],
+      ["Guides", "/guides"],
+      ["Documentation", "/documentation"],
       ["API Documentation", "/docs/api"],
+      ["AI Sales Engineer", "/sales-engineer"],
     ],
   },
   {
@@ -26,6 +30,9 @@ const columns = [
       ["About", "/about"],
       ["Services", "/services"],
       ["Industries", "/industries"],
+      ["Pricing", "/pricing"],
+      ["Partners", "/partners"],
+      ["FAQ", "/faq"],
       ["Contact", "/contact"],
       ["Technical Assessment", "/assessment"],
     ],
