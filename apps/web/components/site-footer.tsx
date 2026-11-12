@@ -3,8 +3,8 @@ import Link from "next/link";
 
 const columns = [
   { title: "Products", links: [["ThreatFade", "https://threatfade.com"], ["FDE Mastery", "https://github.com/LloydCoder/fde-mastery"], ["Products", "/products"]] },
-  { title: "Engineering", links: [["Engineering", "/engineering"], ["Security & Trust", "/security"], ["Evidence / Work", "/work"], ["Insights", "/insights"]] },
-  { title: "Company", links: [["About", "/about"], ["Services", "/services"], ["Contact", "/contact"], ["Technical Assessment", "/assessment"]] },
+  { title: "Engineering", links: [["Engineering", "/engineering"], ["Security & Trust", "/security"], ["Evidence / Work", "/work"], ["Insights", "/insights"], ["API Documentation", "/docs/api"]] },
+  { title: "Company", links: [["About", "/about"], ["Services", "/services"], ["Industries", "/industries"], ["Contact", "/contact"], ["Technical Assessment", "/assessment"]] },
   { title: "Legal", links: [["Privacy", "/privacy"], ["Terms", "/terms"], ["Cookies", "/cookies"]] },
 ] as const;
 
