@@ -3,9 +3,11 @@ import { ArrowUpRight } from "lucide-react";
 import { LeadForm } from "../../components/lead-form";
 
 export const metadata = {
-  title: "Contact Tinlance",
+  title: "Contact",
   description:
     "Start an engineering conversation with Tinlance about AI engineering, FDE, security, or enterprise automation.",
+  alternates: { canonical: "/contact" },
+  openGraph: { title: "Contact Tinlance | Tinlance", description: "Start an engineering conversation with Tinlance about AI engineering, FDE, security, or enterprise automation.", url: "/contact", type: "website" },
 };
 
 export default function ContactPage() {
