@@ -63,10 +63,14 @@ function nextResponseWithCanonical(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
   requestHeaders.set("Content-Security-Policy", cspHeader);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", cspHeader);
+  if (request.nextUrl.pathname.startsWith("/client-onboarding/")) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
 
   if (shouldSetCanonical(request.nextUrl.pathname)) {
     response.headers.set(
