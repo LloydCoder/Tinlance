@@ -1,7 +1,7 @@
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata = {
-  title: "FAQ | Tinlance",
+  title: "FAQ",
   description: "Answers about Tinlance assessments, delivery, security, and engagements.",
   alternates: { canonical: "/faq" },
 };
