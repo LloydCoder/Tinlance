@@ -4,7 +4,7 @@ import { JsonLd, organizationSchema, websiteSchema } from "../components/json-ld
 import { GrowthTracker } from "../components/growth-tracker";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
-import { getSiteUrl, isVercelPreview } from "../lib/site";
+import { canonicalPathFromPathname, getSiteUrl, isVercelPreview } from "../lib/site";
 import "../components/architecture-map.css";
 import "../components/mobile-nav.css";
 import "../components/public-quality.css";
@@ -13,7 +13,7 @@ import "./globals.css";
 const siteUrl = getSiteUrl();
 const previewRobots: Metadata["robots"] = isVercelPreview() ? { index: false, follow: false } : { index: true, follow: true };
 
-export const metadata: Metadata = {
+const baseMetadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: "Tinlance — AI Engineering & Forward-Deployed Engineering", template: "%s | Tinlance" },
   description: "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation for organizations building and securing intelligent systems.",
@@ -30,6 +30,12 @@ export const metadata: Metadata = {
   },
   twitter: { card: "summary_large_image", title: "Tinlance — AI Engineering & Forward-Deployed Engineering", description: "Production-oriented AI engineering, AI security, Forward-Deployed Engineering, and enterprise automation.", images: ["/twitter-image"] },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const requestHeaders = await headers();
+  const canonical = canonicalPathFromPathname(requestHeaders.get("x-pathname"));
+  return { ...baseMetadata, alternates: { canonical } };
+}
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const nonce = (await headers()).get("x-nonce");
