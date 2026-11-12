@@ -2,7 +2,7 @@ import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata = {
   title: "Terms",
-  description: "Current website and service terms for Tinlance.",
+  description: "Review the terms governing use of Tinlance public website, technical resources, assessments, and commercial engagement workflows.",
   alternates: { canonical: "/terms" },
 };
 
