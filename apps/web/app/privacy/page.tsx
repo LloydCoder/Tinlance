@@ -1,7 +1,7 @@
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata = {
-  title: "Privacy | Tinlance",
+  title: "Privacy",
   description: "How Tinlance handles information submitted through its current website and application.",
   alternates: { canonical: "/privacy" },
 };
