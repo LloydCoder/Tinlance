@@ -7,7 +7,7 @@ import { evidenceRecords } from "../../lib/evidence/taxonomy";
 import { socialImageUrl, socialImages } from "../../lib/metadata";
 
 export const metadata: Metadata = {
-  title: "About Tinlance",
+  title: "About",
   description: "Learn how Tinlance approaches production AI engineering, security, Forward-Deployed Engineering, and evidence-led delivery.",
   alternates: { canonical: "/about" },
   openGraph: { title: "About Tinlance", description: "The engineering philosophy and product ecosystem behind Tinlance.", url: "/about", type: "website", images: socialImages },
