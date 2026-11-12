@@ -12,15 +12,16 @@ const staticRoutes = [
   "/products",
   "/agent-as-a-service",
   "/fde-mastery",
-  "/engineering", "/engineering/fdse",
+  "/engineering",
+  "/engineering/fdse",
   "/security",
+  "/industries",
   "/research",
   ...(caseStudies.length > 0 ? ["/case-studies"] : []),
   ...caseStudies.map((item) => item.canonicalPath),
   "/guides",
   "/documentation",
   "/docs/api",
-  "/industries",
   "/assessment",
   "/sales-engineer",
   "/insights",
@@ -41,14 +42,59 @@ const staticRoutes = [
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const uniqueStaticRoutes = [...new Set(staticRoutes)];
-  const staticEntries: MetadataRoute.Sitemap = uniqueStaticRoutes.map((route) => ({
-    url: absoluteUrl(route),
-    changeFrequency: route === "/" ? "weekly" : "monthly",
-    priority: route === "/" ? 1 : route.startsWith("/services/") ? 0.8 : route.startsWith("/research") || route.startsWith("/case-studies") ? 0.75 : ["/assessment", "/products", "/agent-as-a-service", "/fde-mastery", "/engineering", "/engineering/fdse", "/security", "/sales-engineer", "/docs/api", "/industries"].includes(route) ? 0.85 : 0.7,
+
+  const staticEntries: MetadataRoute.Sitemap = uniqueStaticRoutes.map(
+    (route) => ({
+      url: absoluteUrl(route),
+      changeFrequency: route === "/" ? "weekly" : "monthly",
+      priority:
+        route === "/"
+          ? 1
+          : route.startsWith("/services/")
+            ? 0.8
+            : route.startsWith("/research") ||
+                route.startsWith("/case-studies")
+              ? 0.75
+              : [
+                    "/assessment",
+                    "/products",
+                    "/agent-as-a-service",
+                    "/fde-mastery",
+                    "/engineering",
+                    "/engineering/fdse",
+                    "/security",
+                    "/sales-engineer",
+                    "/docs/api",
+                    "/industries",
+                  ].includes(route)
+                ? 0.85
+                : 0.7,
+    }),
+  );
+
+  const insightEntries: MetadataRoute.Sitemap = insights.map((insight) => ({
+    url: absoluteUrl(`/insights/${insight.slug}`),
+    lastModified: insight.updatedAt,
+    changeFrequency: "monthly",
+    priority: 0.6,
   }));
-  const insightEntries: MetadataRoute.Sitemap = insights.map((insight) => ({ url: absoluteUrl(`/insights/${insight.slug}`), lastModified: insight.updatedAt, changeFrequency: "monthly", priority: 0.6 }));
-  const researchEntries: MetadataRoute.Sitemap = researchItems.map((item) => ({ url: absoluteUrl(item.canonicalPath), lastModified: item.updatedAt, changeFrequency: "monthly", priority: 0.75 }));
+
+  const researchEntries: MetadataRoute.Sitemap = researchItems.map((item) => ({
+    url: absoluteUrl(item.canonicalPath),
+    lastModified: item.updatedAt,
+    changeFrequency: "monthly",
+    priority: 0.75,
+  }));
+
   const allEntries = [...staticEntries, ...insightEntries, ...researchEntries];
   const seen = new Set<string>();
-  return allEntries.filter((entry) => { if (seen.has(entry.url)) return false; seen.add(entry.url); return true; });
+
+  return allEntries.filter((entry) => {
+    if (seen.has(entry.url)) {
+      return false;
+    }
+
+    seen.add(entry.url);
+    return true;
+  });
 }
