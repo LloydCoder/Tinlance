@@ -24,9 +24,3 @@ export function absoluteUrl(path = ""): string {
   const normalizedPath = path ? (path.startsWith("/") ? path : `/${path}`) : "";
   return `${getSiteUrl()}${normalizedPath}`;
 }
-
-export function canonicalPathFromPathname(pathname: string | null | undefined): string {
-  if (!pathname || !pathname.startsWith("/")) return "/";
-  const path = pathname.split(/[?#]/, 1)[0];
-  return path || "/";
-}
