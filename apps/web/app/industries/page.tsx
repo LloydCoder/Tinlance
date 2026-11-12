@@ -3,9 +3,11 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Industries | Tinlance",
+  title: "Industries",
   description:
     "AI engineering and forward-deployed delivery for organizations with complex workflows, data, and security requirements.",
+  alternates: { canonical: "/industries" },
+  openGraph: { title: "Industries | Tinlance", description: "AI engineering and forward-deployed delivery for organizations with complex workflows, data, and security requirements.", url: "/industries", type: "website" },
 };
 
 const industries = [
