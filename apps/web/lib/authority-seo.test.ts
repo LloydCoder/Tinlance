@@ -1,31 +1,43 @@
 import { describe, expect, it } from "vitest";
 import robots from "../app/robots";
 import sitemap from "../app/sitemap";
+import nextConfig from "../next.config";
+import { metadata as resourcesMetadata } from "../app/resources/page";
+import { metadata as contactMetadata } from "../app/contact/page";
+import { metadata as industriesMetadata } from "../app/industries/page";
+import { metadata as apiDocsMetadata } from "../app/docs/api/page";
+import { metadata as signInMetadata } from "../app/sign-in/[[...sign-in]]/page";
+import { metadata as signUpMetadata } from "../app/sign-up/[[...sign-up]]/page";
+import { metadata as caseStudiesMetadata } from "../app/case-studies/page";
+import { metadata as proposalMetadata } from "../app/proposal/[token]/page";
+import { metadata as unsubscribeMetadata } from "../app/unsubscribe/page";
+import { generateMetadata as generateServiceMetadata } from "../app/services/[slug]/page";
+import { GET as getApiMetadata } from "../app/api/v1/route";
 
 const canonicalOrigin = "https://www.tinlance.com";
 
-describe("authority SEO contract", () => {
-  it("allows public discovery and protects private application areas", () => {
+describe("technical SEO and crawler access contract", () => {
+  it("allows public discovery while excluding protected and API namespaces", () => {
     const result = robots();
     const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
-    const openAi = rules.find((rule) => rule.userAgent === "OAI-SearchBot");
-    const google = rules.find((rule) => rule.userAgent === "Googlebot");
-    const bing = rules.find((rule) => rule.userAgent === "Bingbot");
-    const extended = rules.find((rule) => rule.userAgent === "Google-Extended");
 
-    for (const rule of [openAi, google, bing, extended]) {
+    for (const userAgent of ["Googlebot", "Bingbot", "OAI-SearchBot", "GPTBot", "Google-Extended", "*"]) {
+      const rule = rules.find((entry) => entry.userAgent === userAgent);
       expect(rule?.allow).toBe("/");
-      expect(rule?.disallow).toEqual(["/admin/", "/portal/", "/api/"]);
+      expect(rule?.disallow).toEqual(["/admin", "/portal", "/api", "/v1/"]);
     }
   });
 
-  it("contains unique canonical authority routes and excludes private routes", () => {
+  it("publishes every intended public authority route exactly once", () => {
     const urls = sitemap().map((entry) => entry.url);
     expect(new Set(urls).size).toBe(urls.length);
+
     for (const path of [
+      "/",
+      "/industries",
+      "/docs/api",
       "/research",
       "/research/threatfade-quic-c2-detection",
-      "/case-studies",
       "/guides",
       "/documentation",
       "/insights/building-production-ai-systems",
@@ -34,9 +46,53 @@ describe("authority SEO contract", () => {
     ]) {
       expect(urls).toContain(`${canonicalOrigin}${path}`);
     }
-    expect(urls.some((url) => url.includes("/admin"))).toBe(false);
-    expect(urls.some((url) => url.includes("/portal"))).toBe(false);
-    expect(urls.some((url) => url.includes("/api/"))).toBe(false);
+
+    for (const path of ["/case-studies", "/sign-in", "/sign-up", "/admin", "/portal", "/api/", "/v1/"]) {
+      expect(urls.some((url) => url.includes(path))).toBe(false);
+    }
     expect(urls.some((url) => url.includes("?"))).toBe(false);
+  });
+
+  it("assigns self-referencing canonical URLs to public landing pages", () => {
+    expect(resourcesMetadata.alternates?.canonical).toBe("/resources");
+    expect(contactMetadata.alternates?.canonical).toBe("/contact");
+    expect(industriesMetadata.alternates?.canonical).toBe("/industries");
+    expect(apiDocsMetadata.alternates?.canonical).toBe("/docs/api");
+  });
+
+  it("keeps authentication, customer-token and empty case-study pages out of search", () => {
+    for (const metadata of [signInMetadata, signUpMetadata, caseStudiesMetadata, proposalMetadata, unsubscribeMetadata]) {
+      expect(metadata.robots).toMatchObject({ index: false });
+    }
+  });
+
+  it("uses the canonical www host in service metadata and structured data", async () => {
+    const metadata = await generateServiceMetadata({ params: Promise.resolve({ slug: "ai-security" }) });
+    expect(metadata.alternates?.canonical).toBe("/services/ai-security");
+    expect(metadata.openGraph?.url).toBe(`${canonicalOrigin}/services/ai-security`);
+  });
+
+  it("does not expose API and OpenAPI JSON responses as indexable pages", async () => {
+    const headerRules = await nextConfig.headers?.();
+    expect(headerRules).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: "/v1", headers: expect.arrayContaining([expect.objectContaining({ key: "X-Robots-Tag", value: "noindex, nofollow" })]) }),
+      expect.objectContaining({ source: "/v1/:path*", headers: expect.arrayContaining([expect.objectContaining({ key: "X-Robots-Tag", value: "noindex, nofollow" })]) }),
+      expect.objectContaining({ source: "/docs/api/openapi", headers: expect.arrayContaining([expect.objectContaining({ key: "X-Robots-Tag", value: "noindex, nofollow" })]) }),
+    ]));
+  });
+
+  it("redirects orphaned legacy service pages to their current canonical equivalents", async () => {
+    const redirects = await nextConfig.redirects?.();
+    const destinations = new Map(redirects?.map((rule) => [rule.source, rule.destination]));
+    expect(destinations.get("/services/ai-infrastructure")).toBe("/services/ai-engineering");
+    expect(destinations.get("/services/automation")).toBe("/services/enterprise-automation");
+    expect(destinations.get("/services/autonomous-ai")).toBe("/agent-as-a-service");
+    expect(destinations.get("/services/fde")).toBe("/services/forward-deployed-engineering");
+  });
+
+  it("advertises the actual public OpenAPI route from API metadata", async () => {
+    const response = await getApiMetadata(new Request(`${canonicalOrigin}/v1`));
+    const body = await response.json() as { openapi: string };
+    expect(body.openapi).toBe("/docs/api/openapi");
   });
 });
