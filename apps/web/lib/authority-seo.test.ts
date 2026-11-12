@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import robots from "../app/robots";
 import sitemap from "../app/sitemap";
 import nextConfig from "../next.config";
+import { metadata as homeMetadata } from "../app/page";
 import { metadata as resourcesMetadata } from "../app/resources/page";
 import { metadata as contactMetadata } from "../app/contact/page";
 import { metadata as industriesMetadata } from "../app/industries/page";
@@ -40,6 +41,7 @@ describe("technical SEO and crawler access contract", () => {
   it("publishes every intended public authority route exactly once", () => {
     const urls = sitemap().map((entry) => entry.url);
     expect(new Set(urls).size).toBe(urls.length);
+    expect(urls.every((url) => url.startsWith(canonicalOrigin))).toBe(true);
 
     for (const path of [
       "/",
@@ -71,6 +73,7 @@ describe("technical SEO and crawler access contract", () => {
   });
 
   it("assigns self-referencing canonical URLs to public landing pages", () => {
+    expect(homeMetadata.alternates?.canonical).toBe("/");
     expect(resourcesMetadata.alternates?.canonical).toBe("/resources");
     expect(contactMetadata.alternates?.canonical).toBe("/contact");
     expect(industriesMetadata.alternates?.canonical).toBe("/industries");
@@ -112,6 +115,8 @@ describe("technical SEO and crawler access contract", () => {
 
     expect(headerRules).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ source: "/api", headers: noIndexHeader }),
+        expect.objectContaining({ source: "/api/:path*", headers: noIndexHeader }),
         expect.objectContaining({ source: "/v1", headers: noIndexHeader }),
         expect.objectContaining({ source: "/v1/:path*", headers: noIndexHeader }),
         expect.objectContaining({
@@ -128,6 +133,7 @@ describe("technical SEO and crawler access contract", () => {
       redirects?.map((rule) => [rule.source, rule.destination]),
     );
 
+    expect(redirects?.find((rule) => rule.source === "/services/ai-infrastructure")?.permanent).toBe(true);
     expect(destinations.get("/services/ai-infrastructure")).toBe(
       "/services/ai-engineering",
     );
