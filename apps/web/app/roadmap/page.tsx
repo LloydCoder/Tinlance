@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata = {
   title: "Roadmap",
   description: "Public direction for Tinlance products, engineering, and platform capabilities.",
+  robots: { index: false, follow: true },
   alternates: { canonical: "/roadmap" },
 };
 
