@@ -67,7 +67,7 @@ export function LeadForm() {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-5" noValidate>
+    <form method="post" onSubmit={submit} className="grid gap-5" noValidate>
       <div className="grid gap-5 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold">
           Organization
