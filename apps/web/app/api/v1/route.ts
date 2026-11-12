@@ -4,20 +4,5 @@ import { getRequestId } from "@/lib/security/request-id";
 
 export async function GET(request: Request) {
   const requestId = getRequestId(request);
-
-  return NextResponse.json(
-    {
-      apiVersion: API_VERSION,
-      status: "stable",
-      openapi: "/docs/api/openapi",
-      documentation: "/docs/api",
-      requestId,
-    },
-    {
-      headers: {
-        "cache-control": "public, max-age=300",
-        "x-request-id": requestId,
-      },
-    },
-  );
+  return NextResponse.json({ apiVersion: API_VERSION, status: "stable", openapi: "/docs/api/openapi", documentation: "/docs/api", requestId }, { headers: { "cache-control": "public, max-age=300", "x-request-id": requestId, "x-robots-tag": "noindex, nofollow" } });
 }
