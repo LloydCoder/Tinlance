@@ -150,7 +150,19 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
         </div>
       </section>
 
-      <section className="section-v2 assessment-section">
+      <section className="section-v2">
+        <div className="container">
+          <p className="kicker">DELIVERY CONSIDERATIONS</p>
+          <h2 className="max-w-3xl text-3xl font-semibold">The implementation is shaped by the system it must operate in.</h2>
+          <div className="mt-8 grid gap-6 md:grid-cols-3">
+            <article><h3 className="font-semibold">Architecture and integration</h3><p className="mt-2 leading-7 text-neutral-600">We consider existing services, data flows, identity boundaries, dependencies, and deployment environments before selecting an implementation approach.</p></article>
+            <article><h3 className="font-semibold">Security and reliability</h3><p className="mt-2 leading-7 text-neutral-600">Controls, failure handling, observability, evaluation, and operational constraints are treated as part of the system rather than deferred until after the prototype.</p></article>
+            <article><h3 className="font-semibold">Acceptance and ownership</h3><p className="mt-2 leading-7 text-neutral-600">Deliverables, acceptance evidence, handover, and any ongoing support are agreed with the customer before implementation begins.</p></article>
+          </div>
+        </div>
+      </section>
+
+            <section className="section-v2 assessment-section">
         <div className="container assessment-card">
           <div>
             <p className="kicker">NEXT STEP</p>
