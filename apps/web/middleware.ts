@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 const CANONICAL_HOST = "www.tinlance.com";
 const LEGACY_HOST = "tinlance.com";
 const protectedPrefixes = ["/portal", "/admin"] as const;
-const nonHtmlPrefixes = ["/api", "/v1", "/docs/api/openapi", "/_next", "/feed.xml", "/sitemap.xml", "/robots.txt", "/icon.svg", "/opengraph-image.svg"] as const;
+const nonHtmlPrefixes = ["/api", "/_next", "/feed.xml", "/sitemap.xml", "/robots.txt", "/icon.svg", "/opengraph-image.svg"] as const;
 
 function isProtectedPath(pathname: string) { return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)); }
 function shouldSetCanonical(pathname: string) { return !nonHtmlPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)); }
@@ -39,6 +39,7 @@ function nextResponseWithCanonical(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
   requestHeaders.set("Content-Security-Policy", cspHeader);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
