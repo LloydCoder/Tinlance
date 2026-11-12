@@ -7,14 +7,14 @@ Last reviewed: 2026-11-12
 - The public canonical host is `https://www.tinlance.com`.
 - The apex host `https://tinlance.com` permanently redirects to the canonical host.
 - Public HTML routes must emit a self-referencing canonical URL.
-- Page-level canonical metadata must override neither the canonical path nor the canonical host.
+- Page-level canonical metadata must point to the same route and canonical host; it must not inherit the homepage URL.
 - Structured-data URLs and entity references must use the same canonical host.
 
 ## Indexable public surface
 
 The sitemap contains public, useful pages only. Add a route when it has unique user value, a stable canonical URL, useful server-rendered content, and an internal discovery path.
 
-Public service, product, engineering, industry, research, insight, guide, and API documentation pages may be indexed when their content is ready.
+Public service, product, engineering, industry, research, insight, guide, FAQ, partner, and API documentation pages may be indexed when their content is ready. Each indexable landing page must have a unique title and description, one primary H1, a self-referencing canonical, useful server-rendered content, and at least one relevant internal link.
 
 Do not add these routes to the sitemap:
 - Sign-in and sign-up flows.
@@ -23,6 +23,13 @@ Do not add these routes to the sitemap:
 - Authenticated portal and admin routes.
 - API endpoints and machine-readable OpenAPI documents.
 - Empty or placeholder content that is not useful as a search landing page.
+
+The following low-value placeholders remain available to users but are noindex and excluded from the sitemap until they contain substantive, current material:
+- Careers, until active roles and useful candidate information are published.
+- Changelog, until a current and maintained public update history is available.
+- Press, until a substantive media kit or press resources are published.
+- Roadmap, until concrete public roadmap items are available.
+- Resources, until actual guides, tools, or downloadable resources are published.
 
 The case-studies landing page remains available to users but is noindex until publishable customer case studies exist. Published case-study detail pages can be added through the evidence-backed case-study registry.
 
