@@ -161,8 +161,11 @@ describe("technical SEO and crawler access contract", () => {
   });
 
   it("uses POST for contact form submissions so form data is not sent in the URL", () => {
-    const markup = renderToStaticMarkup(createElement(LeadForm));
+    const markup = renderToStaticMarkup(
+      createElement(LeadForm, { csrfToken: "signed-test-token" }),
+    );
     expect(markup).toMatch(/<form[^>]*method="post"/i);
+    expect(markup).toContain('name="csrfToken"');
   });
 
   it("uses the canonical www host in service metadata", async () => {
