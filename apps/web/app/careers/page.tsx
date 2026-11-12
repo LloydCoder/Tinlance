@@ -1,6 +1,6 @@
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Careers",
   description: "Explore engineering careers at Tinlance, our work across AI and security, and how to introduce your skills for future opportunities.",
   robots: { index: false, follow: true },
