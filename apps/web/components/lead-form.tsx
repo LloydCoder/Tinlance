@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FormEvent, useState } from "react";
+import React, { type FormEvent } from "react";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 
 const services = [
@@ -12,10 +12,10 @@ const services = [
 ];
 
 export function LeadForm() {
-  const [status, setStatus] = useState<
+  const [status, setStatus] = React.useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
-  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = React.useState<string | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
