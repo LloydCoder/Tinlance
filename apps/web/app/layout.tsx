@@ -34,7 +34,7 @@ const baseMetadata: Metadata = {
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
   const canonical = canonicalPathFromPathname(requestHeaders.get("x-pathname"));
-  return { ...baseMetadata, alternates: { canonical } };
+  return { ...baseMetadata, ...(canonical ? { alternates: { canonical } } : {}) };
 }
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
