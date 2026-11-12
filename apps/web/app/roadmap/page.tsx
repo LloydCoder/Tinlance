@@ -1,6 +1,6 @@
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Roadmap",
   description: "Public direction for Tinlance products, engineering, and platform capabilities.",
   robots: { index: false, follow: true },
