@@ -1,7 +1,7 @@
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata = {
-  title: "Pricing | Tinlance",
+  title: "Pricing",
   description: "Assessment-led pricing and scoped engagement models from Tinlance.",
   alternates: { canonical: "/pricing" },
 };
