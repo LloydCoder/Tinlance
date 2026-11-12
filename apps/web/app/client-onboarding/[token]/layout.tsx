@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function ClientOnboardingLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function ClientOnboardingLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return children;
 }
