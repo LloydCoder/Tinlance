@@ -11,6 +11,7 @@ import { metadata as signUpMetadata } from "../app/sign-up/[[...sign-up]]/page";
 import { metadata as caseStudiesMetadata } from "../app/case-studies/page";
 import { metadata as proposalMetadata } from "../app/proposal/[token]/page";
 import { metadata as unsubscribeMetadata } from "../app/unsubscribe/page";
+import { metadata as clientOnboardingMetadata } from "../app/client-onboarding/[token]/layout";
 import { generateMetadata as generateServiceMetadata } from "../app/services/[slug]/page";
 import { GET as getApiMetadata } from "../app/api/v1/route";
 
@@ -47,9 +48,10 @@ describe("technical SEO and crawler access contract", () => {
       expect(urls).toContain(`${canonicalOrigin}${path}`);
     }
 
-    for (const path of ["/case-studies", "/sign-in", "/sign-up", "/admin", "/portal", "/api/", "/v1/"]) {
+    for (const path of ["/sign-in", "/sign-up", "/admin", "/portal", "/api/", "/v1/"]) {
       expect(urls.some((url) => url.includes(path))).toBe(false);
     }
+    expect(urls).not.toContain(`${canonicalOrigin}/case-studies`);
     expect(urls.some((url) => url.includes("?"))).toBe(false);
   });
 
@@ -61,7 +63,7 @@ describe("technical SEO and crawler access contract", () => {
   });
 
   it("keeps authentication, customer-token and empty case-study pages out of search", () => {
-    for (const metadata of [signInMetadata, signUpMetadata, caseStudiesMetadata, proposalMetadata, unsubscribeMetadata]) {
+    for (const metadata of [signInMetadata, signUpMetadata, caseStudiesMetadata, proposalMetadata, unsubscribeMetadata, clientOnboardingMetadata]) {
       expect(metadata.robots).toMatchObject({ index: false });
     }
   });
