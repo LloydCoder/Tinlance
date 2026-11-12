@@ -273,3 +273,8 @@ For security problems, use [SECURITY.md](./SECURITY.md) rather than a public iss
 For contribution and review requirements, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 </details>
+
+
+## Public indexing and crawler policy
+
+See [Technical SEO and Google indexing policy](./docs/technical-seo-indexing.md) for canonical-host rules, sitemap eligibility, crawler boundaries, API noindex behavior, legacy redirects, and the evidence-led 403 incident response procedure.
