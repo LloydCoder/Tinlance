@@ -2,7 +2,7 @@ import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata = {
   title: "Pricing",
-  description: "Assessment-led pricing and scoped engagement models from Tinlance.",
+  description: "Learn how Tinlance scopes AI engineering, security, and FDE engagements through technical assessment and tailored delivery proposals.",
   alternates: { canonical: "/pricing" },
 };
 
