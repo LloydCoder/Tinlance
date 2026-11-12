@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata: Metadata = {
