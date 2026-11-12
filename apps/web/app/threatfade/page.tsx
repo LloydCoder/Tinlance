@@ -4,7 +4,7 @@ import { EvidenceStatusBadge } from "../../components/evidence-status";
 import { evidenceRecords } from "../../lib/evidence/taxonomy";
 
 export const metadata = {
-  title: "ThreatFade | Tinlance",
+  title: "ThreatFade",
   description: "ThreatFade is a Tinlance-developed open-core, offline-first platform for evidence-first detection and investigation of evasive behavior.",
   alternates: { canonical: "/threatfade" },
 };
