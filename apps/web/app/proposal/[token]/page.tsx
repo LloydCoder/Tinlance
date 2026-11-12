@@ -1,10 +1,16 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { ProposalStatus } from "@prisma/client";
 import { hashProposalToken } from "@/lib/commercial/security";
 import { db } from "@/lib/db";
 import ProposalAcceptance from "./proposal-acceptance";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Secure proposal",
+  robots: { index: false, follow: false },
+};
 
 export default async function ProposalPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
