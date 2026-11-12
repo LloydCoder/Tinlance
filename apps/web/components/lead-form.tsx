@@ -11,7 +11,7 @@ const services = [
   "Other / not sure",
 ];
 
-export function LeadForm() {
+export function LeadForm({ csrfToken }: { csrfToken: string }) {
   const [status, setStatus] = React.useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
@@ -68,6 +68,7 @@ export function LeadForm() {
 
   return (
     <form method="post" onSubmit={submit} className="grid gap-5" noValidate>
+      <input type="hidden" name="csrfToken" value={csrfToken} />
       <div className="grid gap-5 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold">
           Organization
