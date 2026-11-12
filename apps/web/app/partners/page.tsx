@@ -1,7 +1,7 @@
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata = {
-  title: "Partners | Tinlance",
+  title: "Partners",
   description: "Partner with Tinlance on technical delivery, product engineering, and security work.",
   alternates: { canonical: "/partners" },
 };
