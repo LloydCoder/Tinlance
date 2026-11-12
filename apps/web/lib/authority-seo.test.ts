@@ -74,6 +74,8 @@ describe("technical SEO and crawler access contract", () => {
     expect(canonicalPathFromPathname("/services/ai-security?utm_source=campaign")).toBe("/services/ai-security");
     expect(canonicalPathFromPathname("/sign-in?callbackURL=%2Fportal")).toBe("/sign-in");
     expect(canonicalPathFromPathname(null)).toBe("/");
+    expect(canonicalPathFromPathname("/proposal/opaque-token")).toBeNull();
+    expect(canonicalPathFromPathname("/client-onboarding/opaque-token")).toBeNull();
   });
 
   it("assigns self-referencing canonical URLs to public landing pages", () => {
