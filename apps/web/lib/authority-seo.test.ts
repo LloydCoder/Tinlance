@@ -16,6 +16,7 @@ import { metadata as clientOnboardingMetadata } from "../app/client-onboarding/[
 import { canonicalPathFromPathname } from "./site";
 import { generateMetadata as generateServiceMetadata } from "../app/services/[slug]/page";
 import { GET as getApiMetadata } from "../app/api/v1/route";
+import { GET as getOpenApi } from "../app/docs/api/openapi/route";
 
 const canonicalOrigin = "https://www.tinlance.com";
 
@@ -119,10 +120,6 @@ describe("technical SEO and crawler access contract", () => {
         expect.objectContaining({ source: "/api/:path*", headers: noIndexHeader }),
         expect.objectContaining({ source: "/v1", headers: noIndexHeader }),
         expect.objectContaining({ source: "/v1/:path*", headers: noIndexHeader }),
-        expect.objectContaining({
-          source: "/docs/api/openapi",
-          headers: noIndexHeader,
-        }),
       ]),
     );
   });
@@ -146,6 +143,11 @@ describe("technical SEO and crawler access contract", () => {
     expect(destinations.get("/services/fde")).toBe(
       "/services/forward-deployed-engineering",
     );
+  });
+
+  it("marks the machine-readable OpenAPI document as non-indexable", () => {
+    const response = getOpenApi();
+    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
   });
 
   it("advertises the actual public OpenAPI route from API metadata", async () => {
