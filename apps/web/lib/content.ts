@@ -96,7 +96,7 @@ export const proof: ProofItem[] = [
 export const insights: Insight[] = [
   {
     slug: "building-production-ai-systems",
-    title: "What changes when an AI system has to run in production",
+    title: "What Production AI Systems Require",
     excerpt:
       "Reliability, observability, security, evaluation, and human controls become product requirements—not afterthoughts.",
     category: "AI Engineering",
