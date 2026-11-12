@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { absoluteUrl, isVercelPreview } from "../lib/site";
 
-const disallowed = ["/admin", "/portal", "/api", "/v1/"];
+const disallowed = ["/admin/", "/portal/", "/api/", "/v1/"];
 
 export default function robots(): MetadataRoute.Robots {
   if (isVercelPreview()) {
