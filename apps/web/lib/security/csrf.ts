@@ -50,7 +50,7 @@ export function verifyCsrfToken(
 
   try {
     const expected = Buffer.from(signTimestamp(parts[0]), "base64url");
-    const supplied = Buffer.from(parts[1], "base64url);
+    const supplied = Buffer.from(parts[1], "base64url");
 
     if (expected.length !== supplied.length) return false;
     return timingSafeEqual(expected, supplied);
