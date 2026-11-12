@@ -4,7 +4,6 @@ import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { JsonLd, breadcrumbSchema } from "../../../components/json-ld";
 import { absoluteUrl } from "../../../lib/site";
-import { absoluteUrl } from "../../../lib/site";
 
 const services = {
   "ai-engineering": {
