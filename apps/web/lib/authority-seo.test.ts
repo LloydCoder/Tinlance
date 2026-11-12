@@ -4,7 +4,6 @@ import sitemap from "../app/sitemap";
 import nextConfig from "../next.config";
 import { metadata as homeMetadata } from "../app/page";
 import { metadata as resourcesMetadata } from "../app/resources/page";
-import { caseStudies } from "./authority";
 import { metadata as careersMetadata } from "../app/careers/page";
 import { metadata as changelogMetadata } from "../app/changelog/page";
 import { metadata as pressMetadata } from "../app/press/page";
@@ -19,15 +18,15 @@ import { metadata as proposalMetadata } from "../app/proposal/[token]/layout";
 import { metadata as unsubscribeMetadata } from "../app/unsubscribe/page";
 import { metadata as clientOnboardingMetadata } from "../app/client-onboarding/[token]/layout";
 import { canonicalPathFromPathname } from "./site";
+import { caseStudies } from "./authority";
 import { generateMetadata as generateServiceMetadata } from "../app/services/[slug]/page";
 import { GET as getApiMetadata } from "../app/api/v1/route";
 import { GET as getOpenApi } from "../app/docs/api/openapi/route";
-import { caseStudies } from "./authority";
 
 const canonicalOrigin = "https://www.tinlance.com";
 
 describe("technical SEO and crawler access contract", () => {
-  it("allows public discovery while excluding protected and API namespaces", () => {
+  it("allows public discovery while excluding protected namespaces", () => {
     const result = robots();
     const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
 
@@ -45,8 +44,9 @@ describe("technical SEO and crawler access contract", () => {
     }
   });
 
-  it("publishes every intended public authority route exactly once", () => {
+  it("publishes intended authority routes once on the canonical host", () => {
     const urls = sitemap().map((entry) => entry.url);
+
     expect(new Set(urls).size).toBe(urls.length);
     expect(urls.every((url) => url.startsWith(canonicalOrigin))).toBe(true);
 
@@ -65,29 +65,56 @@ describe("technical SEO and crawler access contract", () => {
       expect(urls).toContain(`${canonicalOrigin}${path}`);
     }
 
-    for (const path of ["/sign-in", "/sign-up", "/admin", "/portal", "/api/", "/v1/"]) {
-      expect(urls.some((url) => url.includes(path))).toBe(false);
-    }
-
     expect(urls.includes(`${canonicalOrigin}/case-studies`)).toBe(
       caseStudies.length > 0,
     );
+
+    for (const path of [
+      "/sign-in",
+      "/sign-up",
+      "/admin",
+      "/portal",
+      "/api/",
+      "/v1/",
+      "/careers",
+      "/changelog",
+      "/press",
+      "/roadmap",
+      "/resources",
+    ]) {
+      expect(urls.some((url) => url.includes(path))).toBe(false);
+    }
+
     expect(urls.some((url) => url.includes("?"))).toBe(false);
   });
 
-  it("normalizes request paths for self-referencing canonicals without query strings", () => {
-    expect(canonicalPathFromPathname("/services/ai-security?utm_source=campaign")).toBe("/services/ai-security");
-    expect(canonicalPathFromPathname("/sign-in?callbackURL=%2Fportal")).toBe("/sign-in");
+  it("normalizes request paths and omits canonicals from tokenized URLs", () => {
+    expect(
+      canonicalPathFromPathname(
+        "/services/ai-security?utm_source=campaign",
+      ),
+    ).toBe("/services/ai-security");
+    expect(canonicalPathFromPathname("/sign-in?callbackURL=%2Fportal")).toBe(
+      "/sign-in",
+    );
     expect(canonicalPathFromPathname(null)).toBe("/");
     expect(canonicalPathFromPathname("/proposal/opaque-token")).toBeNull();
-    expect(canonicalPathFromPathname("/client-onboarding/opaque-token")).toBeNull();
+    expect(
+      canonicalPathFromPathname("/client-onboarding/opaque-token"),
+    ).toBeNull();
+    expect(canonicalPathFromPathname("/pay/opaque-token")).toBeNull();
     expect(canonicalPathFromPathname("//external.example/path")).toBe("/");
   });
 
-  it("excludes placeholder and empty pages from the public sitemap", () => {
-    const urls = sitemap().map((entry) => entry.url);
-    for (const path of ["/careers", "/changelog", "/press", "/roadmap", "/resources", "/case-studies"]) {
-      expect(urls).not.toContain(`${canonicalOrigin}${path}`);
+  it("keeps non-substantive placeholder pages out of search", () => {
+    for (const metadata of [
+      careersMetadata,
+      changelogMetadata,
+      pressMetadata,
+      roadmapMetadata,
+      resourcesMetadata,
+    ]) {
+      expect(metadata.robots).toMatchObject({ index: false });
     }
   });
 
@@ -99,7 +126,7 @@ describe("technical SEO and crawler access contract", () => {
     expect(apiDocsMetadata.alternates?.canonical).toBe("/docs/api");
   });
 
-  it("keeps authentication, customer-token, and empty case-study pages out of search", () => {
+  it("keeps authentication and customer-token pages out of search", () => {
     for (const metadata of [
       signInMetadata,
       signUpMetadata,
@@ -109,12 +136,13 @@ describe("technical SEO and crawler access contract", () => {
     ]) {
       expect(metadata.robots).toMatchObject({ index: false });
     }
+
     expect(caseStudiesMetadata.robots).toMatchObject({
       index: caseStudies.length > 0,
     });
   });
 
-  it("uses the canonical www host in service metadata and structured data", async () => {
+  it("uses the canonical www host in service metadata", async () => {
     const metadata = await generateServiceMetadata({
       params: Promise.resolve({ slug: "ai-security" }),
     });
@@ -125,7 +153,7 @@ describe("technical SEO and crawler access contract", () => {
     );
   });
 
-  it("does not expose API and OpenAPI JSON responses as indexable pages", async () => {
+  it("marks API and OpenAPI responses as non-indexable", async () => {
     const headerRules = await nextConfig.headers?.();
     const noIndexHeader = expect.arrayContaining([
       expect.objectContaining({
@@ -137,49 +165,52 @@ describe("technical SEO and crawler access contract", () => {
     expect(headerRules).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: "/api", headers: noIndexHeader }),
-        expect.objectContaining({ source: "/api/:path*", headers: noIndexHeader }),
+        expect.objectContaining({
+          source: "/api/:path*",
+          headers: noIndexHeader,
+        }),
         expect.objectContaining({ source: "/v1", headers: noIndexHeader }),
-        expect.objectContaining({ source: "/v1/:path*", headers: noIndexHeader }),
+        expect.objectContaining({
+          source: "/v1/:path*",
+          headers: noIndexHeader,
+        }),
       ]),
     );
+
+    const apiResponse = await getApiMetadata(
+      new Request(`${canonicalOrigin}/v1`),
+    );
+    expect(apiResponse.headers.get("x-robots-tag")).toBe(
+      "noindex, nofollow",
+    );
+
+    const apiBody = (await apiResponse.json()) as { openapi: string };
+    expect(apiBody.openapi).toBe("/docs/api/openapi");
+
+    const openApiResponse = getOpenApi();
+    expect(openApiResponse.headers.get("x-robots-tag")).toBe(
+      "noindex, nofollow",
+    );
   });
 
-  it("redirects orphaned legacy service pages to current canonical equivalents", async () => {
+  it("permanently redirects orphaned legacy service pages", async () => {
     const redirects = await nextConfig.redirects?.();
-    const destinations = new Map(
-      redirects?.map((rule) => [rule.source, rule.destination]),
+    const redirectBySource = new Map(
+      redirects?.map((rule) => [rule.source, rule]),
     );
 
-    expect(
-      redirects?.find((rule) => rule.source === "/services/ai-infrastructure")
-        ?.permanent,
-    ).toBe(true);
-    expect(destinations.get("/services/ai-infrastructure")).toBe(
-      "/services/ai-engineering",
-    );
-    expect(destinations.get("/services/automation")).toBe(
-      "/services/enterprise-automation",
-    );
-    expect(destinations.get("/services/autonomous-ai")).toBe(
-      "/agent-as-a-service",
-    );
-    expect(destinations.get("/services/fde")).toBe(
-      "/services/forward-deployed-engineering",
-    );
-  });
+    const expected = [
+      ["/services/ai-infrastructure", "/services/ai-engineering"],
+      ["/services/automation", "/services/enterprise-automation"],
+      ["/services/autonomous-ai", "/agent-as-a-service"],
+      ["/services/fde", "/services/forward-deployed-engineering"],
+    ];
 
-  it("marks the machine-readable OpenAPI document as non-indexable", () => {
-    const response = getOpenApi();
-    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
-  });
-
-  it("advertises the actual public OpenAPI route from API metadata", async () => {
-    const openApiResponse = await getOpenApi();
-    expect(openApiResponse.headers.get("x-robots-tag")).toBe("noindex, nofollow");
-
-    const response = await getApiMetadata(new Request(`${canonicalOrigin}/v1`));
-    const body = (await response.json()) as { openapi: string };
-
-    expect(body.openapi).toBe("/docs/api/openapi");
+    for (const [source, destination] of expected) {
+      expect(redirectBySource.get(source)).toMatchObject({
+        destination,
+        permanent: true,
+      });
+    }
   });
 });
