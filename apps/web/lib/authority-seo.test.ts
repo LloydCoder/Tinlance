@@ -12,6 +12,7 @@ import { metadata as caseStudiesMetadata } from "../app/case-studies/page";
 import { metadata as proposalMetadata } from "../app/proposal/[token]/layout";
 import { metadata as unsubscribeMetadata } from "../app/unsubscribe/page";
 import { metadata as clientOnboardingMetadata } from "../app/client-onboarding/[token]/layout";
+import { canonicalPathFromPathname } from "./site";
 import { generateMetadata as generateServiceMetadata } from "../app/services/[slug]/page";
 import { GET as getApiMetadata } from "../app/api/v1/route";
 
@@ -61,6 +62,12 @@ describe("technical SEO and crawler access contract", () => {
 
     expect(urls).not.toContain(`${canonicalOrigin}/case-studies`);
     expect(urls.some((url) => url.includes("?"))).toBe(false);
+  });
+
+  it("normalizes request paths for self-referencing canonicals without query strings", () => {
+    expect(canonicalPathFromPathname("/services/ai-security?utm_source=campaign")).toBe("/services/ai-security");
+    expect(canonicalPathFromPathname("/sign-in?callbackURL=%2Fportal")).toBe("/sign-in");
+    expect(canonicalPathFromPathname(null)).toBe("/");
   });
 
   it("assigns self-referencing canonical URLs to public landing pages", () => {
