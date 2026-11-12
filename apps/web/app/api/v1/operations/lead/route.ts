@@ -92,7 +92,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const { csrfToken: _csrfToken, ...leadPayload } = body;
+    const leadPayload = { ...body };
+    delete leadPayload.csrfToken;
 
     if (typeof body.website === "string" && body.website.trim().length > 0) {
       return NextResponse.json(
