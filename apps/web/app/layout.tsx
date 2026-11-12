@@ -4,7 +4,7 @@ import { JsonLd, organizationSchema, websiteSchema } from "../components/json-ld
 import { GrowthTracker } from "../components/growth-tracker";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
-import { canonicalPathFromPathname, getSiteUrl, isVercelPreview } from "../lib/site";
+import { absoluteUrl, canonicalPathFromPathname, getSiteUrl, isVercelPreview } from "../lib/site";
 import "../components/architecture-map.css";
 import "../components/mobile-nav.css";
 import "../components/public-quality.css";
@@ -34,7 +34,14 @@ const baseMetadata: Metadata = {
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
   const canonical = canonicalPathFromPathname(requestHeaders.get("x-pathname"));
-  return { ...baseMetadata, ...(canonical ? { alternates: { canonical } } : {}) };
+  return {
+    ...baseMetadata,
+    openGraph: {
+      ...baseMetadata.openGraph,
+      url: canonical ? absoluteUrl(canonical) : siteUrl,
+    },
+    ...(canonical ? { alternates: { canonical } } : {}),
+  };
 }
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
