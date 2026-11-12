@@ -1,9 +1,10 @@
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata = {
-  title: "Unsubscribe | Tinlance",
+  title: "Unsubscribe",
   description: "Manage or request removal from Tinlance marketing communications.",
   alternates: { canonical: "/unsubscribe" },
+  robots: { index: false, follow: true },
 };
 
 export default function UnsubscribePage() {
