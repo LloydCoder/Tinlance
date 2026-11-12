@@ -4,6 +4,10 @@ import sitemap from "../app/sitemap";
 import nextConfig from "../next.config";
 import { metadata as homeMetadata } from "../app/page";
 import { metadata as resourcesMetadata } from "../app/resources/page";
+import { metadata as careersMetadata } from "../app/careers/page";
+import { metadata as changelogMetadata } from "../app/changelog/page";
+import { metadata as pressMetadata } from "../app/press/page";
+import { metadata as roadmapMetadata } from "../app/roadmap/page";
 import { metadata as contactMetadata } from "../app/contact/page";
 import { metadata as industriesMetadata } from "../app/industries/page";
 import { metadata as apiDocsMetadata } from "../app/docs/api/page";
@@ -77,6 +81,13 @@ describe("technical SEO and crawler access contract", () => {
     expect(canonicalPathFromPathname("/proposal/opaque-token")).toBeNull();
     expect(canonicalPathFromPathname("/client-onboarding/opaque-token")).toBeNull();
     expect(canonicalPathFromPathname("//external.example/path")).toBe("/");
+  });
+
+  it("excludes placeholder and empty pages from the public sitemap", () => {
+    const urls = sitemap().map((entry) => entry.url);
+    for (const path of ["/careers", "/changelog", "/press", "/roadmap", "/resources", "/case-studies"]) {
+      expect(urls).not.toContain(`${canonicalOrigin}${path}`);
+    }
   });
 
   it("assigns self-referencing canonical URLs to public landing pages", () => {
