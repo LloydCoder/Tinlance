@@ -4,6 +4,7 @@ import sitemap from "../app/sitemap";
 import nextConfig from "../next.config";
 import { metadata as homeMetadata } from "../app/page";
 import { metadata as resourcesMetadata } from "../app/resources/page";
+import { caseStudies } from "./authority";
 import { metadata as careersMetadata } from "../app/careers/page";
 import { metadata as changelogMetadata } from "../app/changelog/page";
 import { metadata as pressMetadata } from "../app/press/page";
