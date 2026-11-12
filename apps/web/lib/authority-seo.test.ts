@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import robots from "../app/robots";
 import sitemap from "../app/sitemap";
 import nextConfig from "../next.config";
 import { metadata as homeMetadata } from "../app/page";
+import { metadata as notFoundMetadata } from "../app/not-found";
+import { metadata as researchArticleMetadata } from "../app/research/threatfade-quic-c2-detection/page";
+import { LeadForm } from "../components/lead-form";
 import { metadata as resourcesMetadata } from "../app/resources/page";
 import { metadata as careersMetadata } from "../app/careers/page";
 import { metadata as changelogMetadata } from "../app/changelog/page";
@@ -140,6 +145,24 @@ describe("technical SEO and crawler access contract", () => {
     expect(caseStudiesMetadata.robots).toMatchObject({
       index: caseStudies.length > 0,
     });
+  });
+
+  it("keeps 404 responses non-indexable and research metadata on the canonical host", () => {
+    expect(notFoundMetadata.robots).toMatchObject({
+      index: false,
+      follow: true,
+    });
+    expect(researchArticleMetadata.alternates?.canonical).toBe(
+      "/research/threatfade-quic-c2-detection",
+    );
+    expect(researchArticleMetadata.openGraph?.url).toBe(
+      `${canonicalOrigin}/research/threatfade-quic-c2-detection`,
+    );
+  });
+
+  it("uses POST for contact form submissions so form data is not sent in the URL", () => {
+    const markup = renderToStaticMarkup(createElement(LeadForm));
+    expect(markup).toMatch(/<form[^>]*method="post"/i);
   });
 
   it("uses the canonical www host in service metadata", async () => {
