@@ -49,7 +49,16 @@ export default function ResearchIndexPage() {
               </article>
             ))}
           </div>
-          <div className="assessment-card" style={{ marginTop: "4rem" }}>
+          <section className="mt-16 border-t border-neutral-200 pt-12">
+            <p className="kicker">RESEARCH STANDARD</p>
+            <h2 className="mt-3 max-w-3xl text-3xl font-semibold">A result is useful only when its scope can be inspected.</h2>
+            <div className="mt-6 grid gap-6 md:grid-cols-3">
+              <article><h3 className="font-semibold">Method and environment</h3><p className="mt-2 leading-7 text-neutral-600">Research records the test method, relevant environment, inputs, and the population against which an observation was made.</p></article>
+              <article><h3 className="font-semibold">Evidence and interpretation</h3><p className="mt-2 leading-7 text-neutral-600">Measured outputs are separated from interpretation. A historical experiment is not presented as a current product guarantee or a universal result.</p></article>
+              <article><h3 className="font-semibold">Limitations and reproducibility</h3><p className="mt-2 leading-7 text-neutral-600">Known limitations, assumptions, and evidence gaps remain visible so readers can assess what a result does—and does not—establish.</p></article>
+            </div>
+          </section>
+                    <div className="assessment-card" style={{ marginTop: "4rem" }}>
             <div>
               <p className="kicker">FROM RESEARCH TO ENGINEERING</p>
               <h2>Need to validate an AI system in your environment?</h2>
