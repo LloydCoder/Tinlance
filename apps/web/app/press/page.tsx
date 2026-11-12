@@ -1,7 +1,7 @@
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata = {
-  title: "Press | Tinlance",
+  title: "Press",
   description: "Company background and media information for Tinlance.",
   alternates: { canonical: "/press" },
 };
