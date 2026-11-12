@@ -1,7 +1,7 @@
 {
   "openapi":"3.1.1",
   "info":{"title":"Tinlance API","version":"1.0.0","description":"Stable customer and integration API for governed Tinlance business capabilities."},
-  "servers":[{"url":"https://www.tinlance.com","description":"Production"}],
+  "servers":[{"url":"https://tinlance.com","description":"Production"}],
   "security":[{"bearerAuth":[]}],
   "tags":[{"name":"Projects"},{"name":"Assessments"},{"name":"Findings"},{"name":"Evidence"},{"name":"Reports"},{"name":"Remediation"},{"name":"Workflow Runs"},{"name":"API Credentials"},{"name":"Webhooks"}],
   "paths":{
