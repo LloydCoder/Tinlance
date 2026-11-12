@@ -66,6 +66,13 @@ export default function DocumentationPage() {
           </div>
         </div>
       </section>
+      <section className="mt-16 border-t border-neutral-200 pt-12">
+        <p className="kicker">PUBLIC DOCUMENTATION BOUNDARY</p>
+        <h2 className="mt-3 max-w-3xl text-3xl font-semibold">Stable concepts are public; customer operations are not.</h2>
+        <p className="mt-5 max-w-3xl leading-7 text-neutral-600">This documentation hub is intended to explain public service capabilities, technical terminology, and supported integration paths. It does not publish customer-specific architecture, tenant data, credentials, private incident records, or internal operational runbooks.</p>
+        <p className="mt-4 max-w-3xl leading-7 text-neutral-600">For developers, the API documentation describes the public contract and integration expectations. Access to authenticated operations remains subject to organization-scoped credentials, server-side authorization, and the permissions granted to the calling identity.</p>
+        <Link className="text-link mt-6 inline-flex" href="/docs/api">Read API documentation <ArrowUpRight size={16} /></Link>
+      </section>
     </main>
   );
 }
