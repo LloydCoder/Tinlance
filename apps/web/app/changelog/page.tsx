@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Changelog",
   description: "Read Tinlance public updates covering platform changes, engineering capabilities, security controls, and technical research.",
   robots: { index: false, follow: true },
