@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 const resources = [
@@ -27,6 +28,7 @@ const resources = [
 export const metadata = {
   title: "Resources",
   description: "Explore Tinlance guides, assessments, and technical resources for building, deploying, and securing production AI systems.",
+  robots: { index: false, follow: true },
   alternates: { canonical: "/resources" },
   openGraph: {
     title: "Resources | Tinlance",
