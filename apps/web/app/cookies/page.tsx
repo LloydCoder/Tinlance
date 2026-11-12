@@ -1,7 +1,7 @@
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata = {
-  title: "Cookies | Tinlance",
+  title: "Cookies",
   description: "Information about cookies and browser storage used by the Tinlance application.",
   alternates: { canonical: "/cookies" },
 };
