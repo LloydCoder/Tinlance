@@ -17,6 +17,7 @@ import { canonicalPathFromPathname } from "./site";
 import { generateMetadata as generateServiceMetadata } from "../app/services/[slug]/page";
 import { GET as getApiMetadata } from "../app/api/v1/route";
 import { GET as getOpenApi } from "../app/docs/api/openapi/route";
+import { caseStudies } from "./authority";
 
 const canonicalOrigin = "https://www.tinlance.com";
 
@@ -63,7 +64,9 @@ describe("technical SEO and crawler access contract", () => {
       expect(urls.some((url) => url.includes(path))).toBe(false);
     }
 
-    expect(urls).not.toContain(`${canonicalOrigin}/case-studies`);
+    expect(urls.includes(`${canonicalOrigin}/case-studies`)).toBe(
+      caseStudies.length > 0,
+    );
     expect(urls.some((url) => url.includes("?"))).toBe(false);
   });
 
@@ -85,13 +88,15 @@ describe("technical SEO and crawler access contract", () => {
     for (const metadata of [
       signInMetadata,
       signUpMetadata,
-      caseStudiesMetadata,
       proposalMetadata,
       unsubscribeMetadata,
       clientOnboardingMetadata,
     ]) {
       expect(metadata.robots).toMatchObject({ index: false });
     }
+    expect(caseStudiesMetadata.robots).toMatchObject({
+      index: caseStudies.length > 0,
+    });
   });
 
   it("uses the canonical www host in service metadata and structured data", async () => {
@@ -130,7 +135,10 @@ describe("technical SEO and crawler access contract", () => {
       redirects?.map((rule) => [rule.source, rule.destination]),
     );
 
-    expect(redirects?.find((rule) => rule.source === "/services/ai-infrastructure")?.permanent).toBe(true);
+    expect(
+      redirects?.find((rule) => rule.source === "/services/ai-infrastructure")
+        ?.permanent,
+    ).toBe(true);
     expect(destinations.get("/services/ai-infrastructure")).toBe(
       "/services/ai-engineering",
     );
