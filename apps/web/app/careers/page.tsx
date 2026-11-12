@@ -1,7 +1,7 @@
 import { LegacyInfoPage } from "../../components/legacy-info-page";
 
 export const metadata = {
-  title: "Careers | Tinlance",
+  title: "Careers",
   description: "Career and engineering opportunities at Tinlance.",
   alternates: { canonical: "/careers" },
 };
