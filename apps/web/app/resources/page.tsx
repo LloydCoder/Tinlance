@@ -24,7 +24,7 @@ const resources = [
   },
 ];
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Resources",
   description: "Explore Tinlance guides, assessments, and technical resources for building, deploying, and securing production AI systems.",
   robots: { index: false, follow: true },
