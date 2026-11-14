@@ -9,7 +9,7 @@ export type WorkspacePermission =
   | "knowledge:read" | "knowledge:create" | "knowledge:update" | "knowledge:delete" | "knowledge:share" | "knowledge:admin" | "knowledge:export" | "knowledge:ingest" | "knowledge:publish"
   | "workspace:manage" | "team:read" | "comment:write";
 
-export type WorkspacePrincipal = Readonly<{ userId: string; organizationId: string; memberRole: string; globalRole: string | null; isPrivileged: boolean }>;
+export type WorkspacePrincipal = Readonly<{ userId: string; organizationId: string; memberRole: string; globalRole: string | null; isPrivileged: boolean; twoFactorEnabled?: boolean }>;
 
 const privilegedRoles = new Set(["super-admin", "admin"]);
 const knowledgeRead = ["knowledge:read"] as const;
