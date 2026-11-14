@@ -7,10 +7,10 @@ import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 import { validateProductionEnv } from "@/lib/security/env";
 import { recordGrowthEvent } from "@/lib/growth/events";
 import { db } from "@/lib/db";
+import { isBookableSlot } from "@/lib/commercial/booking";
 
 const MAX_BODY_BYTES = 16_384;
 const MAX_IDEMPOTENCY_KEY_LENGTH = 128;
-function isBookableSlot(date: Date) { const day = date.getUTCDay(); const hour = date.getUTCHours(); const minute = date.getUTCMinutes(); return day !== 0 && day !== 6 && hour >= 9 && hour < 17 && minute % 30 === 0; }
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request); const idempotencyKey = request.headers.get("idempotency-key")?.trim() || null;
@@ -24,16 +24,18 @@ export async function POST(request: Request) {
     const parsed = assessmentBookingSchema.safeParse(raw);
     if (!parsed.success) return NextResponse.json({ error: "invalid_request", requestId }, { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     const startsAt = new Date(parsed.data.startsAt);
-    if (!Number.isFinite(startsAt.getTime()) || startsAt.getTime() <= Date.now() || !isBookableSlot(startsAt)) return NextResponse.json({ error: "slot_unavailable", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
+    if (!Number.isFinite(startsAt.getTime()) || startsAt.getTime() <= Date.now() || !isBookableSlot(startsAt, parsed.data.timezone)) return NextResponse.json({ error: "slot_unavailable", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     let result: { id: string; duplicate: boolean; opportunityId: string | null };
     try {
       result = await db.$transaction(async (tx) => {
+        if (idempotencyKey) { const existing = await tx.booking.findUnique({ where: { idempotencyKey }, select: { id: true, opportunityId: true } }); if (existing) return { id: existing.id, duplicate: true, opportunityId: existing.opportunityId }; }
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('tinlance:booking'), hashtext(${startsAt.toISOString()}))`;
         if (idempotencyKey) { const existing = await tx.booking.findUnique({ where: { idempotencyKey }, select: { id: true, opportunityId: true } }); if (existing) return { id: existing.id, duplicate: true, opportunityId: existing.opportunityId }; }
         const assessment = await tx.assessment.findUnique({ where: { idempotencyKey: parsed.data.assessmentReference }, select: { id: true, leadId: true, opportunity: { select: { id: true } }, lead: { select: { email: true } } } });
         if (!assessment || assessment.lead.email.toLowerCase() !== parsed.data.email.toLowerCase()) throw new Error("booking_assessment_mismatch");
         const leadId = assessment.leadId; const assessmentId = assessment.id; const opportunityId = assessment.opportunity?.id ?? null;
         const existingSlot = await tx.booking.findFirst({ where: { startsAt, status: { in: ["requested", "confirmed"] } }, select: { id: true, opportunityId: true } });
-        if (existingSlot) return { id: existingSlot.id, duplicate: true, opportunityId: existingSlot.opportunityId };
+        if (existingSlot) throw new Error("booking_slot_unavailable");
         const created = await tx.booking.create({ data: { organizationName: parsed.data.organizationName, contactName: parsed.data.contactName, email: parsed.data.email, startsAt, timezone: parsed.data.timezone, notes: parsed.data.notes, source: "website", idempotencyKey, leadId, assessmentId, opportunityId }, select: { id: true } });
         if (opportunityId) await tx.opportunity.update({ where: { id: opportunityId }, data: { stage: OpportunityStage.BOOKED, lastActivityAt: new Date(), nextAction: "Complete technical assessment", nextActionAt: new Date(startsAt.getTime() + 24 * 60 * 60 * 1000) } });
         await tx.auditEvent.create({ data: { action: "booking.created", resourceType: "booking", resourceId: created.id, requestId, metadata: { source: "website", timezone: parsed.data.timezone } } });
@@ -42,5 +44,5 @@ export async function POST(request: Request) {
     } catch (error) { if (idempotencyKey && error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") { const existing = await db.booking.findUnique({ where: { idempotencyKey }, select: { id: true, opportunityId: true } }); if (!existing) throw error; result = { id: existing.id, duplicate: true, opportunityId: existing.opportunityId }; } else throw error; }
     if (!result.duplicate) { try { await recordGrowthEvent({ eventName: "booking_completed", source: "website", path: new URL(request.url).pathname, entityId: result.id, privacyClass: "PERSONAL" }); } catch (error) { console.error("growth_event_record_failed", { requestId, errorClass: error instanceof Error ? error.constructor.name : "unknown" }); } }
     return NextResponse.json({ status: "accepted", requestId, nextStep: "assessment_confirmation", duplicate: result.duplicate }, { status: 202, headers: { "cache-control": "no-store", "x-request-id": requestId, "x-ratelimit-remaining": String(limit.remaining) } });
-  } catch (error) { console.error("booking_submission_failed", { requestId, errorClass: error instanceof Error ? error.constructor.name : "unknown" }); return NextResponse.json({ error: "service_unavailable", requestId }, { status: 503, headers: { "cache-control": "no-store", "x-request-id": requestId } }); }
+  } catch (error) { if (error instanceof Error && error.message === "booking_slot_unavailable") return NextResponse.json({ error: "slot_unavailable", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } }); console.error("booking_submission_failed", { requestId, errorClass: error instanceof Error ? error.constructor.name : "unknown" }); return NextResponse.json({ error: "service_unavailable", requestId }, { status: 503, headers: { "cache-control": "no-store", "x-request-id": requestId } }); }
 }

@@ -30,6 +30,7 @@ export default function AssessmentPage() {
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [timezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   const firstErrorRef = useRef<string | null>(null);
+  const bookingIdempotencyRef = useRef<{ slot: string; key: string } | null>(null);
 
   function track(eventName: "assessment_started" | "assessment_progressed" | "assessment_result_viewed" | "assessment_cta_clicked", properties: Record<string, string | number> = {}) {
     void fetch("/api/v1/analytics/events", {
@@ -125,8 +126,10 @@ export default function AssessmentPage() {
     if (!selectedSlot || !result) return;
     setBookingStatus("submitting"); setBookingMessage(""); track("assessment_cta_clicked", { action: "booking" });
     try {
+      const bookingKey = bookingIdempotencyRef.current?.slot === selectedSlot ? bookingIdempotencyRef.current.key : crypto.randomUUID();
+      bookingIdempotencyRef.current = { slot: selectedSlot, key: bookingKey };
       const response = await fetch("/api/v1/operations/booking", {
-        method: "POST", headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
+        method: "POST", headers: { "content-type": "application/json", "idempotency-key": bookingKey },
         body: JSON.stringify({ organizationName: form.organizationName, contactName: form.contactName, email: form.email, startsAt: selectedSlot, timezone, notes: String(form.problem), assessmentReference: idempotencyKey }),
       });
       if (!response.ok) throw new Error("booking_failed");

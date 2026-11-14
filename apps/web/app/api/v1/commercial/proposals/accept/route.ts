@@ -9,6 +9,7 @@ import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 import { recordGrowthEvent } from "@/lib/growth/events";
 import { auditCommercialTransition, newCommercialToken, newId, newPaymentReference, recordOutboxEvent } from "@/lib/platform/lifecycle";
 import { processOutboxBatch } from "@/lib/platform/outbox";
+import { canonicalAppUrl } from "@/lib/commercial/urls";
 
 const MAX_BODY_BYTES = 8_192;
 function slugify(value: string) { return value.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70) || `org-${Date.now()}`; }
@@ -32,17 +33,26 @@ export async function POST(request: Request) {
     if (!version || version.version !== proposal.currentVersion) return NextResponse.json({ error: "proposal_version_missing", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     const totalMinor = pricingValue(version.pricing, "totalMinor"); const currencyValue = pricingValue(version.pricing, "currency"); const currency = typeof currencyValue === "string" ? currencyValue.toUpperCase() : "USD";
     if (typeof totalMinor !== "number" || !Number.isSafeInteger(totalMinor) || totalMinor <= 0) return NextResponse.json({ error: "proposal_not_payable", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
-    const { token: paymentToken, hash: paymentHash } = newCommercialToken(); const paymentTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); const paymentReference = newPaymentReference(proposal.id);
+    const { token: paymentToken, hash: paymentHash } = newCommercialToken(); const paymentUrl = canonicalAppUrl(`/pay/${paymentToken}`); const paymentTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); const paymentReference = newPaymentReference(proposal.id);
     const result = await db.$transaction(async (tx) => {
       let organizationId = proposal.organizationId;
       if (!organizationId) { const domain = domainFromWebsite(proposal.lead.website); if (domain) organizationId = (await tx.organization.findUnique({ where: { websiteDomain: domain }, select: { id: true } }))?.id ?? null; if (!organizationId) organizationId = (await tx.organization.findFirst({ where: { name: { equals: proposal.lead.organizationName, mode: "insensitive" } }, select: { id: true } }))?.id ?? null; if (!organizationId) organizationId = (await tx.organization.create({ data: { name: proposal.lead.organizationName, slug: slugify(proposal.lead.organizationName), websiteDomain: domain }, select: { id: true } })).id; }
       const existingInvoice = await tx.$queryRaw<Array<{ id: string; status: string }>>`SELECT "id", "status" FROM "Invoice" WHERE "proposalId" = ${proposal.id} LIMIT 1`;
       if (existingInvoice[0]) return { organizationId, invoiceId: existingInvoice[0].id, invoiceStatus: existingInvoice[0].status, paymentToken: null };
+      const claimed = await tx.proposal.updateMany({
+        where: {
+          id: proposal.id,
+          currentVersion: proposal.currentVersion,
+          status: { in: [ProposalStatus.SENT, ProposalStatus.VIEWED] },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        data: { status: ProposalStatus.ACCEPTED, acceptedAt: new Date(), acceptedByName: parsed.data.acceptedByName, acceptedByEmail: parsed.data.acceptedByEmail, organizationId },
+      });
+      if (claimed.count !== 1) throw new Error("proposal_acceptance_race");
       const invoiceId = newId();
       const inserted = await tx.$queryRaw<Array<{ id: string }>>`INSERT INTO "Invoice" ("id", "organizationId", "proposalId", "customerEmail", "currency", "amountMinor", "description", "status", "externalId", "paymentAccessRequired", "dueAt") VALUES (${invoiceId}, ${organizationId}, ${proposal.id}, ${proposal.lead.email}, ${currency}, ${totalMinor}, ${`Proposal ${proposal.proposalNumber} — ${proposal.title}`}, 'sent', ${paymentReference}, TRUE, ${proposal.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}) ON CONFLICT ("proposalId") WHERE "proposalId" IS NOT NULL DO NOTHING RETURNING "id"`;
       if (!inserted[0]) { const existing = await tx.$queryRaw<Array<{ id: string; status: string }>>`SELECT "id", "status" FROM "Invoice" WHERE "proposalId" = ${proposal.id} LIMIT 1`; return { organizationId, invoiceId: existing[0]?.id ?? invoiceId, invoiceStatus: existing[0]?.status ?? "sent", paymentToken: null }; }
       await tx.$executeRaw`INSERT INTO "CommercialToken" ("id", "kind", "entityId", "tokenHash", "expiresAt") VALUES (${newId()}, 'payment', ${invoiceId}, ${paymentHash}, ${paymentTokenExpiresAt})`;
-      await tx.proposal.update({ where: { id: proposal.id }, data: { status: ProposalStatus.ACCEPTED, acceptedAt: new Date(), acceptedByName: parsed.data.acceptedByName, acceptedByEmail: parsed.data.acceptedByEmail, organizationId } });
       if (proposal.opportunityId) await tx.opportunity.update({ where: { id: proposal.opportunityId }, data: { organizationId, stage: OpportunityStage.ENGAGEMENT_PENDING, lastActivityAt: new Date(), nextAction: "Collect payment", nextActionAt: new Date(Date.now() + 24 * 60 * 60 * 1000) } });
       await auditCommercialTransition({ organizationId, action: "proposal.accepted", resourceType: "proposal", resourceId: proposal.id, requestId, previousState: proposal.status, newState: ProposalStatus.ACCEPTED, metadata: { acceptedVersion: proposal.currentVersion, acceptedByEmail: parsed.data.acceptedByEmail }, tx });
       await auditCommercialTransition({ organizationId, action: "invoice.created", resourceType: "invoice", resourceId: invoiceId, requestId, newState: "sent", metadata: { proposalId: proposal.id, amountMinor: totalMinor, currency }, tx });
@@ -52,12 +62,12 @@ export async function POST(request: Request) {
     });
     if (!result.paymentToken) return NextResponse.json({ status: "already_accepted", requestId, invoiceId: result.invoiceId, invoiceStatus: result.invoiceStatus }, { status: 200, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     try { await recordGrowthEvent({ eventName: "proposal_accepted", source: "proposal", entityId: proposal.id, privacyClass: "FINANCIAL", properties: { invoiceId: result.invoiceId } }); await recordGrowthEvent({ eventName: "deal_won", source: "proposal", entityId: proposal.id, privacyClass: "FINANCIAL" }); } catch (error) { console.error("growth_event_record_failed", { requestId, error }); }
-    const paymentUrl = new URL(`/pay/${result.paymentToken}`, request.url).toString();
     await recordOutboxEvent({ eventKey: `email.proposal.accepted:${proposal.id}:${proposal.currentVersion}`, eventType: "email.proposal.accepted", aggregateType: "proposal", aggregateId: proposal.id, organizationId: result.organizationId, payload: { recipient: proposal.lead.email, proposalNumber: proposal.proposalNumber, proposalTitle: proposal.title, invoiceId: result.invoiceId, paymentUrl } });
     after(() => processOutboxBatch().catch((error) => console.error("outbox_after_failed", { requestId, error })));
     return NextResponse.json({ status: "accepted", requestId, invoiceId: result.invoiceId, invoiceStatus: result.invoiceStatus, paymentUrl, notification: { queued: true } }, { status: 201, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   } catch (error) {
     if (error instanceof SyntaxError) return NextResponse.json({ error: "invalid_json", requestId }, { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } });
+    if (error instanceof Error && error.message === "proposal_acceptance_race") return NextResponse.json({ error: "proposal_state_changed", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return NextResponse.json({ error: "commercial_identity_conflict", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     console.error("proposal_acceptance_failed", { requestId, error });
     return NextResponse.json({ error: "service_unavailable", requestId }, { status: 503, headers: { "cache-control": "no-store", "x-request-id": requestId } });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assessmentSchema } from "./contracts";
+import { assessmentBookingSchema, assessmentSchema } from "./contracts";
 
 const valid = {
   organizationName: "Acme Systems",
@@ -52,5 +52,24 @@ describe("assessmentSchema", () => {
     expect(result.roleTitle).toBeUndefined();
     expect(result.workflow).toBeUndefined();
     expect(result.campaign).toBeUndefined();
+  });
+});
+
+describe("assessmentBookingSchema", () => {
+  const booking = {
+    organizationName: "Acme Systems",
+    contactName: "Ada Lovelace",
+    email: "ada@acme.example",
+    startsAt: "2026-11-16T08:00:00.000Z",
+    timezone: "Africa/Lagos",
+    assessmentReference: "assessment-ref-1234",
+  };
+
+  it("accepts an explicit valid IANA timezone", () => {
+    expect(assessmentBookingSchema.safeParse(booking).success).toBe(true);
+  });
+
+  it("rejects invalid IANA timezone identifiers", () => {
+    expect(assessmentBookingSchema.safeParse({ ...booking, timezone: "Not/A_Timezone" }).success).toBe(false);
   });
 });
