@@ -20,7 +20,7 @@ The customer does not need to keep a browser tab open. Waiting for customer evid
 
 Playbooks and versions are immutable execution references. A run stores the exact playbook-version ID and every step stores its pinned FDE capability ID/version. Activating a newer version does not rewrite historical runs.
 
-The initial global playbook is **FDE Technical Assessment v1.0.0**. It is intentionally narrow:
+The initial global playbook is **FDE Technical Assessment v1.1.0**. Version 1.0.0 remains immutable and dry-run-only; the engine rejects its side-effecting steps. Version 1.1.0 is the guarded live version, with a seven-day maximum run duration, canonical definition checksum verification, and `dryRun=false`. External writes still require the explicit report approval gate. The playbook is intentionally narrow:
 
 1. validate scope and move the project workspace into assessment
 2. execute the cybersecurity FDE triage capability
