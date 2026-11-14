@@ -1,5 +1,5 @@
 export function isBookableSlot(date: Date, timezone: string, now = new Date()) {
-  if (!Number.isFinite(date.getTime()) || date.getTime() <= now.getTime() + 60 * 60 * 1000) return false;
+  if (!Number.isFinite(date.getTime()) || date.getTime() <= now.getTime() + 60 * 60 * 1000 || date.getUTCSeconds() !== 0 || date.getUTCMilliseconds() !== 0) return false;
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
