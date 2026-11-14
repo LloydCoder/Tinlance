@@ -32,6 +32,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ run
       AND "organizationId"=${principal.organizationId}
       AND "projectId"=${runRows[0].project_id}
       AND ("assessmentId" IS NULL OR "assessmentId"=${runRows[0].assessment_id})
+      AND "integrityStatus"='VERIFIED'
+      AND visibility IN ('CUSTOMER','CUSTOMER_CONFIDENTIAL')
+      AND classification IN ('CUSTOMER','CUSTOMER_CONFIDENTIAL')
     LIMIT 1
   `);
   if (!evidence[0]) return NextResponse.json({ error: "Evidence is outside the workflow tenant/project" }, { status: 403 });
