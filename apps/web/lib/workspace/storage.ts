@@ -68,7 +68,7 @@ export function isTrustedPrivateBlobUrl(value: string) {
   try {
     const url = new URL(value);
     return url.protocol === "https:"
-      && /^[a-z0-9][a-z0-9-]*\\.private\\.blob\\.vercel-storage\\.com$/i.test(url.hostname)
+      && /^[a-z0-9][a-z0-9-]*\.private\.blob\.vercel-storage\.com$/i.test(url.hostname)
       && !url.username
       && !url.password
       && !url.port
