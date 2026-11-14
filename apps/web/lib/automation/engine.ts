@@ -447,10 +447,14 @@ async function processRun(run: RunRow) {
     const output = await executeStep(run, step, stepDef);
     if (output.waitingForInput) {
       await db.$transaction(async tx => {
+        const fresh = (await tx.$queryRaw<RunRow[]>(Prisma.sql`
+          SELECT * FROM "automation_workflow_runs" WHERE id=${run.id} FOR UPDATE
+        `))[0];
+        if (!fresh || !["RUNNING", "WAITING", "RETRYING"].includes(fresh.status)) return;
         await tx.$executeRaw(Prisma.sql`
           UPDATE "automation_workflow_runs"
           SET status='WAITING',"next_run_at"=NULL,"updated_at"=${now()}
-          WHERE id=${run.id}
+          WHERE id=${run.id} AND status IN ('RUNNING','WAITING','RETRYING')
         `);
         await tx.$executeRaw(Prisma.sql`
           UPDATE "automation_workflow_steps"
@@ -464,7 +468,7 @@ async function processRun(run: RunRow) {
             WHERE "step_id"=${step.id} AND "attempt_no"=${attemptNo}
           `);
         }
-        await appendEvent(tx, run, "WORKFLOW_WAITING", { reason: step.step_key === "verification" ? "independent_verification_pending" : "customer_input" }, step.step_key);
+        await appendEvent(tx, fresh, "WORKFLOW_WAITING", { reason: step.step_key === "verification" ? "independent_verification_pending" : "customer_input" }, step.step_key);
       });
       return;
     }
