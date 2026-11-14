@@ -182,13 +182,13 @@ describe("M4 durable workflow persistence", () => {
       authorization_decision: null,
     };
 
-    await db.$transaction(tx => persistStepOutcome(
+    await expect(db.$transaction(tx => persistStepOutcome(
       tx,
       run,
       step,
       { evidenceId: "customer-supplied-evidence", result: "PASS" },
       { key: "verification", type: "CUSTOMER_INPUT" },
-    ));
+    ))).rejects.toThrow("independent_verification_pending");
 
     const [remediations, findings, verifications] = await Promise.all([
       db.$queryRaw<Array<{ status: string }>>(Prisma.sql`SELECT status FROM "WorkspaceRemediation" WHERE id=${remediationId}`),
