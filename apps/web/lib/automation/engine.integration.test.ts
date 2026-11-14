@@ -105,6 +105,7 @@ describe("M4 durable workflow persistence", () => {
     const duplicate = await startAutomation({
       organizationId: orgA,
       projectId: projectA,
+      assessmentId,
       playbookSlug: "fde-technical-assessment",
       actorUserId: userId,
       triggerType: "TEST",
@@ -182,8 +183,8 @@ describe("M4 durable workflow persistence", () => {
     `);
     await db.$executeRaw(
       Prisma.sql`
-        INSERT INTO "WorkspaceFinding" (id,"organizationId","projectId","assessmentId",title,description,category,severity,status,recommendation,"ownerUserId",visibility,authorship,"createdAt","updatedAt")
-        VALUES (${findingId},${organizationId},${projectId},${assessmentId},'M4 verification finding','Synthetic test finding','security','HIGH','OPEN','Apply the remediation',${userId},'CUSTOMER','HUMAN_AUTHORED',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+        INSERT INTO "WorkspaceFinding" (id,"organizationId","projectId","assessmentId",title,description,category,severity,status,recommendation,"ownerUserId",visibility,authorship,"idempotencyKey","createdAt","updatedAt")
+        VALUES (${findingId},${organizationId},${projectId},${assessmentId},'M4 verification finding','Synthetic test finding','security','HIGH','OPEN','Apply the remediation',${userId},'CUSTOMER','HUMAN_AUTHORED',${`${runId}:finding:${findingId}`},CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
       `
     );
     await db.$executeRaw(
