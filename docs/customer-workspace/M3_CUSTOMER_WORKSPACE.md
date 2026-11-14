@@ -1,6 +1,6 @@
 # M3 — FDE Customer Workspace
 
-> Execution status is certified only from the latest repository CI run; preview-hosting failures are tracked separately from the blocking repository CI gate.
+> Merge status is based on the latest exact-head required CI/security workflows and Vercel preview. Production acceptance is certified separately; a ready preview is not production certification.
 
 ## Purpose
 
@@ -79,7 +79,13 @@ Reports are traceable through assessment → finding → evidence → remediatio
 
 Remediation states distinguish customer work from independent verification. `CUSTOMER_ATTESTED` is not equivalent to `VERIFIED`.
 
-Verification records verifier, method, result, timestamp and optional evidence. A passing verification moves the finding to `VERIFIED`; failed verification keeps the remediation open for further work.
+Only the dedicated privileged verification workflow can set a remediation or finding to `VERIFIED`. Generic finding/remediation transition endpoints reject direct `VERIFIED` transitions.
+
+Verification requires the remediation to be `READY_FOR_VERIFICATION`, its finding to be `VERIFICATION_PENDING`, and the verifier to be different from the remediation owner. Moving a remediation to `READY_FOR_VERIFICATION` and its finding to `VERIFICATION_PENDING` is atomic.
+
+The verification record, remediation result/status, finding status and audit event are committed in one database transaction with conditional updates to reject stale or concurrent verification attempts. `PASS` marks both records verified. `FAIL` and `INCONCLUSIVE` return both to in-progress and remain explicitly distinguishable in the API response.
+
+Verification records capture verifier, method, result, timestamp and optional evidence. Customer attestation cannot masquerade as independent verification.
 
 ## Audit
 
