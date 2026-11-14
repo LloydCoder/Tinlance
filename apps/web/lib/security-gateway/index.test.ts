@@ -32,6 +32,13 @@ describe("M7 security gateway invariants", () => {
     expect(result.decision).toBe("REQUIRE_STEP_UP");
   });
 
+
+  it("does not let a caller-supplied LOW risk downgrade a destructive action", () => {
+    const result = evaluateSecurity({ principal, action: "evidence.delete", resourceType: "Evidence", requestedRisk: "LOW" });
+    expect(result.decision).toBe("REQUIRE_APPROVAL");
+    expect(result.risk.level).toBe("HIGH");
+  });
+
   it("blocks emergency deny controls", () => {
     process.env.TINLANCE_SECURITY_GATEWAY_DENY_AGENTS = "true";
     try {
