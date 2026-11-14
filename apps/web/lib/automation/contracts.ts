@@ -56,6 +56,19 @@ export function validateWorkflowDefinition(definition: unknown) {
       typeof policyValues.customerDataUntrusted !== "boolean") {
     throw new Error("workflow policies must explicitly define dryRun, externalWritesRequireApproval and customerDataUntrusted");
   }
+  const publishIndex = steps.findIndex(raw => raw && typeof raw === "object" && (raw as Record<string, unknown>).key === "publish_report");
+  if (publishIndex >= 0) {
+    const hasPriorApproval = steps.slice(0, publishIndex).some(raw =>
+      raw && typeof raw === "object" && (raw as Record<string, unknown>).type === "APPROVAL"
+    );
+    if (!hasPriorApproval || policyValues.externalWritesRequireApproval !== true) {
+      throw new Error("report publication requires an explicit prior human approval step");
+    }
+  }
+  if (steps.some(raw => raw && typeof raw === "object" && (raw as Record<string, unknown>).type === "CUSTOMER_INPUT") &&
+      policyValues.customerDataUntrusted !== true) {
+    throw new Error("customer input workflows must treat customer data as untrusted");
+  }
   return true;
 }
 
