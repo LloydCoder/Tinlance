@@ -9,6 +9,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   const { slug } = await params;
   const body = await request.json().catch(() => null);
   if (!body || typeof body.projectId !== "string" || !body.projectId) return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+  if (typeof body.assessmentId !== "string" || !body.assessmentId) return NextResponse.json({ error: "assessmentId is required" }, { status: 400 });
   const idempotencyKey = request.headers.get("Idempotency-Key")?.trim();
   if (!idempotencyKey) return NextResponse.json({ error: "Idempotency-Key is required" }, { status: 400 });
   try {
