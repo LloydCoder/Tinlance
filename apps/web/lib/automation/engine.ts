@@ -506,13 +506,37 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
   }
   if (step.step_key === "close") await transitionProjectState(tx, run, ProjectWorkspaceStatus.COMPLETED);
   if (step.step_key === "schedule_reassessment") {
-    const next = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-    const created = await tx.$executeRaw(Prisma.sql`
-      INSERT INTO "automation_schedules" ("id","organization_id","project_id","playbook_id","playbook_version_id","interval_seconds","timezone","status","next_run_at","idempotency_seed","created_by_user_id")
-      VALUES (${randomUUID()},${run.organization_id},${run.project_id},${run.playbook_id},${run.playbook_version_id},${90 * 24 * 60 * 60},'UTC','ACTIVE',${next},${`${run.project_id}:${run.playbook_id}:90d`},${run.initiating_actor_user_id})
-      ON CONFLICT DO NOTHING
-    `);
-    if (created === 1) await audit(tx, run, "WORKSPACE_REASSESSMENT_SCHEDULED", { intervalSeconds: 90 * 24 * 60 * 60, nextRunAt: next.toISOString() });
+    const intervalSeconds = 90 * 24 * 60 * 60;
+    const next = new Date(Date.now() + intervalSeconds * 1000);
+    const scheduleId = stateValue(run, "scheduleId");
+    if (typeof scheduleId === "string") {
+      const updated = await tx.$executeRaw(Prisma.sql`
+        UPDATE "automation_schedules"
+        SET "last_run_at"=${now()},
+          "next_run_at"=${next},
+          "active_run_id"=NULL,
+          "lease_owner"=NULL,
+          "lease_expires_at"=NULL,
+          "last_error"=NULL,
+          "failure_count"=0,
+          "updated_at"=${now()}
+        WHERE id=${scheduleId}
+          AND "organization_id"=${run.organization_id}
+          AND "active_run_id"=${run.id}
+      `);
+      if (updated !== 1) throw new Error("reassessment_schedule_ownership_mismatch");
+      await audit(tx, run, "WORKSPACE_REASSESSMENT_SCHEDULED", { scheduleId, intervalSeconds, nextRunAt: next.toISOString() });
+    } else {
+      const created = await tx.$executeRaw(Prisma.sql`
+        INSERT INTO "automation_schedules"
+          ("id","organization_id","project_id","playbook_id","playbook_version_id","interval_seconds","timezone","status","next_run_at","idempotency_seed","created_by_user_id")
+        VALUES
+          (${randomUUID()},${run.organization_id},${run.project_id},${run.playbook_id},${run.playbook_version_id},
+           ${intervalSeconds},'UTC','ACTIVE',${next},${`${run.project_id}:${run.playbook_id}:90d`},${run.initiating_actor_user_id})
+        ON CONFLICT DO NOTHING
+      `);
+      if (created === 1) await audit(tx, run, "WORKSPACE_REASSESSMENT_SCHEDULED", { intervalSeconds, nextRunAt: next.toISOString() });
+    }
   }
 }
 function stateValue(run: RunRow, key: string) { return (run.state ?? {})[key]; }
