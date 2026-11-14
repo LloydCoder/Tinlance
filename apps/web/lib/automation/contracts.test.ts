@@ -44,6 +44,17 @@ describe("automation contracts", () => {
     })).toBe(true);
   });
 
+
+  it("accepts a verified remediation after it has been closed", () => {
+    expect(isIndependentlyVerifiedRemediation({
+      remediationStatus: "CLOSED",
+      findingStatus: "CLOSED",
+      verificationResult: "PASS",
+      ownerUserId: "owner-1",
+      verifierUserId: "verifier-1",
+    })).toBe(true);
+  });
+
   it("rejects an OPEN remediation even when workflow input claims PASS", () => {
     expect(isIndependentlyVerifiedRemediation({
       remediationStatus: "OPEN",
