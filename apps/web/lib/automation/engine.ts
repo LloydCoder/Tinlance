@@ -1,8 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
-import { Prisma } from "@prisma/client";
+import { Prisma, ProjectWorkspaceStatus, WorkspaceReportStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { generateAssessmentReport } from "@/lib/workspace/report";
 import { authorizeWorkflowStep } from "@/lib/security-gateway/workflow";
+import { ensureProjectWorkspaceState } from "@/lib/workspace/service";
+import { assertProjectTransition, assertReportTransition } from "@/lib/workspace/workflow";
+import { isIndependentlyVerifiedRemediation, validateWorkflowSignal } from "./contracts";
 
 export type AutomationStatus = "PENDING" | "RUNNING" | "WAITING" | "PAUSED" | "WAITING_FOR_APPROVAL" | "RETRYING" | "COMPLETED" | "FAILED" | "CANCELLED" | "EXPIRED";
 export type StepStatus = "PENDING" | "RUNNING" | "WAITING" | "PAUSED" | "WAITING_FOR_APPROVAL" | "RETRYING" | "COMPLETED" | "FAILED" | "CANCELLED";
@@ -36,6 +39,7 @@ export async function startAutomation(input: { organizationId: string; projectId
   const version = versions[0]; if (!version) throw new Error("playbook not available");
   const project = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "Project" WHERE id=${input.projectId} AND "organizationId"=${input.organizationId} LIMIT 1`);
   if (!project[0]) throw new Error("project not found");
+  await ensureProjectWorkspaceState(input.projectId, input.organizationId);
   if (input.assessmentId) {
     const assessment = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "Assessment" WHERE id=${input.assessmentId} AND "organizationId"=${input.organizationId} LIMIT 1`);
     if (!assessment[0]) throw new Error("assessment not found");
@@ -117,13 +121,80 @@ async function executeStep(run: RunRow, step: StepRow, definitionStep: Definitio
   if (step.step_key === "draft_report") return { drafted: true };
   if (step.step_key === "publish_report") return { published: true };
   if (step.step_key === "create_remediation") return { remediationCreated: true };
-  if (step.step_key === "verification") return state.verificationEvidenceId && state.verificationResult ? { verified: true, evidenceId: String(state.verificationEvidenceId), result: String(state.verificationResult) } : { waitingForInput: true };
+  if (step.step_key === "verification") {
+    const remediations = await db.$queryRaw<Array<{
+      id: string;
+      remediation_status: string;
+      owner_user_id: string | null;
+      finding_status: string;
+      verification_result: string | null;
+      verifier_user_id: string | null;
+    }>>(Prisma.sql`
+      SELECT r.id,
+        r.status AS remediation_status,
+        r."ownerUserId" AS owner_user_id,
+        f.status AS finding_status,
+        v.result AS verification_result,
+        v."verifierUserId" AS verifier_user_id
+      FROM "WorkspaceRemediation" r
+      JOIN "WorkspaceFinding" f
+        ON f.id=r."findingId" AND f."organizationId"=r."organizationId"
+      LEFT JOIN LATERAL (
+        SELECT result,"verifierUserId"
+        FROM "WorkspaceVerification"
+        WHERE "remediationId"=r.id
+        ORDER BY "createdAt" DESC
+        LIMIT 1
+      ) v ON TRUE
+      WHERE r."organizationId"=${run.organization_id}
+        AND r."projectId"=${run.project_id}
+        AND r."idempotencyKey" LIKE ${`${run.id}:remediation:%`}
+      ORDER BY r.id
+    `);
+    if (remediations.some(remediation => !isIndependentlyVerifiedRemediation({
+      remediationStatus: remediation.remediation_status,
+      findingStatus: remediation.finding_status,
+      verificationResult: remediation.verification_result,
+      ownerUserId: remediation.owner_user_id,
+      verifierUserId: remediation.verifier_user_id,
+    }))) return { waitingForInput: true };
+    return { verifiedRemediationIds: remediations.map(remediation => remediation.id) };
+  }
   if (step.step_key === "close") return { closed: true };
   if (step.step_key === "schedule_reassessment") return { scheduled: true };
   return {};
 }
 
+async function transitionProjectState(tx: Prisma.TransactionClient, run: RunRow, to: ProjectWorkspaceStatus) {
+  const rows = await tx.$queryRaw<Array<{ id: string; status: ProjectWorkspaceStatus }>>(Prisma.sql`
+    SELECT id,status FROM "ProjectWorkspaceState"
+    WHERE "projectId"=${run.project_id} AND "organizationId"=${run.organization_id}
+    FOR UPDATE
+  `);
+  const state = rows[0];
+  if (!state) throw new Error("project_workspace_state_not_found");
+  if (state.status === to) return;
+  assertProjectTransition(state.status, to);
+  const updated = await tx.$executeRaw(Prisma.sql`
+    UPDATE "ProjectWorkspaceState"
+    SET status=${to},
+      "completedAt"=CASE WHEN ${to}='COMPLETED' THEN ${now()} ELSE "completedAt" END,
+      "updatedAt"=${now()}
+    WHERE id=${state.id} AND "organizationId"=${run.organization_id} AND status=${state.status}
+  `);
+  if (updated !== 1) throw new Error("project_transition_race");
+  await tx.$executeRaw(Prisma.sql`
+    INSERT INTO "AuditEvent" ("id","organizationId","actorUserId","action","resourceType","resourceId","requestId","metadata")
+    VALUES (${randomUUID()},${run.organization_id},${run.initiating_actor_user_id},'PROJECT_STATE_CHANGED','project',${run.project_id},${run.request_id},${json({ from: state.status, to })}::jsonb)
+  `);
+}
+
 export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunRow, step: StepRow, output: Record<string, unknown>, definitionStep: DefinitionStep) {
+  if (step.step_key === "validate_scope") await transitionProjectState(tx, run, ProjectWorkspaceStatus.ASSESSMENT);
+  if (step.step_key === "generate_findings") await transitionProjectState(tx, run, ProjectWorkspaceStatus.FINDINGS_REVIEW);
+  if (step.step_key === "draft_report") await transitionProjectState(tx, run, ProjectWorkspaceStatus.REPORTING);
+  if (step.step_key === "create_remediation") await transitionProjectState(tx, run, ProjectWorkspaceStatus.REMEDIATION);
+
   if (step.step_key === "execute_fde") {
     await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET state=state || ${json({ fdeResult: output })}::jsonb,"next_run_at"=NULL,"updated_at"=${now()} WHERE id=${run.id}`);
     await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_artifacts" ("id","workflow_run_id","step_id","organization_id","project_id","type","resource_type","resource_id","provenance","content_hash") VALUES (${randomUUID()},${run.id},${step.id},${run.organization_id},${run.project_id},'FDE_EXECUTION','FDE_CAPABILITY',${definitionStep.capabilityId ?? null},${json({ capabilityId: definitionStep.capabilityId, capabilityVersion: definitionStep.capabilityVersion, domain: definitionStep.domain, requestId: run.request_id })}::jsonb,${hash(output)})`);
@@ -155,22 +226,79 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
   }
   if (step.step_key === "publish_report") {
     const reportId = stateValue(run, "reportId");
-    if (typeof reportId === "string") await tx.$executeRaw(Prisma.sql`UPDATE "WorkspaceReport" SET status='PUBLISHED',"publishedAt"=${now()},"publishedByUserId"=${run.initiating_actor_user_id},"updatedAt"=${now()} WHERE id=${reportId} AND "organizationId"=${run.organization_id}`);
+    if (typeof reportId !== "string") throw new Error("workflow_report_missing");
+    const reports = await tx.$queryRaw<Array<{ id: string; status: WorkspaceReportStatus }>>(Prisma.sql`
+      SELECT id,status FROM "WorkspaceReport"
+      WHERE id=${reportId} AND "organizationId"=${run.organization_id}
+      FOR UPDATE
+    `);
+    const report = reports[0];
+    if (!report) throw new Error("workflow_report_not_found");
+    assertReportTransition(report.status, WorkspaceReportStatus.PUBLISHED);
+    const updated = await tx.$executeRaw(Prisma.sql`
+      UPDATE "WorkspaceReport"
+      SET status='PUBLISHED',"publishedAt"=${now()},"publishedByUserId"=${run.initiating_actor_user_id},"updatedAt"=${now()}
+      WHERE id=${reportId} AND "organizationId"=${run.organization_id} AND status='APPROVED'
+    `);
+    if (updated !== 1) throw new Error("report_publish_race");
   }
   if (step.step_key === "create_remediation") {
     const findings = await tx.$queryRaw<Array<{ id: string; title: string; recommendation: string; severity: string }>>(Prisma.sql`SELECT id,title,recommendation,severity FROM "WorkspaceFinding" WHERE "organizationId"=${run.organization_id} AND "projectId"=${run.project_id} AND "assessmentId"=${run.assessment_id ?? ""}`);
     for (const finding of findings) await tx.$executeRaw(Prisma.sql`INSERT INTO "WorkspaceRemediation" ("id","organizationId","projectId","findingId","title","description","priority","status","idempotencyKey") VALUES (${randomUUID()},${run.organization_id},${run.project_id},${finding.id},${`Remediate: ${finding.title}`},${finding.recommendation},${finding.severity},'OPEN',${`${run.id}:remediation:${finding.id}`}) ON CONFLICT ("idempotencyKey") DO NOTHING`);
   }
   if (step.step_key === "verification") {
-    const evidenceId = String(output.evidenceId ?? "");
-    const result = String(output.result ?? "INCONCLUSIVE").toUpperCase();
-    const remediations = await tx.$queryRaw<Array<{ id: string; findingId: string }>>(Prisma.sql`SELECT id,"findingId" FROM "WorkspaceRemediation" WHERE "organizationId"=${run.organization_id} AND "projectId"=${run.project_id} AND status IN ('OPEN','IN_PROGRESS','READY_FOR_VERIFICATION')`);
-    for (const remediation of remediations) {
-      await tx.$executeRaw(Prisma.sql`INSERT INTO "WorkspaceVerification" ("id","organizationId","projectId","findingId","remediationId","verifierUserId","method","result","notes","evidenceId") VALUES (${randomUUID()},${run.organization_id},${run.project_id},${remediation.findingId},${remediation.id},${run.initiating_actor_user_id},'M4 workflow verification',${result},'Verification supplied through the controlled workflow input.',${evidenceId || null})`);
-      await tx.$executeRaw(Prisma.sql`UPDATE "WorkspaceRemediation" SET "verificationStatus"=${result},status=CASE WHEN ${result}='PASS' THEN 'VERIFIED' ELSE status END,"completedAt"=CASE WHEN ${result}='PASS' THEN ${now()} ELSE "completedAt" END,"updatedAt"=${now()} WHERE id=${remediation.id}`);
+    const remediations = await tx.$queryRaw<Array<{
+      id: string;
+      remediation_status: string;
+      owner_user_id: string | null;
+      finding_status: string;
+      verification_result: string | null;
+      verifier_user_id: string | null;
+    }>>(Prisma.sql`
+      SELECT r.id,
+        r.status AS remediation_status,
+        r."ownerUserId" AS owner_user_id,
+        f.status AS finding_status,
+        v.result AS verification_result,
+        v."verifierUserId" AS verifier_user_id
+      FROM "WorkspaceRemediation" r
+      JOIN "WorkspaceFinding" f
+        ON f.id=r."findingId" AND f."organizationId"=r."organizationId"
+      LEFT JOIN LATERAL (
+        SELECT result,"verifierUserId"
+        FROM "WorkspaceVerification"
+        WHERE "remediationId"=r.id
+        ORDER BY "createdAt" DESC
+        LIMIT 1
+      ) v ON TRUE
+      WHERE r."organizationId"=${run.organization_id}
+        AND r."projectId"=${run.project_id}
+        AND r."idempotencyKey" LIKE ${`${run.id}:remediation:%`}
+      ORDER BY r.id
+      FOR UPDATE OF r
+    `);
+    const verifiedIds = remediations
+      .filter(remediation => isIndependentlyVerifiedRemediation({
+        remediationStatus: remediation.remediation_status,
+        findingStatus: remediation.finding_status,
+        verificationResult: remediation.verification_result,
+        ownerUserId: remediation.owner_user_id,
+        verifierUserId: remediation.verifier_user_id,
+      }))
+      .map(remediation => remediation.id);
+    if (verifiedIds.length !== remediations.length) throw new Error("independent_verification_pending");
+    const suppliedIds = Array.isArray(output.verifiedRemediationIds) ? output.verifiedRemediationIds : [];
+    if (suppliedIds.length !== verifiedIds.length || suppliedIds.some((id, index) => id !== verifiedIds[index])) {
+      throw new Error("independent_verification_output_mismatch");
     }
+    await tx.$executeRaw(Prisma.sql`
+      UPDATE "automation_workflow_runs"
+      SET state=state || ${json({ verifiedRemediationIds: verifiedIds })}::jsonb,"updated_at"=${now()}
+      WHERE id=${run.id}
+    `);
+    await transitionProjectState(tx, run, ProjectWorkspaceStatus.VERIFICATION);
   }
-  if (step.step_key === "close") await tx.$executeRaw(Prisma.sql`UPDATE "ProjectWorkspaceState" SET status='COMPLETED',"completedAt"=${now()},"updatedAt"=${now()} WHERE "projectId"=${run.project_id} AND "organizationId"=${run.organization_id}`);
+  if (step.step_key === "close") await transitionProjectState(tx, run, ProjectWorkspaceStatus.COMPLETED);
   if (step.step_key === "schedule_reassessment") {
     const next = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
     await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_schedules" ("id","organization_id","project_id","playbook_id","playbook_version_id","interval_seconds","timezone","status","next_run_at","idempotency_seed") VALUES (${randomUUID()},${run.organization_id},${run.project_id},${run.playbook_id},${run.playbook_version_id},${90 * 24 * 60 * 60},'UTC','ACTIVE',${next},${`${run.project_id}:${run.playbook_id}:90d`}) ON CONFLICT DO NOTHING`);
@@ -201,7 +329,7 @@ async function processRun(run: RunRow) {
     if (!approvals[0]) await db.$transaction(async tx=>{ await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_approvals" ("id","workflow_run_id","step_id","organization_id","requested_by_user_id","status","policy") VALUES (${randomUUID()},${run.id},${step.id},${run.organization_id},${run.initiating_actor_user_id},'PENDING',${stepDef.policy ?? 'HUMAN_APPROVAL'})`); await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='WAITING_FOR_APPROVAL',"updated_at"=${now()} WHERE id=${run.id}`); await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_steps" SET status='WAITING_FOR_APPROVAL',"updated_at"=${now()} WHERE id=${step.id}`); await appendEvent(tx,run,"APPROVAL_REQUESTED",{policy:stepDef.policy},step.step_key); await audit(tx,run,"APPROVAL_REQUESTED",{policy:stepDef.policy}); });
     return;
   }
-  if (step.step_type === "CUSTOMER_INPUT" && ((step.step_key === "request_evidence" && !run.state.customerEvidenceId) || (step.step_key === "verification" && !run.state.verificationEvidenceId))) { await db.$transaction(async tx=>{ await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='WAITING',"updated_at"=${now()} WHERE id=${run.id}`); await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_steps" SET status='WAITING',"updated_at"=${now()} WHERE id=${step.id}`); await appendEvent(tx,run,"WORKFLOW_WAITING",{reason:"customer_input"},step.step_key); }); return; }
+  if (step.step_type === "CUSTOMER_INPUT" && step.step_key === "request_evidence" && !run.state.customerEvidenceId) { await db.$transaction(async tx=>{ await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='WAITING',"updated_at"=${now()} WHERE id=${run.id}`); await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_steps" SET status='WAITING',"updated_at"=${now()} WHERE id=${step.id}`); await appendEvent(tx,run,"WORKFLOW_WAITING",{reason:"customer_input"},step.step_key); }); return; }
   const attemptRows = await db.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`SELECT COUNT(*) FROM "automation_step_attempts" WHERE "step_id"=${step.id}`); const attemptNo=Number(attemptRows[0]?.count??0n)+1; const maxAttempts=stepDef.retry?.maxAttempts??1;
   await db.$transaction(async tx=>{ await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_steps" SET status='RUNNING',"started_at"=COALESCE("started_at",${now()}),"actor_type"='system',"actor_id"=${run.initiating_actor_user_id},"authorization_decision"='ALLOW',"updated_at"=${now()} WHERE id=${step.id}`); await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_step_attempts" ("id","step_id","attempt_no","status","request_id") VALUES (${randomUUID()},${step.id},${attemptNo},'RUNNING',${run.request_id})`); });
   const started=Date.now();
@@ -223,12 +351,124 @@ async function completeStep(run: RunRow, step: StepRow, output: Record<string, u
 
 async function failRun(run: RunRow,error:unknown){const message=String(error instanceof Error?error.message:error).slice(0,1000);await db.$transaction(async tx=>{await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='FAILED',"error_code"='WORKFLOW_FAILURE',"error_message"=${message},"completed_at"=${now()},"next_run_at"=NULL,"updated_at"=${now()} WHERE id=${run.id}`);await appendEvent(tx,run,"WORKFLOW_FAILED",{error:message});await audit(tx,run,"WORKFLOW_FAILED",{error:message});});}
 
-export async function approveAutomation(runId:string,organizationId:string,approvalId:string,actorUserId:string,decision:"APPROVED"|"REJECTED"){
-  return db.$transaction(async tx=>{const rows=await tx.$queryRaw<Array<{id:string;status:string;workflow_run_id:string}>>(Prisma.sql`SELECT id,status,"workflow_run_id" FROM "automation_approvals" WHERE id=${approvalId} AND "organization_id"=${organizationId} FOR UPDATE`);const approval=rows[0];if(!approval||approval.workflow_run_id!==runId)throw new Error("approval not found");if(approval.status!=="PENDING")throw new Error("approval already decided");await tx.$executeRaw(Prisma.sql`UPDATE "automation_approvals" SET status=${decision},decision=${decision},"approved_by_user_id"=${actorUserId},"decided_at"=${now()} WHERE id=${approvalId}`);await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status=CASE WHEN ${decision}='APPROVED' THEN 'RUNNING' ELSE 'FAILED' END,"error_code"=CASE WHEN ${decision}='REJECTED' THEN 'APPROVAL_REJECTED' ELSE NULL END,"updated_at"=${now()} WHERE id=${runId}`);const run=(await tx.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId}`))[0];await appendEvent(tx,run,decision==='APPROVED'?'APPROVAL_GRANTED':'APPROVAL_REJECTED',{approvalId},undefined,'user',actorUserId);await audit(tx,run,decision==='APPROVED'?'APPROVAL_GRANTED':'APPROVAL_REJECTED',{approvalId},actorUserId);return run;});
+export async function approveAutomation(runId: string, organizationId: string, approvalId: string, actorUserId: string, decision: "APPROVED" | "REJECTED") {
+  return db.$transaction(async tx => {
+    const rows = await tx.$queryRaw<Array<{ id: string; status: string; workflow_run_id: string; step_id: string }>>(Prisma.sql`
+      SELECT id,status,"workflow_run_id","step_id"
+      FROM "automation_approvals"
+      WHERE id=${approvalId} AND "organization_id"=${organizationId}
+      FOR UPDATE
+    `);
+    const approval = rows[0];
+    if (!approval || approval.workflow_run_id !== runId) throw new Error("approval not found");
+    if (approval.status !== "PENDING") throw new Error("approval already decided");
+    const run = (await tx.$queryRaw<RunRow[]>(Prisma.sql`
+      SELECT * FROM "automation_workflow_runs"
+      WHERE id=${runId} AND "organization_id"=${organizationId}
+      FOR UPDATE
+    `))[0];
+    if (!run || run.status !== "WAITING_FOR_APPROVAL") throw new Error("workflow is not awaiting approval");
+
+    await tx.$executeRaw(Prisma.sql`
+      UPDATE "automation_approvals"
+      SET status=${decision},decision=${decision},"approved_by_user_id"=${actorUserId},"decided_at"=${now()}
+      WHERE id=${approvalId} AND status='PENDING'
+    `);
+    await tx.$executeRaw(Prisma.sql`
+      UPDATE "automation_workflow_runs"
+      SET status=CASE WHEN ${decision}='APPROVED' THEN 'RUNNING' ELSE 'FAILED' END,
+        "error_code"=CASE WHEN ${decision}='REJECTED' THEN 'APPROVAL_REJECTED' ELSE NULL END,
+        "updated_at"=${now()}
+      WHERE id=${runId} AND "organization_id"=${organizationId}
+    `);
+
+    const reportId = stateValue(run, "reportId");
+    if (decision === "APPROVED" && typeof reportId === "string") {
+      const reports = await tx.$queryRaw<Array<{ id: string; status: WorkspaceReportStatus }>>(Prisma.sql`
+        SELECT id,status FROM "WorkspaceReport"
+        WHERE id=${reportId} AND "organizationId"=${organizationId}
+        FOR UPDATE
+      `);
+      const report = reports[0];
+      if (!report) throw new Error("workflow_report_not_found");
+      if (report.status === WorkspaceReportStatus.DRAFT) {
+        assertReportTransition(report.status, WorkspaceReportStatus.INTERNAL_REVIEW);
+        const reviewUpdate = await tx.$executeRaw(Prisma.sql`
+          UPDATE "WorkspaceReport" SET status='INTERNAL_REVIEW',"updatedAt"=${now()}
+          WHERE id=${reportId} AND "organizationId"=${organizationId} AND status='DRAFT'
+        `);
+        if (reviewUpdate !== 1) throw new Error("report_review_race");
+      }
+      const refreshed = await tx.$queryRaw<Array<{ status: WorkspaceReportStatus }>>(Prisma.sql`
+        SELECT status FROM "WorkspaceReport"
+        WHERE id=${reportId} AND "organizationId"=${organizationId}
+        FOR UPDATE
+      `);
+      const reportStatus = refreshed[0]?.status;
+      if (!reportStatus) throw new Error("workflow_report_not_found");
+      assertReportTransition(reportStatus, WorkspaceReportStatus.APPROVED);
+      const approvalUpdate = await tx.$executeRaw(Prisma.sql`
+        UPDATE "WorkspaceReport" SET status='APPROVED',"updatedAt"=${now()}
+        WHERE id=${reportId} AND "organizationId"=${organizationId} AND status='INTERNAL_REVIEW'
+      `);
+      if (approvalUpdate !== 1) throw new Error("report_approval_race");
+      await audit(tx, run, "REPORT_APPROVED", { reportId, approvalId }, actorUserId);
+    }
+
+    await appendEvent(tx, run, decision === "APPROVED" ? "APPROVAL_GRANTED" : "APPROVAL_REJECTED", { approvalId }, undefined, "user", actorUserId);
+    await audit(tx, run, decision === "APPROVED" ? "APPROVAL_GRANTED" : "APPROVAL_REJECTED", { approvalId }, actorUserId);
+    return (await tx.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId}`))[0];
+  });
 }
 
-export async function signalAutomation(runId:string,organizationId:string,actorUserId:string,signal:Record<string,unknown>){
-  return db.$transaction(async tx=>{const rows=await tx.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId} AND "organization_id"=${organizationId} FOR UPDATE`);const run=rows[0];if(!run)throw new Error("workflow run not found");if(!["WAITING","PAUSED"].includes(run.status))throw new Error("workflow is not waiting for input");await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET state=state || ${json(signal)}::jsonb,status='RUNNING',"next_run_at"=NULL,"updated_at"=${now()} WHERE id=${runId}`);await appendEvent(tx,run,"WORKFLOW_RESUMED",{signalKeys:Object.keys(signal)},undefined,'user',actorUserId);await audit(tx,run,"WORKFLOW_RESUMED",{signalKeys:Object.keys(signal)},actorUserId);return (await tx.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId}`))[0];});
+export async function signalAutomation(runId: string, organizationId: string, actorUserId: string, signal: Record<string, unknown>) {
+  const validatedSignal = validateWorkflowSignal(signal);
+  return db.$transaction(async tx => {
+    const rows = await tx.$queryRaw<RunRow[]>(Prisma.sql`
+      SELECT * FROM "automation_workflow_runs"
+      WHERE id=${runId} AND "organization_id"=${organizationId}
+      FOR UPDATE
+    `);
+    const run = rows[0];
+    if (!run) throw new Error("workflow run not found");
+
+    if (run.status === "PAUSED" && Object.keys(validatedSignal).length === 0) {
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "automation_workflow_runs"
+        SET status='RUNNING',"next_run_at"=NULL,"updated_at"=${now()}
+        WHERE id=${runId} AND "organization_id"=${organizationId} AND status='PAUSED'
+      `);
+    } else {
+      if (run.status !== "WAITING" || !validatedSignal.customerEvidenceId) {
+        throw new Error("workflow is not waiting for supported customer evidence input");
+      }
+      const steps = await tx.$queryRaw<Array<{ step_key: string; step_type: string }>>(Prisma.sql`
+        SELECT "step_key","step_type" FROM "automation_workflow_steps"
+        WHERE "workflow_run_id"=${runId} AND ordinal=${run.current_step}
+        LIMIT 1
+      `);
+      if (steps[0]?.step_key !== "request_evidence" || steps[0]?.step_type !== "CUSTOMER_INPUT") {
+        throw new Error("workflow is not waiting for evidence input");
+      }
+      const evidence = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT id FROM "WorkspaceEvidence"
+        WHERE id=${validatedSignal.customerEvidenceId}
+          AND "organizationId"=${organizationId}
+          AND "projectId"=${run.project_id}
+        LIMIT 1
+      `);
+      if (!evidence[0]) throw new Error("evidence is outside the workflow tenant/project");
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "automation_workflow_runs"
+        SET state=state || ${json(validatedSignal)}::jsonb,status='RUNNING',"next_run_at"=NULL,"updated_at"=${now()}
+        WHERE id=${runId} AND "organization_id"=${organizationId} AND status='WAITING'
+      `);
+    }
+
+    await appendEvent(tx, run, "WORKFLOW_RESUMED", { signalKeys: Object.keys(validatedSignal) }, undefined, "user", actorUserId);
+    await audit(tx, run, "WORKFLOW_RESUMED", { signalKeys: Object.keys(validatedSignal) }, actorUserId);
+    return (await tx.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId}`))[0];
+  });
 }
 
 export async function cancelAutomation(runId:string,organizationId:string,actorUserId:string){return db.$transaction(async tx=>{const rows=await tx.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId} AND "organization_id"=${organizationId} FOR UPDATE`);const run=rows[0];if(!run)throw new Error("workflow run not found");if(["COMPLETED","FAILED","CANCELLED","EXPIRED"].includes(run.status))return run;await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='CANCELLED',"completed_at"=${now()},"updated_at"=${now()} WHERE id=${runId}`);await appendEvent(tx,run,"WORKFLOW_CANCELLED",{},undefined,'user',actorUserId);await audit(tx,run,"WORKFLOW_CANCELLED",{},actorUserId);return (await tx.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId}`))[0];});}
