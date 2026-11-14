@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   cursor.setUTCSeconds(0, 0);
   cursor.setUTCMinutes(Math.ceil(cursor.getUTCMinutes() / SLOT_MINUTES) * SLOT_MINUTES);
   while (cursor < until && slots.length < 100) {
-    if (isBookableSlot(cursor, timezone) && !occupied.has(cursor.getTime()) && cursor.getTime() > Date.now() + 60 * 60 * 1000) slots.push(cursor.toISOString());
+    if (isBookableSlot(cursor, timezone, from) && !occupied.has(cursor.getTime())) slots.push(cursor.toISOString());
     cursor.setUTCMinutes(cursor.getUTCMinutes() + SLOT_MINUTES);
   }
   return NextResponse.json({ timezone, slots }, { headers: { "cache-control": "no-store", "x-request-id": requestId } });
