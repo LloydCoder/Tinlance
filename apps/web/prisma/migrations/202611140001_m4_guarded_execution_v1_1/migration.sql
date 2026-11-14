@@ -1,5 +1,13 @@
 BEGIN;
 
+ALTER TABLE "automation_schedules"
+  ADD COLUMN IF NOT EXISTS "created_by_user_id" TEXT REFERENCES "User"(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS "lease_owner" TEXT,
+  ADD COLUMN IF NOT EXISTS "lease_expires_at" TIMESTAMP(3);
+
+CREATE INDEX IF NOT EXISTS "automation_schedules_due_lease_idx"
+  ON "automation_schedules" ("status","next_run_at","lease_expires_at");
+
 UPDATE "automation_playbook_versions"
 SET "deprecated_at" = CURRENT_TIMESTAMP
 WHERE "playbook_id" = 'm4-fde-technical-assessment'
