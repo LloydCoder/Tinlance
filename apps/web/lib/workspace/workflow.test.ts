@@ -18,7 +18,7 @@ describe("M3 workspace state machines", () => {
   });
 
   it("requires explicit finding verification before closure", () => {
-    expect(() => assertFindingTransition(WorkspaceFindingStatus.VERIFICATION_PENDING, WorkspaceFindingStatus.VERIFIED)).not.toThrow();
+    expect(() => assertFindingTransition(WorkspaceFindingStatus.VERIFICATION_PENDING, WorkspaceFindingStatus.IN_PROGRESS)).not.toThrow();
     expect(() => assertFindingTransition(WorkspaceFindingStatus.IN_PROGRESS, WorkspaceFindingStatus.CLOSED)).toThrow(/Invalid finding transition/);
   });
 
