@@ -7,13 +7,13 @@ import { hasWorkspacePermission, isPrivilegedRole, type WorkspacePermission } fr
 
 export type { WorkspacePermission } from "@/lib/workspace/permissions";
 export { hasWorkspacePermission } from "@/lib/workspace/permissions";
-export type WorkspacePrincipal = Readonly<{ userId: string; organizationId: string; memberRole: string; globalRole: string | null; isPrivileged: boolean }>;
+export type WorkspacePrincipal = Readonly<{ userId: string; organizationId: string; memberRole: string; globalRole: string | null; isPrivileged: boolean; twoFactorEnabled?: boolean }>;
 
 async function m7Authorize(principal: WorkspacePrincipal, permission: WorkspacePermission, resourceType: string, resourceId?: string) {
   const requestHeaders = await headers();
   const requestId = requestHeaders.get("x-request-id") ?? randomUUID();
   return enforcePersistedSecurity({
-    principal: { principalId: principal.userId, principalType: "HUMAN", organizationId: principal.organizationId, userId: principal.userId, scopes: [], permissions: hasWorkspacePermission(principal, permission) ? [permission] : [], authenticationMethod: "better-auth-session", authenticationStrength: "MFA" },
+    principal: { principalId: principal.userId, principalType: "HUMAN", organizationId: principal.organizationId, userId: principal.userId, scopes: [], permissions: hasWorkspacePermission(principal, permission) ? [permission] : [], authenticationMethod: "better-auth-session", authenticationStrength: principal.twoFactorEnabled ? "MFA" : "BASIC" },
     action: permission,
     resourceType,
     resourceId,
@@ -33,7 +33,7 @@ export async function getWorkspacePrincipal(): Promise<WorkspacePrincipal | null
     db.user.findUnique({ where: { id: session.user.id }, select: { role: true } }),
   ]);
   if (!membership) return null;
-  return { userId: session.user.id, organizationId, memberRole: membership.role, globalRole: user?.role ?? null, isPrivileged: isPrivilegedRole(user?.role) };
+  return { userId: session.user.id, organizationId, memberRole: membership.role, globalRole: user?.role ?? null, isPrivileged: isPrivilegedRole(user?.role), twoFactorEnabled: session.user.twoFactorEnabled === true };
 }
 
 export function canAccessWorkspaceOrganization(principal: Pick<WorkspacePrincipal, "organizationId" | "globalRole">, resourceOrganizationId: string) {
