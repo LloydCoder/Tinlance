@@ -31,42 +31,148 @@ async function audit(tx: Prisma.TransactionClient, run: RunRow, action: string, 
   await tx.$executeRaw(Prisma.sql`INSERT INTO "AuditEvent" ("id","organizationId","actorUserId","action","resourceType","resourceId","requestId","metadata") VALUES (${randomUUID()},${run.organization_id},${actorId ?? run.initiating_actor_user_id},${action},'WorkflowRun',${run.id},${run.request_id},${json(metadata)}::jsonb)`);
 }
 
-export async function startAutomation(input: { organizationId: string; projectId: string; assessmentId?: string; playbookSlug: string; actorUserId: string; triggerType: string; idempotencyKey: string; requestId: string; input: Record<string, unknown> }) {
+export async function startAutomation(input: {
+  organizationId: string;
+  projectId: string;
+  assessmentId?: string;
+  playbookSlug: string;
+  playbookVersionId?: string;
+  actorUserId: string;
+  triggerType: string;
+  idempotencyKey: string;
+  requestId: string;
+  input: Record<string, unknown>;
+}) {
   if (!input.idempotencyKey || input.idempotencyKey.length > 255) throw new Error("invalid idempotency key");
-  const existing = await db.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE "organization_id"=${input.organizationId} AND "idempotency_key"=${input.idempotencyKey} LIMIT 1`);
+  if (input.playbookSlug === "fde-technical-assessment" && !input.assessmentId) {
+    throw new Error("assessment_id_required");
+  }
+  if (input.triggerType === "SCHEDULED" && !input.playbookVersionId) {
+    throw new Error("scheduled_runs_require_pinned_playbook_version");
+  }
+
+  const existing = await db.$queryRaw<RunRow[]>(Prisma.sql`
+    SELECT * FROM "automation_workflow_runs"
+    WHERE "organization_id"=${input.organizationId} AND "idempotency_key"=${input.idempotencyKey}
+    LIMIT 1
+  `);
   if (existing[0]) return existing[0];
-  const versions = await db.$queryRaw<Array<{ playbook_id: string; playbook_version_id: string; definition: Definition; version: string; checksum: string }>>(Prisma.sql`SELECT p.id AS playbook_id, v.id AS playbook_version_id, v.definition, v.version, v.checksum FROM "automation_playbooks" p JOIN "automation_playbook_versions" v ON v.playbook_id=p.id WHERE (p."organization_id" IS NULL OR p."organization_id"=${input.organizationId}) AND p.slug=${input.playbookSlug} AND p.status='ACTIVE' AND v."deprecated_at" IS NULL ORDER BY (p."organization_id" IS NULL) ASC, v."active_at" DESC LIMIT 1`);
-  const version = versions[0]; if (!version) throw new Error("playbook not available");
+
+  const versions = input.playbookVersionId
+    ? await db.$queryRaw<Array<{ playbook_id: string; playbook_version_id: string; definition: Definition; version: string; checksum: string }>>(Prisma.sql`
+        SELECT p.id AS playbook_id,v.id AS playbook_version_id,v.definition,v.version,v.checksum
+        FROM "automation_playbooks" p
+        JOIN "automation_playbook_versions" v ON v.playbook_id=p.id
+        WHERE (p."organization_id" IS NULL OR p."organization_id"=${input.organizationId})
+          AND p.slug=${input.playbookSlug} AND p.status='ACTIVE' AND v.id=${input.playbookVersionId}
+        ORDER BY (p."organization_id" IS NULL) ASC
+        LIMIT 1
+      `)
+    : await db.$queryRaw<Array<{ playbook_id: string; playbook_version_id: string; definition: Definition; version: string; checksum: string }>>(Prisma.sql`
+        SELECT p.id AS playbook_id,v.id AS playbook_version_id,v.definition,v.version,v.checksum
+        FROM "automation_playbooks" p
+        JOIN "automation_playbook_versions" v ON v.playbook_id=p.id
+        WHERE (p."organization_id" IS NULL OR p."organization_id"=${input.organizationId})
+          AND p.slug=${input.playbookSlug} AND p.status='ACTIVE' AND v."deprecated_at" IS NULL
+        ORDER BY (p."organization_id" IS NULL) ASC,v."active_at" DESC
+        LIMIT 1
+      `);
+  const version = versions[0];
+  if (!version) throw new Error("playbook not available");
   if (workflowDefinitionChecksum(version.definition) !== version.checksum) throw new Error("playbook_definition_checksum_mismatch");
   validateWorkflowDefinition(version.definition);
   const hasSideEffects = version.definition.steps.some(step =>
     ["publish_report", "create_remediation", "close", "schedule_reassessment"].includes(step.key)
   );
-  if (version.definition.policies.dryRun && hasSideEffects) {
-    throw new Error("dry_run_policy_blocks_side_effects");
-  }
-  const project = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "Project" WHERE id=${input.projectId} AND "organizationId"=${input.organizationId} LIMIT 1`);
+  if (version.definition.policies.dryRun && hasSideEffects) throw new Error("dry_run_policy_blocks_side_effects");
+
+  const project = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT id FROM "Project" WHERE id=${input.projectId} AND "organizationId"=${input.organizationId} LIMIT 1
+  `);
   if (!project[0]) throw new Error("project not found");
-  await ensureProjectWorkspaceState(input.projectId, input.organizationId);
-  if (input.assessmentId) {
-    const assessment = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "Assessment" WHERE id=${input.assessmentId} AND "organizationId"=${input.organizationId} LIMIT 1`);
-    if (!assessment[0]) throw new Error("assessment not found");
+
+  const workspaceState = await ensureProjectWorkspaceState(input.projectId, input.organizationId);
+  if (!workspaceState) throw new Error("project_workspace_state_not_found");
+  if (input.triggerType === "SCHEDULED") {
+    if (workspaceState.status !== ProjectWorkspaceStatus.COMPLETED) {
+      throw new Error("scheduled_reassessment_requires_completed_project");
+    }
+  } else if (workspaceState.status !== ProjectWorkspaceStatus.ACTIVE) {
+    throw new Error("project_not_active_for_new_assessment");
   }
+
+  if (input.assessmentId) {
+    const assessment = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT a.id
+      FROM "Assessment" a
+      JOIN "WorkspaceAssessment" wa ON wa."assessmentId"=a.id
+      WHERE a.id=${input.assessmentId}
+        AND a."organizationId"=${input.organizationId}
+        AND wa."organizationId"=${input.organizationId}
+        AND wa."projectId"=${input.projectId}
+      LIMIT 1
+    `);
+    if (!assessment[0]) throw new Error("assessment_not_found_for_project");
+  }
+
+  const activeRuns = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT id FROM "automation_workflow_runs"
+    WHERE "organization_id"=${input.organizationId}
+      AND "project_id"=${input.projectId}
+      AND status IN ('PENDING','RUNNING','RETRYING','WAITING','WAITING_FOR_APPROVAL','PAUSED')
+    LIMIT 1
+  `);
+  if (activeRuns[0]) throw new Error("workflow_already_active_for_project");
+
   const runId = randomUUID();
   const steps = version.definition.steps;
   try {
     await db.$transaction(async tx => {
-      await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_workflow_runs" ("id","organization_id","project_id","assessment_id","playbook_id","playbook_version_id","status","trigger_type","initiating_actor_user_id","request_id","idempotency_key","state","started_at") VALUES (${runId},${input.organizationId},${input.projectId},${input.assessmentId ?? null},${version.playbook_id},${version.playbook_version_id},'RUNNING',${input.triggerType},${input.actorUserId},${input.requestId},${input.idempotencyKey},${json(input.input)}::jsonb,${now()})`);
+      await tx.$executeRaw(Prisma.sql`
+        INSERT INTO "automation_workflow_runs"
+          ("id","organization_id","project_id","assessment_id","playbook_id","playbook_version_id","status","trigger_type","initiating_actor_user_id","request_id","idempotency_key","state","started_at")
+        VALUES
+          (${runId},${input.organizationId},${input.projectId},${input.assessmentId ?? null},${version.playbook_id},
+           ${version.playbook_version_id},'RUNNING',${input.triggerType},${input.actorUserId},${input.requestId},
+           ${input.idempotencyKey},${json(input.input)}::jsonb,${now()})
+      `);
       for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
-        await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_workflow_steps" ("id","workflow_run_id","step_key","ordinal","step_type","capability_id","capability_version","required_approval","input") VALUES (${randomUUID()},${runId},${step.key},${i},${step.type},${step.capabilityId ?? null},${step.capabilityVersion ?? null},${step.type === "APPROVAL"},'{}'::jsonb)`);
+        await tx.$executeRaw(Prisma.sql`
+          INSERT INTO "automation_workflow_steps"
+            ("id","workflow_run_id","step_key","ordinal","step_type","capability_id","capability_version","required_approval","input")
+          VALUES
+            (${randomUUID()},${runId},${step.key},${i},${step.type},${step.capabilityId ?? null},
+             ${step.capabilityVersion ?? null},${step.type === "APPROVAL"},'{}'::jsonb)
+        `);
       }
-      const run = { id: runId, organization_id: input.organizationId, project_id: input.projectId, assessment_id: input.assessmentId ?? null, playbook_id: version.playbook_id, playbook_version_id: version.playbook_version_id, request_id: input.requestId, initiating_actor_user_id: input.actorUserId } as RunRow;
-      await appendEvent(tx, run, "WORKFLOW_STARTED", { playbook: input.playbookSlug, version: version.version, triggerType: input.triggerType });
+      const run = {
+        id: runId,
+        organization_id: input.organizationId,
+        project_id: input.projectId,
+        assessment_id: input.assessmentId ?? null,
+        playbook_id: version.playbook_id,
+        playbook_version_id: version.playbook_version_id,
+        request_id: input.requestId,
+        initiating_actor_user_id: input.actorUserId,
+      } as RunRow;
+      if (input.triggerType === "SCHEDULED") {
+        await transitionProjectState(tx, run, ProjectWorkspaceStatus.ASSESSMENT);
+      }
+      await appendEvent(tx, run, "WORKFLOW_STARTED", {
+        playbook: input.playbookSlug,
+        version: version.version,
+        triggerType: input.triggerType,
+        pinnedVersion: Boolean(input.playbookVersionId),
+      });
       await audit(tx, run, "WORKFLOW_STARTED", { playbook: input.playbookSlug, version: version.version }, input.actorUserId);
     });
   } catch (error) {
-    const duplicate = await db.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE "organization_id"=${input.organizationId} AND "idempotency_key"=${input.idempotencyKey} LIMIT 1`);
+    const duplicate = await db.$queryRaw<RunRow[]>(Prisma.sql`
+      SELECT * FROM "automation_workflow_runs"
+      WHERE "organization_id"=${input.organizationId} AND "idempotency_key"=${input.idempotencyKey}
+      LIMIT 1
+    `);
     if (duplicate[0]) return duplicate[0];
     throw error;
   }
