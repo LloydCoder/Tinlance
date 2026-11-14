@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isBookableSlot } from "@/lib/commercial/booking";
+import { isBookableSlot, nextLocalHalfHour } from "@/lib/commercial/booking";
 
 describe("commercial booking slot policy", () => {
   const now = new Date("2026-11-14T00:00:00.000Z");
@@ -20,6 +20,11 @@ describe("commercial booking slot policy", () => {
     expect(isBookableSlot(new Date("2026-11-16T08:00:30.000Z"), "Africa/Lagos", now)).toBe(false);
     expect(isBookableSlot(new Date("2026-11-16T08:00:00.500Z"), "Africa/Lagos", now)).toBe(false);
     expect(isBookableSlot(new Date("2026-11-16T08:00:00.000Z"), "Not/A_Timezone", now)).toBe(false);
+  });
+
+  it("aligns availability to half-hour boundaries in quarter-hour-offset timezones", () => {
+    // 08:44 in Kathmandu is 02:59 UTC; the next local half-hour is 09:00 / 03:15 UTC.
+    expect(nextLocalHalfHour(new Date("2026-11-16T02:59:00.000Z"), "Asia/Kathmandu").toISOString()).toBe("2026-11-16T03:15:00.000Z");
   });
 
   it("enforces the same one-hour minimum notice as the availability endpoint", () => {
