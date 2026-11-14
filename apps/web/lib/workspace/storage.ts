@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 
 const BLOB_API = "https://blob.vercel-storage.com";
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
@@ -42,6 +42,59 @@ export function sha256(buffer: ArrayBuffer) {
   return createHash("sha256").update(Buffer.from(buffer)).digest("hex");
 }
 
+/**
+ * Reads private evidence into a bounded buffer and verifies it against the
+ * immutable upload manifest before any bytes can be returned to a caller.
+ */
+export async function readVerifiedPrivateEvidence(
+  response: Response,
+  expectedSize: bigint,
+  expectedHash: string,
+): Promise<ArrayBuffer> {
+  if (expectedSize <= 0n || expectedSize > BigInt(MAX_UPLOAD_BYTES)) {
+    throw new Error("evidence_size_invalid");
+  }
+  if (!/^[a-f0-9]{64}$/i.test(expectedHash)) {
+    throw new Error("evidence_manifest_invalid");
+  }
+  if (!response.ok || !response.body) {
+    throw new Error("evidence_unavailable");
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > MAX_UPLOAD_BYTES || BigInt(total) > expectedSize) {
+        await reader.cancel().catch(() => undefined);
+        throw new Error("evidence_size_mismatch");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (BigInt(total) !== expectedSize) {
+    throw new Error("evidence_size_mismatch");
+  }
+
+  const bytes = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), total);
+  const actualHash = Buffer.from(createHash("sha256").update(bytes).digest("hex"), "hex");
+  const manifestHash = Buffer.from(expectedHash.toLowerCase(), "hex");
+  if (actualHash.length !== manifestHash.length || !timingSafeEqual(actualHash, manifestHash)) {
+    throw new Error("evidence_integrity_mismatch");
+  }
+
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+}
+
 export async function putPrivateEvidence(input: { organizationId: string; projectId: string; file: File }) {
   validateEvidenceFile(input.file);
   await validateMagicBytes(input.file);
@@ -68,7 +121,7 @@ export function isTrustedPrivateBlobUrl(value: string) {
   try {
     const url = new URL(value);
     return url.protocol === "https:"
-      && /^[a-z0-9][a-z0-9-]*\.private\.blob\.vercel-storage\.com$/i.test(url.hostname)
+      && /^[a-z0-9][a-z0-9-]*\\.private\\.blob\\.vercel-storage\\.com$/i.test(url.hostname)
       && !url.username
       && !url.password
       && !url.port
