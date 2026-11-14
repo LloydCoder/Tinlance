@@ -31,6 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
           id: proposalId,
           currentVersion: proposal.currentVersion,
           status: { in: [ProposalStatus.DRAFT, ProposalStatus.INTERNAL_REVIEW, ProposalStatus.SENT, ProposalStatus.VIEWED] },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
         data: { currentVersion: nextVersion, status: ProposalStatus.DRAFT },
       });
