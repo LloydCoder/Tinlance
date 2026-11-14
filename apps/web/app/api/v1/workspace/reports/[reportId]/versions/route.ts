@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getWorkspacePrincipal, hasWorkspacePermission } from "@/lib/workspace/authorization";
+import { canAccessWorkspaceOrganization, getWorkspacePrincipal, hasWorkspacePermission } from "@/lib/workspace/authorization";
 import { getRequestId } from "@/lib/security/request-id";
 
 const schema = z.object({ content: z.string().min(1).max(2_000_000) });
@@ -11,7 +11,7 @@ export async function POST(request: Request, context: { params: Promise<{ report
   const requestId = getRequestId(request); const { reportId } = await context.params; const principal = await getWorkspacePrincipal();
   if (!principal || !hasWorkspacePermission(principal, "report:create") || !principal.isPrivileged) return NextResponse.json({ error: "forbidden", requestId }, { status: 403, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const report = await db.workspaceReport.findUnique({ where: { id: reportId }, select: { id: true, organizationId: true, projectId: true, currentVersion: true, status: true } });
-  if (!report || (!principal.isPrivileged && report.organizationId !== principal.organizationId)) return NextResponse.json({ error: "not_found", requestId }, { status: 404, headers: { "cache-control": "no-store", "x-request-id": requestId } });
+  if (!report || !canAccessWorkspaceOrganization(principal, report.organizationId)) return NextResponse.json({ error: "not_found", requestId }, { status: 404, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const parsed = schema.safeParse(await request.json()); if (!parsed.success) return NextResponse.json({ error: "invalid_request", requestId }, { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const version = report.currentVersion + 1; const contentHash = createHash("sha256").update(parsed.data.content).digest("hex");
   await db.$transaction(async (tx) => {

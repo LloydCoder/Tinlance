@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { WorkspaceRemediationStatus } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getWorkspacePrincipal, hasWorkspacePermission } from "@/lib/workspace/authorization";
+import { canAccessWorkspaceOrganization, getWorkspacePrincipal, hasWorkspacePermission } from "@/lib/workspace/authorization";
 import { transitionRemediation } from "@/lib/workspace/service";
 import { getRequestId } from "@/lib/security/request-id";
 
@@ -12,7 +12,7 @@ export async function POST(request: Request, context: { params: Promise<{ remedi
   const requestId = getRequestId(request); const { remediationId } = await context.params; const principal = await getWorkspacePrincipal();
   if (!principal) return NextResponse.json({ error: "unauthorized", requestId }, { status: 401, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const remediation = await db.workspaceRemediation.findUnique({ where: { id: remediationId }, select: { organizationId: true } });
-  if (!remediation || (!principal.isPrivileged && remediation.organizationId !== principal.organizationId)) return NextResponse.json({ error: "not_found", requestId }, { status: 404, headers: { "cache-control": "no-store", "x-request-id": requestId } });
+  if (!remediation || !canAccessWorkspaceOrganization(principal, remediation.organizationId)) return NextResponse.json({ error: "not_found", requestId }, { status: 404, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const parsed = schema.safeParse(await request.json()); if (!parsed.success) return NextResponse.json({ error: "invalid_request", requestId }, { status: 400, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const privilegedOnly = ["READY_FOR_VERIFICATION","VERIFIED","CLOSED"].includes(parsed.data.to);
   const permission = privilegedOnly ? "remediation:verify" : "remediation:update";
