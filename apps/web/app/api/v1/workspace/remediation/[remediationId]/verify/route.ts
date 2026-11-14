@@ -105,8 +105,13 @@ export async function POST(request: Request, context: { params: Promise<{ remedi
       return created;
     });
 
+    const status = parsed.data.result === "PASS"
+      ? "verified"
+      : parsed.data.result === "FAIL"
+        ? "verification_failed"
+        : "verification_inconclusive";
     return NextResponse.json({
-      status: parsed.data.result === "PASS" ? "verified" : "verification_failed",
+      status,
       verificationId: verification.id,
       result: parsed.data.result,
       requestId,
