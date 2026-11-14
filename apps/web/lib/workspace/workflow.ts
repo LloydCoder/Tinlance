@@ -26,6 +26,12 @@ export const assertFindingTransition = (from: WorkspaceFindingStatus, to: Worksp
 export const assertRemediationTransition = (from: WorkspaceRemediationStatus, to: WorkspaceRemediationStatus) => assertAllowed(remediationTransitions, from, to, "remediation");
 export const assertReportTransition = (from: WorkspaceReportStatus, to: WorkspaceReportStatus) => assertAllowed(reportTransitions, from, to, "report");
 
+export function assertFindingCanEnterVerification(status: WorkspaceFindingStatus) {
+  if (![WorkspaceFindingStatus.IN_PROGRESS, WorkspaceFindingStatus.REMEDIATED, WorkspaceFindingStatus.VERIFICATION_PENDING].includes(status)) {
+    throw new Error("finding_not_ready_for_verification");
+  }
+}
+
 export function assertIndependentVerification(input: {
   remediationStatus: WorkspaceRemediationStatus;
   findingStatus: WorkspaceFindingStatus;
