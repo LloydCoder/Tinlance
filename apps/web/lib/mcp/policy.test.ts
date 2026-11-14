@@ -10,6 +10,12 @@ describe("MCP policy bindings", () => {
     expect(first).not.toBe(changed);
   });
 
+  it("canonicalizes equivalent objects regardless of top-level and nested property insertion order", () => {
+    const first = parameterHash({ projectId: "p1", nested: { alpha: 1, beta: 2 } });
+    const reordered = parameterHash({ nested: { beta: 2, alpha: 1 }, projectId: "p1" });
+    expect(first).toBe(reordered);
+  });
+
   it("is deterministic for equivalent JSON objects", () => {
     expect(parameterHash({ a: 1, b: "x" })).toBe(parameterHash({ a: 1, b: "x" }));
   });

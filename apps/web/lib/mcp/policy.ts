@@ -10,7 +10,26 @@ export type McpDecision = "ALLOW" | "DENY" | "REQUIRE_APPROVAL";
 export type McpPrincipal = { organizationId: string; agentId: string; clientId: string; ownerUserId: string; environment: string; scopes: readonly string[]; issuer?: string };
 function extra(authInfo: AuthInfo, key: string): string | null { const value = authInfo.extra?.[key]; return typeof value === "string" ? value : null; }
 export function principalFromAuth(authInfo: AuthInfo): McpPrincipal | null { const organizationId = extra(authInfo, "organizationId"); const agentId = extra(authInfo, "agentId"); const ownerUserId = extra(authInfo, "ownerUserId"); const environment = extra(authInfo, "environment") ?? "production"; if (!organizationId || !agentId || !ownerUserId || !authInfo.clientId) return null; return { organizationId, agentId, clientId: authInfo.clientId, ownerUserId, environment, scopes: authInfo.scopes, issuer: extra(authInfo, "issuer") ?? undefined }; }
-export function parameterHash(args: Record<string, unknown>) { const copy = { ...args }; delete copy.approvalId; return createHash("sha256").update(JSON.stringify(copy)).digest("hex"); }
+function canonicalizeJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalizeJson);
+  if (value !== null && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(record)
+        .sort()
+        .map((key) => [key, canonicalizeJson(record[key])]),
+    );
+  }
+  return value;
+}
+
+export function parameterHash(args: Record<string, unknown>) {
+  const copy = { ...args };
+  delete copy.approvalId;
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalizeJson(copy)))
+    .digest("hex");
+}
 
 export async function authorizeMcpTool(input: { principal: McpPrincipal; tool: McpToolDefinition; args: Record<string, unknown>; requestId: string }) {
   const { principal, tool, args, requestId } = input;
