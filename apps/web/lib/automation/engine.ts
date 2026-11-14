@@ -382,9 +382,32 @@ export async function workerTick(workerId: string, limit = 5) {
 
 async function processRun(run: RunRow) {
   const definition = await loadDefinition(run); const stepDef = definition.steps[run.current_step];
-  if (!stepDef) { await db.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='COMPLETED',result=${json({ completed: true })}::jsonb,"completed_at"=${now()},"updated_at"=${now()} WHERE id=${run.id}`); return; }
+  if (!stepDef) {
+    await db.$transaction(async tx => {
+      const fresh = (await tx.$queryRaw<RunRow[]>(Prisma.sql`
+        SELECT * FROM "automation_workflow_runs" WHERE id=${run.id} FOR UPDATE
+      `))[0];
+      if (!fresh || !["RUNNING", "WAITING", "RETRYING"].includes(fresh.status)) return;
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "automation_workflow_runs"
+        SET status='COMPLETED',result=${json({ completed: true })}::jsonb,
+          "completed_at"=${now()},"next_run_at"=NULL,"updated_at"=${now()}
+        WHERE id=${run.id} AND status IN ('RUNNING','WAITING','RETRYING')
+      `);
+      await appendEvent(tx, fresh, "WORKFLOW_COMPLETED", { completed: true });
+      await audit(tx, fresh, "WORKFLOW_COMPLETED", { completed: true });
+    });
+    return;
+  }
   const steps = await db.$queryRaw<StepRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_steps" WHERE "workflow_run_id"=${run.id} AND "step_key"=${stepDef.key} LIMIT 1`); const step=steps[0]; if(!step) throw new Error("workflow step missing");
-  if (step.status === "COMPLETED") { await db.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET "current_step"="current_step"+1,status='RUNNING',"next_run_at"=NULL,"updated_at"=${now()} WHERE id=${run.id}`); return; }
+  if (step.status === "COMPLETED") {
+    await db.$executeRaw(Prisma.sql`
+      UPDATE "automation_workflow_runs"
+      SET "current_step"="current_step"+1,status='RUNNING',"next_run_at"=NULL,"updated_at"=${now()}
+      WHERE id=${run.id} AND status IN ('RUNNING','WAITING','RETRYING')
+    `);
+    return;
+  }
   if (step.step_type === "APPROVAL") {
     const approvals = await db.$queryRaw<Array<{ status: string }>>(Prisma.sql`SELECT status FROM "automation_approvals" WHERE "step_id"=${step.id} LIMIT 1`);
     if (approvals[0]?.status === "APPROVED") { await completeStep(run,step,{approved:true},stepDef); return; }
@@ -453,6 +476,8 @@ async function processRun(run: RunRow) {
 async function completeStep(run: RunRow, step: StepRow, output: Record<string, unknown>, definitionStep: DefinitionStep, started=Date.now(), attemptNo?: number) {
   await db.$transaction(async tx=>{
     const fresh=(await tx.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${run.id} FOR UPDATE`))[0];
+    if (!fresh) throw new Error("workflow run not found");
+    if (!["RUNNING", "WAITING", "RETRYING"].includes(fresh.status)) return;
     await persistStepOutcome(tx,fresh,step,output,definitionStep);
     await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_steps" SET status='COMPLETED',output=${json(output)}::jsonb,"completed_at"=${now()},duration_ms=${Date.now()-started},"updated_at"=${now()} WHERE id=${step.id}`);
     if(attemptNo) await tx.$executeRaw(Prisma.sql`UPDATE "automation_step_attempts" SET status='COMPLETED',"completed_at"=${now()},duration_ms=${Date.now()-started} WHERE "step_id"=${step.id} AND "attempt_no"=${attemptNo}`);
@@ -462,7 +487,25 @@ async function completeStep(run: RunRow, step: StepRow, output: Record<string, u
   });
 }
 
-async function failRun(run: RunRow,error:unknown){const message=String(error instanceof Error?error.message:error).slice(0,1000);await db.$transaction(async tx=>{await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='FAILED',"error_code"='WORKFLOW_FAILURE',"error_message"=${message},"completed_at"=${now()},"next_run_at"=NULL,"updated_at"=${now()} WHERE id=${run.id}`);await appendEvent(tx,run,"WORKFLOW_FAILED",{error:message});await audit(tx,run,"WORKFLOW_FAILED",{error:message});});}
+async function failRun(run: RunRow, error: unknown) {
+  const message = String(error instanceof Error ? error.message : error).slice(0, 1000);
+  await db.$transaction(async tx => {
+    const rows = await tx.$queryRaw<RunRow[]>(Prisma.sql`
+      SELECT * FROM "automation_workflow_runs" WHERE id=${run.id} FOR UPDATE
+    `);
+    const fresh = rows[0];
+    if (!fresh || !["RUNNING", "WAITING", "RETRYING", "WAITING_FOR_APPROVAL"].includes(fresh.status)) return;
+    const updated = await tx.$executeRaw(Prisma.sql`
+      UPDATE "automation_workflow_runs"
+      SET status='FAILED',"error_code"='WORKFLOW_FAILURE',"error_message"=${message},
+        "completed_at"=${now()},"next_run_at"=NULL,"updated_at"=${now()}
+      WHERE id=${run.id} AND status IN ('RUNNING','WAITING','RETRYING','WAITING_FOR_APPROVAL')
+    `);
+    if (updated !== 1) return;
+    await appendEvent(tx, fresh, "WORKFLOW_FAILED", { error: message });
+    await audit(tx, fresh, "WORKFLOW_FAILED", { error: message });
+  });
+}
 
 export async function approveAutomation(runId: string, organizationId: string, approvalId: string, actorUserId: string, decision: "APPROVED" | "REJECTED") {
   return db.$transaction(async tx => {
