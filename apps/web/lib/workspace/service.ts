@@ -1,6 +1,6 @@
 import { ProjectWorkspaceStatus, WorkspaceFindingStatus, WorkspaceRemediationStatus, WorkspaceReportStatus } from "@prisma/client";
 import { db } from "@/lib/db";
-import { assertFindingTransition, assertProjectTransition, assertRemediationTransition, assertReportTransition } from "@/lib/workspace/workflow";
+import { assertFindingCanEnterVerification, assertFindingTransition, assertProjectTransition, assertRemediationTransition, assertReportTransition } from "@/lib/workspace/workflow";
 
 export async function ensureProjectWorkspaceState(projectId: string, organizationId: string) {
   const project = await db.project.findFirst({ where: { id: projectId, organizationId }, select: { id: true, status: true, dueAt: true, engagementId: true } });
@@ -28,7 +28,7 @@ export async function transitionFinding(input: { findingId: string; organization
   if (!finding) throw new Error("finding_not_found");
   assertFindingTransition(finding.status, input.to);
   return db.$transaction(async (tx) => {
-    const result = await tx.workspaceFinding.updateMany({ where: { id: finding.id, organizationId: input.organizationId, status: finding.status }, data: { status: input.to, visibility: ["CUSTOMER_VISIBLE", "OPEN", "ACKNOWLEDGED", "IN_PROGRESS", "REMEDIATED", "VERIFICATION_PENDING", "VERIFIED", "CLOSED"].includes(input.to) ? "CUSTOMER" : undefined } });
+    const result = await tx.workspaceFinding.updateMany({ where: { id: finding.id, organizationId: input.organizationId, status: finding.status }, data: { status: input.to, visibility: ["CUSTOMER_VISIBLE", "OPEN", "ACKNOWLEDGED", "IN_PROGRESS", "REMEDIATED", "VERIFICATION_PENDING", "CLOSED"].includes(input.to) ? "CUSTOMER" : undefined } });
     if (result.count !== 1) throw new Error("finding_transition_race");
     await tx.auditEvent.create({ data: { organizationId: input.organizationId, actorUserId: input.actorUserId, action: "FINDING_STATUS_CHANGED", resourceType: "workspace_finding", resourceId: finding.id, requestId: input.requestId, metadata: { from: finding.status, to: input.to } } });
     return { status: input.to };
@@ -40,12 +40,25 @@ export async function transitionRemediation(input: { remediationId: string; orga
   if (!remediation) throw new Error("remediation_not_found");
   assertRemediationTransition(remediation.status, input.to);
   return db.$transaction(async (tx) => {
-    const result = await tx.workspaceRemediation.updateMany({ where: { id: remediation.id, organizationId: input.organizationId, status: remediation.status }, data: { status: input.to, completedAt: ["VERIFIED", "CLOSED"].includes(input.to) ? new Date() : undefined, verificationStatus: input.to === "VERIFIED" ? "PASS" : undefined } });
-    if (result.count !== 1) throw new Error("remediation_transition_race");
     if (input.to === "READY_FOR_VERIFICATION") {
       const finding = await tx.workspaceFinding.findFirst({ where: { id: remediation.findingId, organizationId: input.organizationId }, select: { status: true } });
-      if (finding && ["IN_PROGRESS", "REMEDIATED"].includes(finding.status)) await tx.workspaceFinding.updateMany({ where: { id: remediation.findingId, organizationId: input.organizationId }, data: { status: "VERIFICATION_PENDING", visibility: "CUSTOMER" } });
+      if (!finding) throw new Error("finding_not_found");
+      assertFindingCanEnterVerification(finding.status);
+      if (finding.status !== "VERIFICATION_PENDING") {
+        const findingUpdate = await tx.workspaceFinding.updateMany({
+          where: { id: remediation.findingId, organizationId: input.organizationId, status: finding.status },
+          data: { status: "VERIFICATION_PENDING", visibility: "CUSTOMER" },
+        });
+        if (findingUpdate.count !== 1) throw new Error("finding_transition_race");
+      }
     }
+
+    const result = await tx.workspaceRemediation.updateMany({
+      where: { id: remediation.id, organizationId: input.organizationId, status: remediation.status },
+      data: { status: input.to, completedAt: input.to === "CLOSED" ? new Date() : undefined },
+    });
+    if (result.count !== 1) throw new Error("remediation_transition_race");
+
     await tx.auditEvent.create({ data: { organizationId: input.organizationId, actorUserId: input.actorUserId, action: "REMEDIATION_STATUS_CHANGED", resourceType: "workspace_remediation", resourceId: remediation.id, requestId: input.requestId, metadata: { from: remediation.status, to: input.to } } });
     return { status: input.to };
   });
