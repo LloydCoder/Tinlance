@@ -20,7 +20,7 @@ type ScheduleRow = {
 };
 
 async function authorized(request: Request) {
-  const provided = request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "").trim();
+  const provided = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
   if (!provided) return false;
 
   const cronSecret = process.env.CRON_SECRET;
