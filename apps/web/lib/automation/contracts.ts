@@ -41,8 +41,8 @@ export function isIndependentlyVerifiedRemediation(input: {
   ownerUserId: string | null;
   verifierUserId: string | null;
 }) {
-  return input.remediationStatus === "VERIFIED" &&
-    input.findingStatus === "VERIFIED" &&
+  return ["VERIFIED", "CLOSED"].includes(input.remediationStatus) &&
+    ["VERIFIED", "CLOSED"].includes(input.findingStatus) &&
     input.verificationResult === "PASS" &&
     Boolean(input.verifierUserId) &&
     input.verifierUserId !== input.ownerUserId;
