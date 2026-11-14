@@ -5,7 +5,7 @@ import { generateAssessmentReport } from "@/lib/workspace/report";
 import { authorizeWorkflowStep } from "@/lib/security-gateway/workflow";
 import { ensureProjectWorkspaceState } from "@/lib/workspace/service";
 import { assertProjectTransition, assertReportTransition } from "@/lib/workspace/workflow";
-import { isIndependentlyVerifiedRemediation, validateWorkflowSignal } from "./contracts";
+import { isCustomerVisibleFinding, isIndependentlyVerifiedRemediation, validateWorkflowSignal } from "./contracts";
 
 export type AutomationStatus = "PENDING" | "RUNNING" | "WAITING" | "PAUSED" | "WAITING_FOR_APPROVAL" | "RETRYING" | "COMPLETED" | "FAILED" | "CANCELLED" | "EXPIRED";
 export type StepStatus = "PENDING" | "RUNNING" | "WAITING" | "PAUSED" | "WAITING_FOR_APPROVAL" | "RETRYING" | "COMPLETED" | "FAILED" | "CANCELLED";
@@ -118,7 +118,21 @@ async function executeStep(run: RunRow, step: StepRow, definitionStep: Definitio
   if (step.step_key === "persist_result") return { persisted: true };
   if (step.step_key === "generate_findings") return { findings: extractFindings((state.fdeResult as Record<string, unknown>) ?? {}) };
   if (step.step_key === "request_evidence") return state.customerEvidenceId ? { evidenceId: String(state.customerEvidenceId) } : { waitingForInput: true };
-  if (step.step_key === "draft_report") return { drafted: true };
+  if (step.step_key === "draft_report") {
+    const findings = await db.$queryRaw<Array<{ id: string; visibility: string }>>(Prisma.sql`
+      SELECT id,visibility
+      FROM "WorkspaceFinding"
+      WHERE "organizationId"=${run.organization_id}
+        AND "projectId"=${run.project_id}
+        AND "assessmentId"=${run.assessment_id ?? ""}
+        AND "idempotencyKey" LIKE ${`${run.id}:finding:%`}
+      ORDER BY id
+    `);
+    if (findings.some(finding => !isCustomerVisibleFinding({ visibility: finding.visibility }))) {
+      return { waitingForInput: true };
+    }
+    return { drafted: true };
+  }
   if (step.step_key === "publish_report") return { published: true };
   if (step.step_key === "create_remediation") return { remediationCreated: true };
   if (step.step_key === "verification") {
@@ -213,10 +227,39 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
     if (!existing[0]) await tx.$executeRaw(Prisma.sql`INSERT INTO "WorkspaceEvidenceRequest" ("id","organizationId","projectId","assessmentId","title","description","requestedType","requestedByUserId") VALUES (${randomUUID()},${run.organization_id},${run.project_id},${run.assessment_id ?? null},'M4 automated assessment evidence','Provide supporting evidence required to validate the automated assessment output.','assessment-evidence',${run.initiating_actor_user_id})`);
   }
   if (step.step_key === "draft_report") {
-    const findings = await tx.$queryRaw<Array<{ id: string; title: string; description: string; severity: string; category: string; affectedAsset: string | null; recommendation: string }>>(Prisma.sql`SELECT id,title,description,severity,category,"affectedAsset",recommendation FROM "WorkspaceFinding" WHERE "organizationId"=${run.organization_id} AND "projectId"=${run.project_id} AND "assessmentId"=${run.assessment_id ?? ""} ORDER BY "createdAt"`);
-    const evidence = await tx.$queryRaw<Array<{ id: string; title: string; contentHash: string; type: string }>>(Prisma.sql`SELECT id,title,"contentHash",type FROM "WorkspaceEvidence" WHERE "organizationId"=${run.organization_id} AND "projectId"=${run.project_id} ORDER BY "createdAt"`);
-    const remediation = await tx.$queryRaw<Array<{ findingId: string; title: string; status: string; priority: string }>>(Prisma.sql`SELECT "findingId",title,status,priority FROM "WorkspaceRemediation" WHERE "organizationId"=${run.organization_id} AND "projectId"=${run.project_id} ORDER BY "createdAt"`);
-    const report = generateAssessmentReport({ title: "FDE Automated Technical Assessment", projectName: run.project_id, assessmentType: "FDE Technical Assessment", assessmentPeriod: new Date().toISOString(), objective: "Automated assessment executed through the canonical Tinlance FDE API boundary.", methodology: "Validated scope → FDE Mastery triage → structured finding normalization → evidence traceability → human review.", findings, evidence, remediation, limitations: "Automation output is not a certification; consequential publication remains human-controlled." });
+    const findings = await tx.$queryRaw<Array<{ id: string; title: string; description: string; severity: string; category: string; affectedAsset: string | null; recommendation: string }>>(Prisma.sql`
+      SELECT id,title,description,severity,category,"affectedAsset",recommendation
+      FROM "WorkspaceFinding"
+      WHERE "organizationId"=${run.organization_id}
+        AND "projectId"=${run.project_id}
+        AND "assessmentId"=${run.assessment_id ?? ""}
+        AND visibility='CUSTOMER'
+      ORDER BY "createdAt"
+    `);
+    const evidence = await tx.$queryRaw<Array<{ id: string; title: string; contentHash: string; type: string }>>(Prisma.sql`
+      SELECT id,title,"contentHash",type
+      FROM "WorkspaceEvidence"
+      WHERE "organizationId"=${run.organization_id}
+        AND "projectId"=${run.project_id}
+        AND ("assessmentId" IS NULL OR "assessmentId"=${run.assessment_id})
+      ORDER BY "createdAt"
+    `);
+    const remediation = await tx.$queryRaw<Array<{ findingId: string; title: string; status: string; priority: string }>>(Prisma.sql`
+      SELECT r."findingId",r.title,r.status,r.priority
+      FROM "WorkspaceRemediation" r
+      JOIN "WorkspaceFinding" f ON f.id=r."findingId" AND f."organizationId"=r."organizationId"
+      WHERE r."organizationId"=${run.organization_id}
+        AND r."projectId"=${run.project_id}
+        AND f."assessmentId"=${run.assessment_id ?? ""}
+        AND f.visibility='CUSTOMER'
+      ORDER BY r."createdAt"
+    `);
+    const projectRows = await tx.$queryRaw<Array<{ name: string }>>(Prisma.sql`
+      SELECT name FROM "Project"
+      WHERE id=${run.project_id} AND "organizationId"=${run.organization_id}
+      LIMIT 1
+    `);
+    const report = generateAssessmentReport({ title: "FDE Automated Technical Assessment", projectName: projectRows[0]?.name ?? run.project_id, assessmentType: "FDE Technical Assessment", assessmentPeriod: new Date().toISOString(), objective: "Automated assessment executed through the canonical Tinlance FDE API boundary.", methodology: "Validated scope → FDE Mastery triage → reviewed customer-visible findings → assessment-scoped evidence → human approval.", findings, evidence, remediation, limitations: "Automation output is not a certification; consequential publication remains human-controlled." });
     const reportId = randomUUID();
     await tx.$executeRaw(Prisma.sql`INSERT INTO "WorkspaceReport" ("id","organizationId","projectId","assessmentId","title","type","currentVersion","status","summary","generatedAt","contentHash","idempotencyKey") VALUES (${reportId},${run.organization_id},${run.project_id},${run.assessment_id ?? null},'FDE Automated Technical Assessment','AUTOMATED_FDE',1,'DRAFT','Draft generated by M4 automation.',${now()},${report.contentHash},${`${run.id}:report`}) ON CONFLICT ("idempotencyKey") DO NOTHING`);
     const reportRows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "WorkspaceReport" WHERE "idempotencyKey"=${`${run.id}:report`} LIMIT 1`);
@@ -245,7 +288,15 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
     if (typeof publishedByUserId !== "string") throw new Error("report_approval_actor_missing");
   }
   if (step.step_key === "create_remediation") {
-    const findings = await tx.$queryRaw<Array<{ id: string; title: string; recommendation: string; severity: string }>>(Prisma.sql`SELECT id,title,recommendation,severity FROM "WorkspaceFinding" WHERE "organizationId"=${run.organization_id} AND "projectId"=${run.project_id} AND "assessmentId"=${run.assessment_id ?? ""}`);
+    const findings = await tx.$queryRaw<Array<{ id: string; title: string; recommendation: string; severity: string }>>(Prisma.sql`
+      SELECT id,title,recommendation,severity
+      FROM "WorkspaceFinding"
+      WHERE "organizationId"=${run.organization_id}
+        AND "projectId"=${run.project_id}
+        AND "assessmentId"=${run.assessment_id ?? ""}
+        AND visibility='CUSTOMER'
+        AND status IN ('CUSTOMER_VISIBLE','OPEN','ACKNOWLEDGED','IN_PROGRESS','REMEDIATED','VERIFICATION_PENDING','VERIFIED')
+    `);
     for (const finding of findings) await tx.$executeRaw(Prisma.sql`INSERT INTO "WorkspaceRemediation" ("id","organizationId","projectId","findingId","title","description","priority","status","idempotencyKey") VALUES (${randomUUID()},${run.organization_id},${run.project_id},${finding.id},${`Remediate: ${finding.title}`},${finding.recommendation},${finding.severity},'OPEN',${`${run.id}:remediation:${finding.id}`}) ON CONFLICT ("idempotencyKey") DO NOTHING`);
   }
   if (step.step_key === "verification") {
