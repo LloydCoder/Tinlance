@@ -517,10 +517,10 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
 }
 function stateValue(run: RunRow, key: string) { return (run.state ?? {})[key]; }
 
-export async function workerTick(workerId: string, limit = 5) {
+export async function workerTick(workerId: string, limit = 1) {
   const processed: string[] = [];
   for (let i = 0; i < Math.min(limit, 10); i++) {
-    const claimed = await db.$queryRaw<RunRow[]>(Prisma.sql`WITH candidate AS (SELECT id FROM "automation_workflow_runs" WHERE status IN ('PENDING','RUNNING','RETRYING','WAITING','WAITING_FOR_APPROVAL') AND (lease_expires_at IS NULL OR lease_expires_at < ${now()}) AND (next_run_at IS NULL OR next_run_at <= ${now()}) ORDER BY updated_at ASC FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE "automation_workflow_runs" r SET "lease_owner"=${workerId},"lease_expires_at"=${new Date(Date.now()+120000)},"updated_at"=${now()},status=CASE WHEN r.status='PENDING' THEN 'RUNNING' ELSE r.status END FROM candidate WHERE r.id=candidate.id RETURNING r.*`);
+    const claimed = await db.$queryRaw<RunRow[]>(Prisma.sql`WITH candidate AS (SELECT id FROM "automation_workflow_runs" WHERE status IN ('PENDING','RUNNING','RETRYING','WAITING','WAITING_FOR_APPROVAL') AND (lease_expires_at IS NULL OR lease_expires_at < ${now()}) AND (next_run_at IS NULL OR next_run_at <= ${now()}) ORDER BY updated_at ASC FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE "automation_workflow_runs" r SET "lease_owner"=${workerId},"lease_expires_at"=${new Date(Date.now()+600000)},"updated_at"=${now()},status=CASE WHEN r.status='PENDING' THEN 'RUNNING' ELSE r.status END FROM candidate WHERE r.id=candidate.id RETURNING r.*`);
     const run = claimed[0]; if (!run) break;
     try { await processRun(run); processed.push(run.id); } catch (error) { await failRun(run, error); }
     await db.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET "lease_owner"=NULL,"lease_expires_at"=NULL,"updated_at"=${now()} WHERE id=${run.id} AND "lease_owner"=${workerId}`);
