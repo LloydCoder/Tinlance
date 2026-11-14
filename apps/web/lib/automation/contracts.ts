@@ -34,6 +34,39 @@ export function validateWorkflowDefinition(definition: unknown) {
   return true;
 }
 
+export function isIndependentlyVerifiedRemediation(input: {
+  remediationStatus: string;
+  findingStatus: string;
+  verificationResult: string | null;
+  ownerUserId: string | null;
+  verifierUserId: string | null;
+}) {
+  return input.remediationStatus === "VERIFIED" &&
+    input.findingStatus === "VERIFIED" &&
+    input.verificationResult === "PASS" &&
+    Boolean(input.verifierUserId) &&
+    input.verifierUserId !== input.ownerUserId;
+}
+
+export function validateWorkflowSignal(signal: unknown): { customerEvidenceId?: string } {
+  if (!signal || typeof signal !== "object" || Array.isArray(signal)) {
+    throw new Error("unsupported workflow signal");
+  }
+  const value = signal as Record<string, unknown>;
+  const keys = Object.keys(value);
+  if (keys.length === 0) return {};
+  if (
+    keys.length !== 1 ||
+    keys[0] !== "customerEvidenceId" ||
+    typeof value.customerEvidenceId !== "string" ||
+    value.customerEvidenceId.trim().length === 0 ||
+    value.customerEvidenceId.length > 255
+  ) {
+    throw new Error("unsupported workflow signal");
+  }
+  return { customerEvidenceId: value.customerEvidenceId.trim() };
+}
+
 export function isUntrustedContent(value: unknown) {
   if (typeof value === "string") return value.length > 0;
   if (Array.isArray(value)) return value.some(isUntrustedContent);
