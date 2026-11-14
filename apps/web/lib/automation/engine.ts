@@ -38,6 +38,12 @@ export async function startAutomation(input: { organizationId: string; projectId
   const versions = await db.$queryRaw<Array<{ playbook_id: string; playbook_version_id: string; definition: Definition; version: string }>>(Prisma.sql`SELECT p.id AS playbook_id, v.id AS playbook_version_id, v.definition, v.version FROM "automation_playbooks" p JOIN "automation_playbook_versions" v ON v.playbook_id=p.id WHERE (p."organization_id" IS NULL OR p."organization_id"=${input.organizationId}) AND p.slug=${input.playbookSlug} AND p.status='ACTIVE' ORDER BY (p."organization_id" IS NULL) ASC, v."active_at" DESC LIMIT 1`);
   const version = versions[0]; if (!version) throw new Error("playbook not available");
   validateWorkflowDefinition(version.definition);
+  const hasSideEffects = version.definition.steps.some(step =>
+    ["publish_report", "create_remediation", "close", "schedule_reassessment"].includes(step.key)
+  );
+  if (version.definition.policies.dryRun && hasSideEffects) {
+    throw new Error("dry_run_policy_blocks_side_effects");
+  }
   const project = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "Project" WHERE id=${input.projectId} AND "organizationId"=${input.organizationId} LIMIT 1`);
   if (!project[0]) throw new Error("project not found");
   await ensureProjectWorkspaceState(input.projectId, input.organizationId);
@@ -429,6 +435,10 @@ async function processRun(run: RunRow) {
     return;
   }
   const stepDef = definition.steps[run.current_step];
+  if (stepDef && definition.policies.dryRun &&
+      ["publish_report", "create_remediation", "close", "schedule_reassessment"].includes(stepDef.key)) {
+    throw new Error("dry_run_policy_blocks_side_effect");
+  }
   if (!stepDef) {
     await db.$transaction(async tx => {
       const fresh = (await tx.$queryRaw<RunRow[]>(Prisma.sql`
