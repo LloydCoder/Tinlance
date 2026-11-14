@@ -417,6 +417,10 @@ async function processRun(run: RunRow) {
   }
   if (step.step_type === "CUSTOMER_INPUT" && step.step_key === "request_evidence" && !run.state.customerEvidenceId) {
     await db.$transaction(async tx => {
+      const fresh = (await tx.$queryRaw<RunRow[]>(Prisma.sql`
+        SELECT * FROM "automation_workflow_runs" WHERE id=${run.id} FOR UPDATE
+      `))[0];
+      if (!fresh || !["RUNNING", "RETRYING", "WAITING"].includes(fresh.status)) return;
       await tx.$executeRaw(Prisma.sql`
         INSERT INTO "WorkspaceEvidenceRequest"
           ("id","organizationId","projectId","assessmentId","title","description","requestedType","requestedByUserId","status")
@@ -436,7 +440,7 @@ async function processRun(run: RunRow) {
         SET status='WAITING',"updated_at"=${now()}
         WHERE id=${step.id}
       `);
-      await appendEvent(tx, run, "WORKFLOW_WAITING", { reason: "customer_input" }, step.step_key);
+      await appendEvent(tx, fresh, "WORKFLOW_WAITING", { reason: "customer_input" }, step.step_key);
     });
     return;
   }
