@@ -17,6 +17,8 @@ describe("commercial booking slot policy", () => {
 
   it("accepts only half-hour boundaries and valid IANA timezones", () => {
     expect(isBookableSlot(new Date("2026-11-16T08:15:00.000Z"), "Africa/Lagos", now)).toBe(false);
+    expect(isBookableSlot(new Date("2026-11-16T08:00:30.000Z"), "Africa/Lagos", now)).toBe(false);
+    expect(isBookableSlot(new Date("2026-11-16T08:00:00.500Z"), "Africa/Lagos", now)).toBe(false);
     expect(isBookableSlot(new Date("2026-11-16T08:00:00.000Z"), "Not/A_Timezone", now)).toBe(false);
   });
 
