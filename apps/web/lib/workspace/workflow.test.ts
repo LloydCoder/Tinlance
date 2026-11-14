@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ProjectWorkspaceStatus, WorkspaceFindingStatus, WorkspaceRemediationStatus, WorkspaceReportStatus } from "@prisma/client";
-import { assertFindingTransition, assertIndependentVerification, assertProjectTransition, assertRemediationTransition, assertReportTransition } from "./workflow";
+import { assertFindingCanEnterVerification, assertFindingTransition, assertIndependentVerification, assertProjectTransition, assertRemediationTransition, assertReportTransition } from "./workflow";
 
 describe("M3 workspace state machines", () => {
   it("allows the project delivery path", () => {
@@ -38,6 +38,14 @@ describe("M3 workspace state machines", () => {
 
   it("blocks direct finding transitions from bypassing the verification record", () => {
     expect(() => assertFindingTransition(WorkspaceFindingStatus.VERIFICATION_PENDING, WorkspaceFindingStatus.VERIFIED)).toThrow(/Invalid finding transition/);
+  });
+
+  it("requires a finding to be in a remediated workflow state before verification", () => {
+    expect(() => assertFindingCanEnterVerification(WorkspaceFindingStatus.IN_PROGRESS)).not.toThrow();
+    expect(() => assertFindingCanEnterVerification(WorkspaceFindingStatus.REMEDIATED)).not.toThrow();
+    expect(() => assertFindingCanEnterVerification(WorkspaceFindingStatus.VERIFICATION_PENDING)).not.toThrow();
+    expect(() => assertFindingCanEnterVerification(WorkspaceFindingStatus.ACCEPTED_RISK)).toThrow("finding_not_ready_for_verification");
+    expect(() => assertFindingCanEnterVerification(WorkspaceFindingStatus.CLOSED)).toThrow("finding_not_ready_for_verification");
   });
 
   it("requires a ready remediation, pending finding and independent verifier", () => {
