@@ -237,10 +237,12 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
     assertReportTransition(report.status, WorkspaceReportStatus.PUBLISHED);
     const updated = await tx.$executeRaw(Prisma.sql`
       UPDATE "WorkspaceReport"
-      SET status='PUBLISHED',"publishedAt"=${now()},"publishedByUserId"=${run.initiating_actor_user_id},"updatedAt"=${now()}
+      SET status='PUBLISHED',"publishedAt"=${now()},"publishedByUserId"=${String(stateValue(run, "reportApprovedByUserId") ?? "")},"updatedAt"=${now()}
       WHERE id=${reportId} AND "organizationId"=${run.organization_id} AND status='APPROVED'
     `);
     if (updated !== 1) throw new Error("report_publish_race");
+    const publishedByUserId = stateValue(run, "reportApprovedByUserId");
+    if (typeof publishedByUserId !== "string") throw new Error("report_approval_actor_missing");
   }
   if (step.step_key === "create_remediation") {
     const findings = await tx.$queryRaw<Array<{ id: string; title: string; recommendation: string; severity: string }>>(Prisma.sql`SELECT id,title,recommendation,severity FROM "WorkspaceFinding" WHERE "organizationId"=${run.organization_id} AND "projectId"=${run.project_id} AND "assessmentId"=${run.assessment_id ?? ""}`);
@@ -333,7 +335,33 @@ async function processRun(run: RunRow) {
   const attemptRows = await db.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`SELECT COUNT(*) FROM "automation_step_attempts" WHERE "step_id"=${step.id}`); const attemptNo=Number(attemptRows[0]?.count??0n)+1; const maxAttempts=stepDef.retry?.maxAttempts??1;
   await db.$transaction(async tx=>{ await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_steps" SET status='RUNNING',"started_at"=COALESCE("started_at",${now()}),"actor_type"='system',"actor_id"=${run.initiating_actor_user_id},"authorization_decision"='ALLOW',"updated_at"=${now()} WHERE id=${step.id}`); await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_step_attempts" ("id","step_id","attempt_no","status","request_id") VALUES (${randomUUID()},${step.id},${attemptNo},'RUNNING',${run.request_id})`); });
   const started=Date.now();
-  try { const output=await executeStep(run,step,stepDef); if(output.waitingForInput){await db.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='WAITING',"updated_at"=${now()} WHERE id=${run.id}`);return;} await completeStep(run,step,output,stepDef,started,attemptNo); }
+  try {
+    const output = await executeStep(run, step, stepDef);
+    if (output.waitingForInput) {
+      await db.$transaction(async tx => {
+        await tx.$executeRaw(Prisma.sql`
+          UPDATE "automation_workflow_runs"
+          SET status='WAITING',"next_run_at"=NULL,"updated_at"=${now()}
+          WHERE id=${run.id}
+        `);
+        await tx.$executeRaw(Prisma.sql`
+          UPDATE "automation_workflow_steps"
+          SET status='WAITING',"updated_at"=${now()}
+          WHERE id=${step.id}
+        `);
+        if (attemptNo) {
+          await tx.$executeRaw(Prisma.sql`
+            UPDATE "automation_step_attempts"
+            SET status='WAITING',"completed_at"=${now()},"duration_ms"=${Date.now()-started}
+            WHERE "step_id"=${step.id} AND "attempt_no"=${attemptNo}
+          `);
+        }
+        await appendEvent(tx, run, "WORKFLOW_WAITING", { reason: step.step_key === "verification" ? "independent_verification_pending" : "customer_input" }, step.step_key);
+      });
+      return;
+    }
+    await completeStep(run, step, output, stepDef, started, attemptNo);
+  }
   catch(error){ const retryable=Boolean((error as Error & {retryable?:boolean}).retryable)||error instanceof Error&&/timeout|temporar|unavailable|429|503/i.test(error.message); if(retryable&&attemptNo<maxAttempts){const delay=(stepDef.retry?.backoffSeconds??5)*2**(attemptNo-1);const retryAt=new Date(Date.now()+delay*1000);await db.$transaction(async tx=>{await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_steps" SET status='RETRYING',"error_code"='RETRYABLE_FAILURE',"error_message"=${String((error as Error).message).slice(0,1000)},"updated_at"=${now()} WHERE id=${step.id}`);await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='RETRYING',"next_run_at"=${retryAt},"updated_at"=${now()} WHERE id=${run.id}`);await tx.$executeRaw(Prisma.sql`UPDATE "automation_step_attempts" SET status='RETRYING',"completed_at"=${now()},"duration_ms"=${Date.now()-started},"error_code"='RETRYABLE_FAILURE',"error_message"=${String((error as Error).message).slice(0,1000)},"retry_at"=${retryAt} WHERE "step_id"=${step.id} AND "attempt_no"=${attemptNo}`);});return;}throw error; }
 }
 
@@ -412,6 +440,11 @@ export async function approveAutomation(runId: string, organizationId: string, a
         WHERE id=${reportId} AND "organizationId"=${organizationId} AND status='INTERNAL_REVIEW'
       `);
       if (approvalUpdate !== 1) throw new Error("report_approval_race");
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "automation_workflow_runs"
+        SET state=state || ${json({ reportApprovedByUserId: actorUserId })}::jsonb,"updated_at"=${now()}
+        WHERE id=${runId} AND "organization_id"=${organizationId}
+      `);
       await audit(tx, run, "REPORT_APPROVED", { reportId, approvalId }, actorUserId);
     }
 
