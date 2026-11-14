@@ -568,6 +568,15 @@ async function expireRun(run: RunRow, maxDurationSeconds: number) {
       WHERE id=${run.id} AND status IN ('RUNNING','WAITING','RETRYING','WAITING_FOR_APPROVAL')
     `);
     if (updated !== 1) return;
+    const scheduleId = stateValue(fresh, "scheduleId");
+    if (typeof scheduleId === "string") {
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "automation_schedules"
+        SET status='PAUSED',"last_error"='workflow_duration_exceeded',"failure_count"="failure_count"+1,
+          "lease_owner"=NULL,"lease_expires_at"=NULL,"updated_at"=${now()}
+        WHERE id=${scheduleId} AND "organization_id"=${fresh.organization_id} AND "active_run_id"=${fresh.id}
+      `);
+    }
     await appendEvent(tx, fresh, "WORKFLOW_EXPIRED", { maxDurationSeconds });
     await audit(tx, fresh, "WORKFLOW_EXPIRED", { maxDurationSeconds });
   });
@@ -713,6 +722,15 @@ async function failRun(run: RunRow, error: unknown) {
       WHERE id=${run.id} AND status IN ('RUNNING','WAITING','RETRYING','WAITING_FOR_APPROVAL')
     `);
     if (updated !== 1) return;
+    const scheduleId = stateValue(fresh, "scheduleId");
+    if (typeof scheduleId === "string") {
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "automation_schedules"
+        SET status='PAUSED',"last_error"=${message},"failure_count"="failure_count"+1,
+          "lease_owner"=NULL,"lease_expires_at"=NULL,"updated_at"=${now()}
+        WHERE id=${scheduleId} AND "organization_id"=${fresh.organization_id} AND "active_run_id"=${fresh.id}
+      `);
+    }
     await appendEvent(tx, fresh, "WORKFLOW_FAILED", { error: message });
     await audit(tx, fresh, "WORKFLOW_FAILED", { error: message });
   });
