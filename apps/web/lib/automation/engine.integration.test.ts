@@ -210,6 +210,7 @@ describe("M4 durable workflow persistence", () => {
       result: null,
       error_code: null,
       error_message: null,
+      started_at: new Date(),
     };
     const step = {
       id: stepId,
