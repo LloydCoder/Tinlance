@@ -16,6 +16,7 @@ type ScheduleRow = {
   next_run_at: Date;
   idempotency_seed: string;
   created_by_user_id: string | null;
+  active_run_id: string | null;
 };
 
 async function authorized(request: Request) {
@@ -144,6 +145,7 @@ export async function GET(request: Request) {
       FROM "automation_schedules"
       WHERE status='ACTIVE'
         AND "next_run_at" <= CURRENT_TIMESTAMP
+        AND "active_run_id" IS NULL
         AND ("lease_expires_at" IS NULL OR "lease_expires_at" <= CURRENT_TIMESTAMP)
       ORDER BY "next_run_at" ASC
       FOR UPDATE SKIP LOCKED
@@ -157,7 +159,7 @@ export async function GET(request: Request) {
     WHERE s.id=candidate.id
     RETURNING s.id,s."organization_id",s."project_id",s."playbook_id",
       s."playbook_version_id",s."interval_seconds",s."next_run_at",
-      s."idempotency_seed",s."created_by_user_id"
+      s."idempotency_seed",s."created_by_user_id",s."active_run_id"
   `);
 
   let scheduled = 0;
@@ -178,7 +180,7 @@ export async function GET(request: Request) {
       const { assessmentId, scope } = await createScheduledAssessment(schedule);
       const bucket = Math.floor(new Date(schedule.next_run_at).getTime() / 3600000);
       const idempotencyKey = `${schedule.idempotency_seed}:${bucket}`;
-      await startAutomation({
+      const run = await startAutomation({
         organizationId: schedule.organization_id,
         projectId: schedule.project_id,
         assessmentId,
@@ -190,20 +192,46 @@ export async function GET(request: Request) {
         requestId: randomUUID(),
         input: { scope, scheduled: true, scheduleId: schedule.id },
       });
-      await db.$executeRaw(Prisma.sql`
-        UPDATE "automation_schedules"
-        SET "last_run_at"=CURRENT_TIMESTAMP,
-          "next_run_at"=CURRENT_TIMESTAMP + make_interval(secs => "interval_seconds"),
-          "lease_owner"=NULL,"lease_expires_at"=NULL,
-          "last_error"=NULL,"failure_count"=0,"updated_at"=CURRENT_TIMESTAMP
-        WHERE id=${schedule.id} AND "lease_owner"=${workerId}
-      `);
+      if (run.status === "COMPLETED") {
+        await db.$executeRaw(Prisma.sql`
+          UPDATE "automation_schedules"
+          SET status='ACTIVE',"last_run_at"=CURRENT_TIMESTAMP,
+            "next_run_at"=CURRENT_TIMESTAMP + make_interval(secs => "interval_seconds"),
+            "active_run_id"=NULL,"lease_owner"=NULL,"lease_expires_at"=NULL,
+            "last_error"=NULL,"failure_count"=0,"updated_at"=CURRENT_TIMESTAMP
+          WHERE id=${schedule.id} AND "lease_owner"=${workerId}
+        `);
+      } else if (["FAILED", "EXPIRED"].includes(run.status)) {
+        await db.$executeRaw(Prisma.sql`
+          UPDATE "automation_schedules"
+          SET status='PAUSED',"active_run_id"=${run.id},
+            "last_error"='previous_scheduled_run_failed',
+            "lease_owner"=NULL,"lease_expires_at"=NULL,"updated_at"=CURRENT_TIMESTAMP
+          WHERE id=${schedule.id} AND "lease_owner"=${workerId}
+        `);
+      } else if (run.status === "CANCELLED") {
+        await db.$executeRaw(Prisma.sql`
+          UPDATE "automation_schedules"
+          SET status='PAUSED',"active_run_id"=NULL,
+            "last_error"='previous_scheduled_run_cancelled',
+            "lease_owner"=NULL,"lease_expires_at"=NULL,"updated_at"=CURRENT_TIMESTAMP
+          WHERE id=${schedule.id} AND "lease_owner"=${workerId}
+        `);
+      } else {
+        await db.$executeRaw(Prisma.sql`
+          UPDATE "automation_schedules"
+          SET "active_run_id"=${run.id},"lease_owner"=NULL,"lease_expires_at"=NULL,
+            "last_error"=NULL,"updated_at"=CURRENT_TIMESTAMP
+          WHERE id=${schedule.id} AND "lease_owner"=${workerId}
+        `);
+      }
       scheduled++;
     } catch (error) {
       const message = String(error instanceof Error ? error.message : error).slice(0, 1000);
       await db.$executeRaw(Prisma.sql`
         UPDATE "automation_schedules"
         SET "last_error"=${message},"failure_count"="failure_count"+1,
+          status=CASE WHEN "failure_count"+1 >= 5 THEN 'PAUSED' ELSE status END,
           "lease_owner"=NULL,"lease_expires_at"=NULL,"updated_at"=CURRENT_TIMESTAMP
         WHERE id=${schedule.id} AND "lease_owner"=${workerId}
       `);
