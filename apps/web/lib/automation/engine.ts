@@ -5,7 +5,7 @@ import { generateAssessmentReport } from "@/lib/workspace/report";
 import { authorizeWorkflowStep } from "@/lib/security-gateway/workflow";
 import { ensureProjectWorkspaceState } from "@/lib/workspace/service";
 import { assertProjectTransition, assertReportTransition } from "@/lib/workspace/workflow";
-import { isCustomerVisibleFinding, isIndependentlyVerifiedRemediation, validateWorkflowSignal } from "./contracts";
+import { isCustomerVisibleFinding, isIndependentlyVerifiedRemediation, validateWorkflowDefinition, validateWorkflowSignal } from "./contracts";
 
 export type AutomationStatus = "PENDING" | "RUNNING" | "WAITING" | "PAUSED" | "WAITING_FOR_APPROVAL" | "RETRYING" | "COMPLETED" | "FAILED" | "CANCELLED" | "EXPIRED";
 export type StepStatus = "PENDING" | "RUNNING" | "WAITING" | "PAUSED" | "WAITING_FOR_APPROVAL" | "RETRYING" | "COMPLETED" | "FAILED" | "CANCELLED";
@@ -13,7 +13,7 @@ export type StepType = "SYSTEM" | "FDE" | "APPROVAL" | "CUSTOMER_INPUT";
 
 type DefinitionStep = { key: string; type: StepType; domain?: string; capabilityId?: string; capabilityVersion?: string; policy?: string; retry?: { maxAttempts?: number; backoffSeconds?: number }; timeoutSeconds?: number };
 type Definition = { maxDurationSeconds: number; maxSteps: number; steps: DefinitionStep[]; policies: { dryRun: boolean; externalWritesRequireApproval: boolean; customerDataUntrusted: boolean } };
-type RunRow = { id: string; organization_id: string; project_id: string; assessment_id: string | null; playbook_id: string; playbook_version_id: string; status: AutomationStatus; trigger_type: string; initiating_actor_user_id: string | null; request_id: string; current_step: number; state: Record<string, unknown>; result: Record<string, unknown> | null; error_code: string | null; error_message: string | null };
+type RunRow = { id: string; organization_id: string; project_id: string; assessment_id: string | null; playbook_id: string; playbook_version_id: string; status: AutomationStatus; trigger_type: string; initiating_actor_user_id: string | null; request_id: string; current_step: number; state: Record<string, unknown>; result: Record<string, unknown> | null; error_code: string | null; error_message: string | null; started_at: Date | null };
 type StepRow = { id: string; workflow_run_id: string; step_key: string; ordinal: number; step_type: StepType; status: StepStatus; input: Record<string, unknown>; output: Record<string, unknown> | null; capability_id: string | null; capability_version: string | null; required_approval: boolean; authorization_decision: string | null };
 
 const FDE_API_URL = process.env.FDE_API_URL ?? process.env.NEXT_PUBLIC_FDE_API_URL ?? "";
@@ -37,6 +37,7 @@ export async function startAutomation(input: { organizationId: string; projectId
   if (existing[0]) return existing[0];
   const versions = await db.$queryRaw<Array<{ playbook_id: string; playbook_version_id: string; definition: Definition; version: string }>>(Prisma.sql`SELECT p.id AS playbook_id, v.id AS playbook_version_id, v.definition, v.version FROM "automation_playbooks" p JOIN "automation_playbook_versions" v ON v.playbook_id=p.id WHERE (p."organization_id" IS NULL OR p."organization_id"=${input.organizationId}) AND p.slug=${input.playbookSlug} AND p.status='ACTIVE' ORDER BY (p."organization_id" IS NULL) ASC, v."active_at" DESC LIMIT 1`);
   const version = versions[0]; if (!version) throw new Error("playbook not available");
+  validateWorkflowDefinition(version.definition);
   const project = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "Project" WHERE id=${input.projectId} AND "organizationId"=${input.organizationId} LIMIT 1`);
   if (!project[0]) throw new Error("project not found");
   await ensureProjectWorkspaceState(input.projectId, input.organizationId);
@@ -45,7 +46,7 @@ export async function startAutomation(input: { organizationId: string; projectId
     if (!assessment[0]) throw new Error("assessment not found");
   }
   const runId = randomUUID();
-  const steps = version.definition.steps.slice(0, version.definition.maxSteps);
+  const steps = version.definition.steps;
   try {
     await db.$transaction(async tx => {
       await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_workflow_runs" ("id","organization_id","project_id","assessment_id","playbook_id","playbook_version_id","status","trigger_type","initiating_actor_user_id","request_id","idempotency_key","state","started_at") VALUES (${runId},${input.organizationId},${input.projectId},${input.assessmentId ?? null},${version.playbook_id},${version.playbook_version_id},'RUNNING',${input.triggerType},${input.actorUserId},${input.requestId},${input.idempotencyKey},${json(input.input)}::jsonb,${now()})`);
@@ -69,6 +70,7 @@ async function loadDefinition(run: RunRow): Promise<Definition> {
   const rows = await db.$queryRaw<Array<{ definition: Definition }>>(Prisma.sql`SELECT definition FROM "automation_playbook_versions" WHERE id=${run.playbook_version_id}`);
   if (!rows[0]) throw new Error("workflow definition missing");
   const definition = rows[0].definition;
+  validateWorkflowDefinition(definition);
   const step = definition.steps[run.current_step];
   if (step && run.initiating_actor_user_id) {
     const decision = await authorizeWorkflowStep({
@@ -380,8 +382,33 @@ export async function workerTick(workerId: string, limit = 5) {
   return processed;
 }
 
+async function expireRun(run: RunRow) {
+  await db.$transaction(async tx => {
+    const rows = await tx.$queryRaw<RunRow[]>(Prisma.sql`
+      SELECT * FROM "automation_workflow_runs" WHERE id=${run.id} FOR UPDATE
+    `);
+    const fresh = rows[0];
+    if (!fresh || !["RUNNING", "WAITING", "RETRYING", "WAITING_FOR_APPROVAL"].includes(fresh.status)) return;
+    const updated = await tx.$executeRaw(Prisma.sql`
+      UPDATE "automation_workflow_runs"
+      SET status='EXPIRED',"error_code"='WORKFLOW_DURATION_EXCEEDED',
+        "error_message"='Workflow exceeded its configured maximum duration.',
+        "completed_at"=${now()},"next_run_at"=NULL,"updated_at"=${now()}
+      WHERE id=${run.id} AND status IN ('RUNNING','WAITING','RETRYING','WAITING_FOR_APPROVAL')
+    `);
+    if (updated !== 1) return;
+    await appendEvent(tx, fresh, "WORKFLOW_EXPIRED", { maxDurationSeconds: "configured_limit" });
+    await audit(tx, fresh, "WORKFLOW_EXPIRED", { maxDurationSeconds: "configured_limit" });
+  });
+}
+
 async function processRun(run: RunRow) {
-  const definition = await loadDefinition(run); const stepDef = definition.steps[run.current_step];
+  const definition = await loadDefinition(run);
+  if (run.started_at && Date.now() - new Date(run.started_at).getTime() > definition.maxDurationSeconds * 1000) {
+    await expireRun(run);
+    return;
+  }
+  const stepDef = definition.steps[run.current_step];
   if (!stepDef) {
     await db.$transaction(async tx => {
       const fresh = (await tx.$queryRaw<RunRow[]>(Prisma.sql`
