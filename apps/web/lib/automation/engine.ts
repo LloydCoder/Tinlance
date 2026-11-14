@@ -512,7 +512,8 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
     if (typeof scheduleId === "string") {
       const updated = await tx.$executeRaw(Prisma.sql`
         UPDATE "automation_schedules"
-        SET "last_run_at"=${now()},
+        SET status='ACTIVE',
+          "last_run_at"=${now()},
           "next_run_at"=${next},
           "active_run_id"=NULL,
           "lease_owner"=NULL,
@@ -854,4 +855,32 @@ export async function signalAutomation(runId: string, organizationId: string, ac
   });
 }
 
-export async function cancelAutomation(runId:string,organizationId:string,actorUserId:string){return db.$transaction(async tx=>{const rows=await tx.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId} AND "organization_id"=${organizationId} FOR UPDATE`);const run=rows[0];if(!run)throw new Error("workflow run not found");if(["COMPLETED","FAILED","CANCELLED","EXPIRED"].includes(run.status))return run;await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='CANCELLED',"completed_at"=${now()},"updated_at"=${now()} WHERE id=${runId}`);await appendEvent(tx,run,"WORKFLOW_CANCELLED",{},undefined,'user',actorUserId);await audit(tx,run,"WORKFLOW_CANCELLED",{},actorUserId);return (await tx.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId}`))[0];});}
+export async function cancelAutomation(runId: string, organizationId: string, actorUserId: string) {
+  return db.$transaction(async tx => {
+    const rows = await tx.$queryRaw<RunRow[]>(Prisma.sql`
+      SELECT * FROM "automation_workflow_runs"
+      WHERE id=${runId} AND "organization_id"=${organizationId}
+      FOR UPDATE
+    `);
+    const run = rows[0];
+    if (!run) throw new Error("workflow run not found");
+    if (["COMPLETED", "FAILED", "CANCELLED", "EXPIRED"].includes(run.status)) return run;
+    await tx.$executeRaw(Prisma.sql`
+      UPDATE "automation_workflow_runs"
+      SET status='CANCELLED',"completed_at"=${now()},"next_run_at"=NULL,"updated_at"=${now()}
+      WHERE id=${runId} AND "organization_id"=${organizationId}
+    `);
+    const scheduleId = stateValue(run, "scheduleId");
+    if (typeof scheduleId === "string") {
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "automation_schedules"
+        SET status='PAUSED',"active_run_id"=NULL,"lease_owner"=NULL,"lease_expires_at"=NULL,
+          "last_error"='workflow_cancelled',"updated_at"=${now()}
+        WHERE id=${scheduleId} AND "organization_id"=${organizationId} AND "active_run_id"=${runId}
+      `);
+    }
+    await appendEvent(tx, run, "WORKFLOW_CANCELLED", {}, undefined, "user", actorUserId);
+    await audit(tx, run, "WORKFLOW_CANCELLED", {}, actorUserId);
+    return (await tx.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE id=${runId}`))[0];
+  });
+}
