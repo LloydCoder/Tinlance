@@ -145,8 +145,8 @@ describe("M4 durable workflow persistence", () => {
     );
     await db.$executeRaw(
       Prisma.sql`
-        INSERT INTO "WorkspaceRemediation" (id,"organizationId","projectId","findingId",title,description,"ownerUserId",priority,status,"verificationStatus","createdAt","updatedAt")
-        VALUES (${remediationId},${organizationId},${projectId},${findingId},'M4 verification remediation','Synthetic remediation',${userId},'HIGH','OPEN','INCONCLUSIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+        INSERT INTO "WorkspaceRemediation" (id,"organizationId","projectId","findingId",title,description,"ownerUserId",priority,status,"verificationStatus","idempotencyKey","createdAt","updatedAt")
+        VALUES (${remediationId},${organizationId},${projectId},${findingId},'M4 verification remediation','Synthetic remediation',${userId},'HIGH','OPEN','INCONCLUSIVE',${`${runId}:remediation:${findingId}`},CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
       `
     );
 
