@@ -34,6 +34,10 @@ export function validateWorkflowDefinition(definition: unknown) {
   return true;
 }
 
+export function isCustomerVisibleFinding(input: { visibility: string }) {
+  return input.visibility === "CUSTOMER";
+}
+
 export function isIndependentlyVerifiedRemediation(input: {
   remediationStatus: string;
   findingStatus: string;
