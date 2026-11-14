@@ -539,6 +539,7 @@ export async function signalAutomation(runId: string, organizationId: string, ac
         WHERE id=${validatedSignal.customerEvidenceId}
           AND "organizationId"=${organizationId}
           AND "projectId"=${run.project_id}
+          AND ("assessmentId" IS NULL OR "assessmentId"=${run.assessment_id})
         LIMIT 1
       `);
       if (!evidence[0]) throw new Error("evidence is outside the workflow tenant/project");
