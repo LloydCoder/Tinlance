@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ProjectWorkspaceStatus, WorkspaceFindingStatus, WorkspaceRemediationStatus, WorkspaceReportStatus } from "@prisma/client";
-import { assertFindingTransition, assertProjectTransition, assertRemediationTransition, assertReportTransition } from "./workflow";
+import { assertFindingTransition, assertIndependentVerification, assertProjectTransition, assertRemediationTransition, assertReportTransition } from "./workflow";
 
 describe("M3 workspace state machines", () => {
   it("allows the project delivery path", () => {
@@ -30,5 +30,40 @@ describe("M3 workspace state machines", () => {
   it("requires review before report publication", () => {
     expect(() => assertReportTransition(WorkspaceReportStatus.DRAFT, WorkspaceReportStatus.PUBLISHED)).toThrow(/Invalid report transition/);
     expect(() => assertReportTransition(WorkspaceReportStatus.APPROVED, WorkspaceReportStatus.PUBLISHED)).not.toThrow();
+  });
+
+  it("blocks direct remediation transitions from bypassing the verification record", () => {
+    expect(() => assertRemediationTransition(WorkspaceRemediationStatus.READY_FOR_VERIFICATION, WorkspaceRemediationStatus.VERIFIED)).toThrow(/Invalid remediation transition/);
+  });
+
+  it("blocks direct finding transitions from bypassing the verification record", () => {
+    expect(() => assertFindingTransition(WorkspaceFindingStatus.VERIFICATION_PENDING, WorkspaceFindingStatus.VERIFIED)).toThrow(/Invalid finding transition/);
+  });
+
+  it("requires a ready remediation, pending finding and independent verifier", () => {
+    expect(() => assertIndependentVerification({
+      remediationStatus: WorkspaceRemediationStatus.READY_FOR_VERIFICATION,
+      findingStatus: WorkspaceFindingStatus.VERIFICATION_PENDING,
+      ownerUserId: "customer-1",
+      verifierUserId: "verifier-1",
+    })).not.toThrow();
+    expect(() => assertIndependentVerification({
+      remediationStatus: WorkspaceRemediationStatus.IN_PROGRESS,
+      findingStatus: WorkspaceFindingStatus.VERIFICATION_PENDING,
+      ownerUserId: "customer-1",
+      verifierUserId: "verifier-1",
+    })).toThrow("remediation_not_ready_for_verification");
+    expect(() => assertIndependentVerification({
+      remediationStatus: WorkspaceRemediationStatus.READY_FOR_VERIFICATION,
+      findingStatus: WorkspaceFindingStatus.IN_PROGRESS,
+      ownerUserId: "customer-1",
+      verifierUserId: "verifier-1",
+    })).toThrow("finding_not_ready_for_verification");
+    expect(() => assertIndependentVerification({
+      remediationStatus: WorkspaceRemediationStatus.READY_FOR_VERIFICATION,
+      findingStatus: WorkspaceFindingStatus.VERIFICATION_PENDING,
+      ownerUserId: "customer-1",
+      verifierUserId: "customer-1",
+    })).toThrow("verifier_must_be_independent");
   });
 });
