@@ -20,7 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
       select: { id: true, organizationId: true, currentVersion: true, status: true, opportunityId: true },
     });
     if (!proposal) return NextResponse.json({ error: "not_found", requestId }, { status: 404, headers: { "cache-control": "no-store", "x-request-id": requestId } });
-    if ([ProposalStatus.ACCEPTED, ProposalStatus.DECLINED, ProposalStatus.EXPIRED].includes(proposal.status)) {
+    if (proposal.status === ProposalStatus.ACCEPTED || proposal.status === ProposalStatus.DECLINED || proposal.status === ProposalStatus.EXPIRED) {
       return NextResponse.json({ error: "proposal_immutable", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     }
 
