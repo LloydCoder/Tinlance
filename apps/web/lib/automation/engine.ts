@@ -308,7 +308,7 @@ async function transitionProjectState(tx: Prisma.TransactionClient, run: RunRow,
   const updated = await tx.$executeRaw(Prisma.sql`
     UPDATE "ProjectWorkspaceState"
     SET status=${to},
-      "completedAt"=CASE WHEN ${to}='COMPLETED' THEN ${now()} ELSE "completedAt" END,
+      "completedAt"=CASE WHEN ${to}='COMPLETED' THEN ${now()} WHEN ${to}='ASSESSMENT' THEN NULL ELSE "completedAt" END,
       "updatedAt"=${now()}
     WHERE id=${state.id} AND "organizationId"=${run.organization_id} AND status=${state.status}
   `);
