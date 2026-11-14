@@ -123,7 +123,7 @@ async function executeStep(run: RunRow, step: StepRow, definitionStep: Definitio
   return {};
 }
 
-async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunRow, step: StepRow, output: Record<string, unknown>, definitionStep: DefinitionStep) {
+export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunRow, step: StepRow, output: Record<string, unknown>, definitionStep: DefinitionStep) {
   if (step.step_key === "execute_fde") {
     await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET state=state || ${json({ fdeResult: output })}::jsonb,"next_run_at"=NULL,"updated_at"=${now()} WHERE id=${run.id}`);
     await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_artifacts" ("id","workflow_run_id","step_id","organization_id","project_id","type","resource_type","resource_id","provenance","content_hash") VALUES (${randomUUID()},${run.id},${step.id},${run.organization_id},${run.project_id},'FDE_EXECUTION','FDE_CAPABILITY',${definitionStep.capabilityId ?? null},${json({ capabilityId: definitionStep.capabilityId, capabilityVersion: definitionStep.capabilityVersion, domain: definitionStep.domain, requestId: run.request_id })}::jsonb,${hash(output)})`);
