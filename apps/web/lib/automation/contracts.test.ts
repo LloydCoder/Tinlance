@@ -7,6 +7,7 @@ import {
   isUntrustedContent,
   validateWorkflowDefinition,
   validateWorkflowSignal,
+  workflowDefinitionChecksum,
 } from "./contracts";
 
 describe("automation contracts", () => {
@@ -20,6 +21,12 @@ describe("automation contracts", () => {
     expect(exponentialBackoff(1)).toBe(5);
     expect(exponentialBackoff(4)).toBe(40);
     expect(exponentialBackoff(20)).toBe(300);
+  });
+
+
+  it("calculates a canonical checksum independent of JSON object key order", () => {
+    expect(workflowDefinitionChecksum({ a: 1, b: { c: true, d: 2 } }))
+      .toBe(workflowDefinitionChecksum({ b: { d: 2, c: true }, a: 1 }));
   });
 
   it("rejects duplicate and unpinned FDE steps", () => {
