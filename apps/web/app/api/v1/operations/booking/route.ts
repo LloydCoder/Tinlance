@@ -30,6 +30,7 @@ export async function POST(request: Request) {
       result = await db.$transaction(async (tx) => {
         if (idempotencyKey) { const existing = await tx.booking.findUnique({ where: { idempotencyKey }, select: { id: true, opportunityId: true } }); if (existing) return { id: existing.id, duplicate: true, opportunityId: existing.opportunityId }; }
         await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('tinlance:booking'), hashtext(${startsAt.toISOString()}))`;
+        if (idempotencyKey) { const existing = await tx.booking.findUnique({ where: { idempotencyKey }, select: { id: true, opportunityId: true } }); if (existing) return { id: existing.id, duplicate: true, opportunityId: existing.opportunityId }; }
         const assessment = await tx.assessment.findUnique({ where: { idempotencyKey: parsed.data.assessmentReference }, select: { id: true, leadId: true, opportunity: { select: { id: true } }, lead: { select: { email: true } } } });
         if (!assessment || assessment.lead.email.toLowerCase() !== parsed.data.email.toLowerCase()) throw new Error("booking_assessment_mismatch");
         const leadId = assessment.leadId; const assessmentId = assessment.id; const opportunityId = assessment.opportunity?.id ?? null;
