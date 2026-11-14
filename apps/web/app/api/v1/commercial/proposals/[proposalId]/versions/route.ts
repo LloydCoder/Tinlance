@@ -16,8 +16,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   if (!proposal) return NextResponse.json({ error: "not_found", requestId }, { status: 404, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   if (proposal.status === ProposalStatus.ACCEPTED || proposal.status === ProposalStatus.DECLINED || proposal.status === ProposalStatus.EXPIRED) return NextResponse.json({ error: "proposal_immutable", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   const nextVersion = proposal.currentVersion + 1;
-  let created;
-  try { created = await db.$transaction(async (tx) => {
+  try {
+    const created = await db.$transaction(async (tx) => {
     const claimed = await tx.proposal.updateMany({
       where: { id: proposalId, currentVersion: proposal.currentVersion, status: { in: [ProposalStatus.DRAFT, ProposalStatus.INTERNAL_REVIEW, ProposalStatus.SENT, ProposalStatus.VIEWED] } },
       data: { currentVersion: nextVersion, status: ProposalStatus.DRAFT },
@@ -28,5 +28,4 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
     await tx.auditEvent.create({ data: { organizationId: proposal.organizationId, actorUserId: actor.userId, action: "proposal.version_created", resourceType: "proposal", resourceId: proposalId, requestId, metadata: { version: nextVersion } } });
     return version;
   }); } catch (error) { if (error instanceof Error && error.message === "proposal_version_race") return NextResponse.json({ error: "proposal_state_changed", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } }); throw error; }
-  return NextResponse.json({ status: "created", requestId, proposalId, version: created.version }, { status: 201, headers: { "cache-control": "no-store", "x-request-id": requestId } });
 }
