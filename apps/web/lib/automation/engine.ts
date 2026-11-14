@@ -532,6 +532,14 @@ export async function approveAutomation(runId: string, organizationId: string, a
       FOR UPDATE
     `))[0];
     if (!run || run.status !== "WAITING_FOR_APPROVAL") throw new Error("workflow is not awaiting approval");
+    const currentSteps = await tx.$queryRaw<Array<{ id: string; step_type: string }>>(Prisma.sql`
+      SELECT id,"step_type" FROM "automation_workflow_steps"
+      WHERE "workflow_run_id"=${runId} AND ordinal=${run.current_step}
+      LIMIT 1
+    `);
+    if (currentSteps[0]?.id !== approval.step_id || currentSteps[0]?.step_type !== "APPROVAL") {
+      throw new Error("approval is not for the current workflow step");
+    }
 
     await tx.$executeRaw(Prisma.sql`
       UPDATE "automation_approvals"
