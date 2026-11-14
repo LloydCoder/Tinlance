@@ -382,7 +382,7 @@ export async function workerTick(workerId: string, limit = 5) {
   return processed;
 }
 
-async function expireRun(run: RunRow) {
+async function expireRun(run: RunRow, maxDurationSeconds: number) {
   await db.$transaction(async tx => {
     const rows = await tx.$queryRaw<RunRow[]>(Prisma.sql`
       SELECT * FROM "automation_workflow_runs" WHERE id=${run.id} FOR UPDATE
@@ -397,15 +397,15 @@ async function expireRun(run: RunRow) {
       WHERE id=${run.id} AND status IN ('RUNNING','WAITING','RETRYING','WAITING_FOR_APPROVAL')
     `);
     if (updated !== 1) return;
-    await appendEvent(tx, fresh, "WORKFLOW_EXPIRED", { maxDurationSeconds: "configured_limit" });
-    await audit(tx, fresh, "WORKFLOW_EXPIRED", { maxDurationSeconds: "configured_limit" });
+    await appendEvent(tx, fresh, "WORKFLOW_EXPIRED", { maxDurationSeconds });
+    await audit(tx, fresh, "WORKFLOW_EXPIRED", { maxDurationSeconds });
   });
 }
 
 async function processRun(run: RunRow) {
   const definition = await loadDefinition(run);
   if (run.started_at && Date.now() - new Date(run.started_at).getTime() > definition.maxDurationSeconds * 1000) {
-    await expireRun(run);
+    await expireRun(run, definition.maxDurationSeconds);
     return;
   }
   const stepDef = definition.steps[run.current_step];
