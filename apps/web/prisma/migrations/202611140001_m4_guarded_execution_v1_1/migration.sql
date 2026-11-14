@@ -3,7 +3,9 @@ BEGIN;
 ALTER TABLE "automation_schedules"
   ADD COLUMN IF NOT EXISTS "created_by_user_id" TEXT REFERENCES "User"(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS "lease_owner" TEXT,
-  ADD COLUMN IF NOT EXISTS "lease_expires_at" TIMESTAMP(3);
+  ADD COLUMN IF NOT EXISTS "lease_expires_at" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "last_error" TEXT,
+  ADD COLUMN IF NOT EXISTS "failure_count" INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS "automation_schedules_due_lease_idx"
   ON "automation_schedules" ("status","next_run_at","lease_expires_at");
