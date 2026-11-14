@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const { token, hash } = createProposalToken();
     const link = canonicalAppUrl(`/proposal/${token}`);
     await db.$transaction(async (tx) => {
-      const result = await tx.proposal.updateMany({ where: { id: proposal.id, currentVersion: proposal.currentVersion, status: { in: [ProposalStatus.DRAFT, ProposalStatus.INTERNAL_REVIEW, ProposalStatus.VIEWED] } }, data: { status: ProposalStatus.SENT, sentAt: new Date(), publicTokenHash: hash } });
+      const result = await tx.proposal.updateMany({ where: { id: proposal.id, currentVersion: proposal.currentVersion, status: { in: [ProposalStatus.DRAFT, ProposalStatus.INTERNAL_REVIEW, ProposalStatus.VIEWED] }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, data: { status: ProposalStatus.SENT, sentAt: new Date(), publicTokenHash: hash } });
       if (result.count !== 1) throw new Error("proposal_send_race");
       if (proposal.opportunityId) await tx.opportunity.update({ where: { id: proposal.opportunityId }, data: { stage: OpportunityStage.PROPOSAL_SENT, lastActivityAt: new Date(), nextAction: "Follow up on proposal", nextActionAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) } });
       await tx.auditEvent.create({ data: { organizationId: proposal.organizationId, actorUserId: actor.userId, action: "proposal.sent", resourceType: "proposal", resourceId: proposal.id, requestId, metadata: { version: proposal.currentVersion } } });
