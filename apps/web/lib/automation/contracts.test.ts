@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyFailure,
   exponentialBackoff,
+  isCustomerVisibleFinding,
   isIndependentlyVerifiedRemediation,
   isUntrustedContent,
   validateWorkflowDefinition,
