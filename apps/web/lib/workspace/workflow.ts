@@ -27,7 +27,11 @@ export const assertRemediationTransition = (from: WorkspaceRemediationStatus, to
 export const assertReportTransition = (from: WorkspaceReportStatus, to: WorkspaceReportStatus) => assertAllowed(reportTransitions, from, to, "report");
 
 export function assertFindingCanEnterVerification(status: WorkspaceFindingStatus) {
-  if (![WorkspaceFindingStatus.IN_PROGRESS, WorkspaceFindingStatus.REMEDIATED, WorkspaceFindingStatus.VERIFICATION_PENDING].includes(status)) {
+  if (
+    status !== WorkspaceFindingStatus.IN_PROGRESS &&
+    status !== WorkspaceFindingStatus.REMEDIATED &&
+    status !== WorkspaceFindingStatus.VERIFICATION_PENDING
+  ) {
     throw new Error("finding_not_ready_for_verification");
   }
 }
