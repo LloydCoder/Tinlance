@@ -64,8 +64,24 @@ export async function putPrivateEvidence(input: { organizationId: string; projec
   return { ...blob, hash, size: input.file.size, mimeType: input.file.type };
 }
 
+export function isTrustedPrivateBlobUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:"
+      && /^[a-z0-9][a-z0-9-]*\\.private\\.blob\\.vercel-storage\\.com$/i.test(url.hostname)
+      && !url.username
+      && !url.password
+      && !url.port
+      && !url.search
+      && !url.hash
+      && url.pathname.length > 1;
+  } catch {
+    return false;
+  }
+}
+
 export async function getPrivateEvidence(storageReference: string) {
-  if (!storageReference.startsWith("https://") || !storageReference.includes(".private.blob.vercel-storage.com/")) throw new Error("invalid_storage_reference");
+  if (!isTrustedPrivateBlobUrl(storageReference)) throw new Error("invalid_storage_reference");
   const response = await fetch(storageReference, { headers: { authorization: `Bearer ${token()}` }, cache: "no-store" });
   if (!response.ok) return null;
   return response;
