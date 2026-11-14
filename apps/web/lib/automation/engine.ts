@@ -223,6 +223,7 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
       await tx.$executeRaw(Prisma.sql`INSERT INTO "WorkspaceFinding" ("id","organizationId","projectId","assessmentId","title","description","category","severity","status","recommendation","visibility","authorship","idempotencyKey") VALUES (${randomUUID()},${run.organization_id},${run.project_id},${run.assessment_id ?? ""},${String(f.title)},${String(f.description)},${String(f.category)},${String(f.severity)},'DRAFT_INTERNAL',${String(f.recommendation)},'TINLANCE_INTERNAL','AI_ASSISTED',${idempotency}) ON CONFLICT ("idempotencyKey") DO NOTHING`);
     }
     await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET state=state || ${json({ findings })}::jsonb,"updated_at"=${now()} WHERE id=${run.id}`);
+    await audit(tx, run, "WORKSPACE_FINDINGS_GENERATED", { count: findings.length });
   }
   if (step.step_key === "request_evidence") {
     const evidenceId = stateValue(run, "customerEvidenceId");
@@ -237,6 +238,7 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
       ON CONFLICT ("id") DO UPDATE
         SET status='SUBMITTED',"submittedEvidenceId"=EXCLUDED."submittedEvidenceId","updatedAt"=${now()}
     `);
+    await audit(tx, run, "WORKSPACE_EVIDENCE_SUBMITTED", { evidenceRequestId: `${run.id}:evidence-request`, evidenceId });
   }
   if (step.step_key === "draft_report") {
     const findings = await tx.$queryRaw<Array<{ id: string; title: string; description: string; severity: string; category: string; affectedAsset: string | null; recommendation: string }>>(Prisma.sql`
@@ -278,6 +280,7 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
     const finalReportId = reportRows[0]?.id ?? reportId;
     await tx.$executeRaw(Prisma.sql`INSERT INTO "WorkspaceReportVersion" ("id","reportId","version","content","contentHash","createdByUserId") VALUES (${randomUUID()},${finalReportId},1,${report.content},${report.contentHash},${run.initiating_actor_user_id}) ON CONFLICT ("reportId","version") DO NOTHING`);
     await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET state=state || ${json({ reportId: finalReportId })}::jsonb,"updated_at"=${now()} WHERE id=${run.id}`);
+    await audit(tx, run, "WORKSPACE_REPORT_DRAFTED", { reportId: finalReportId, contentHash: report.contentHash });
   }
   if (step.step_key === "publish_report") {
     const reportId = stateValue(run, "reportId");
@@ -298,6 +301,7 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
     if (updated !== 1) throw new Error("report_publish_race");
     const publishedByUserId = stateValue(run, "reportApprovedByUserId");
     if (typeof publishedByUserId !== "string") throw new Error("report_approval_actor_missing");
+    await audit(tx, run, "WORKSPACE_REPORT_PUBLISHED", { reportId, publishedByUserId }, publishedByUserId);
   }
   if (step.step_key === "create_remediation") {
     const findings = await tx.$queryRaw<Array<{ id: string; title: string; recommendation: string; severity: string }>>(Prisma.sql`
@@ -309,7 +313,15 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
         AND visibility='CUSTOMER'
         AND status IN ('CUSTOMER_VISIBLE','OPEN','ACKNOWLEDGED','IN_PROGRESS','REMEDIATED','VERIFICATION_PENDING','VERIFIED')
     `);
-    for (const finding of findings) await tx.$executeRaw(Prisma.sql`INSERT INTO "WorkspaceRemediation" ("id","organizationId","projectId","findingId","title","description","priority","status","idempotencyKey") VALUES (${randomUUID()},${run.organization_id},${run.project_id},${finding.id},${`Remediate: ${finding.title}`},${finding.recommendation},${finding.severity},'OPEN',${`${run.id}:remediation:${finding.id}`}) ON CONFLICT ("idempotencyKey") DO NOTHING`);
+    let createdRemediations = 0;
+    for (const finding of findings) {
+      createdRemediations += await tx.$executeRaw(Prisma.sql`
+        INSERT INTO "WorkspaceRemediation" ("id","organizationId","projectId","findingId","title","description","priority","status","idempotencyKey")
+        VALUES (${randomUUID()},${run.organization_id},${run.project_id},${finding.id},${`Remediate: ${finding.title}`},${finding.recommendation},${finding.severity},'OPEN',${`${run.id}:remediation:${finding.id}`})
+        ON CONFLICT ("idempotencyKey") DO NOTHING
+      `);
+    }
+    await audit(tx, run, "WORKSPACE_REMEDIATIONS_CREATED", { count: createdRemediations });
   }
   if (step.step_key === "verification") {
     const remediations = await tx.$queryRaw<Array<{
@@ -366,7 +378,12 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
   if (step.step_key === "close") await transitionProjectState(tx, run, ProjectWorkspaceStatus.COMPLETED);
   if (step.step_key === "schedule_reassessment") {
     const next = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-    await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_schedules" ("id","organization_id","project_id","playbook_id","playbook_version_id","interval_seconds","timezone","status","next_run_at","idempotency_seed") VALUES (${randomUUID()},${run.organization_id},${run.project_id},${run.playbook_id},${run.playbook_version_id},${90 * 24 * 60 * 60},'UTC','ACTIVE',${next},${`${run.project_id}:${run.playbook_id}:90d`}) ON CONFLICT DO NOTHING`);
+    const created = await tx.$executeRaw(Prisma.sql`
+      INSERT INTO "automation_schedules" ("id","organization_id","project_id","playbook_id","playbook_version_id","interval_seconds","timezone","status","next_run_at","idempotency_seed")
+      VALUES (${randomUUID()},${run.organization_id},${run.project_id},${run.playbook_id},${run.playbook_version_id},${90 * 24 * 60 * 60},'UTC','ACTIVE',${next},${`${run.project_id}:${run.playbook_id}:90d`})
+      ON CONFLICT DO NOTHING
+    `);
+    if (created === 1) await audit(tx, run, "WORKSPACE_REASSESSMENT_SCHEDULED", { intervalSeconds: 90 * 24 * 60 * 60, nextRunAt: next.toISOString() });
   }
 }
 function stateValue(run: RunRow, key: string) { return (run.state ?? {})[key]; }
@@ -448,7 +465,7 @@ async function processRun(run: RunRow) {
         SELECT * FROM "automation_workflow_runs" WHERE id=${run.id} FOR UPDATE
       `))[0];
       if (!fresh || !["RUNNING", "RETRYING", "WAITING"].includes(fresh.status)) return;
-      await tx.$executeRaw(Prisma.sql`
+      const requestCreated = await tx.$executeRaw(Prisma.sql`
         INSERT INTO "WorkspaceEvidenceRequest"
           ("id","organizationId","projectId","assessmentId","title","description","requestedType","requestedByUserId","status")
         VALUES
@@ -457,6 +474,7 @@ async function processRun(run: RunRow) {
            'assessment-evidence',${run.initiating_actor_user_id},'REQUESTED')
         ON CONFLICT ("id") DO NOTHING
       `);
+      if (requestCreated === 1) await audit(tx, fresh, "WORKSPACE_EVIDENCE_REQUESTED", { evidenceRequestId: `${run.id}:evidence-request` });
       await tx.$executeRaw(Prisma.sql`
         UPDATE "automation_workflow_runs"
         SET status='WAITING',"next_run_at"=NULL,"updated_at"=${now()}
