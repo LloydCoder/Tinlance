@@ -6,6 +6,7 @@ import { createProposalToken } from "@/lib/commercial/security";
 import { sendCommercialEmail } from "@/lib/commercial/notifications";
 import { db } from "@/lib/db";
 import { getRequestId } from "@/lib/security/request-id";
+import { canonicalAppUrl } from "@/lib/commercial/urls";
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
@@ -20,12 +21,12 @@ export async function POST(request: Request) {
     if (proposal.expiresAt && proposal.expiresAt <= new Date()) return NextResponse.json({ error: "proposal_expired", requestId }, { status: 409, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     const { token, hash } = createProposalToken();
     await db.$transaction(async (tx) => {
-      const result = await tx.proposal.updateMany({ where: { id: proposal.id, status: { in: [ProposalStatus.DRAFT, ProposalStatus.INTERNAL_REVIEW, ProposalStatus.VIEWED] } }, data: { status: ProposalStatus.SENT, sentAt: new Date(), publicTokenHash: hash } });
+      const result = await tx.proposal.updateMany({ where: { id: proposal.id, currentVersion: proposal.currentVersion, status: { in: [ProposalStatus.DRAFT, ProposalStatus.INTERNAL_REVIEW, ProposalStatus.VIEWED] } }, data: { status: ProposalStatus.SENT, sentAt: new Date(), publicTokenHash: hash } });
       if (result.count !== 1) throw new Error("proposal_send_race");
       if (proposal.opportunityId) await tx.opportunity.update({ where: { id: proposal.opportunityId }, data: { stage: OpportunityStage.PROPOSAL_SENT, lastActivityAt: new Date(), nextAction: "Follow up on proposal", nextActionAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) } });
       await tx.auditEvent.create({ data: { organizationId: proposal.organizationId, actorUserId: actor.userId, action: "proposal.sent", resourceType: "proposal", resourceId: proposal.id, requestId, metadata: { version: proposal.currentVersion } } });
     });
-    const link = new URL(`/proposal/${token}`, request.url).toString();
+    const link = canonicalAppUrl(`/proposal/${token}`);
     const email = await sendCommercialEmail({ action: "proposal.sent", resourceId: proposal.id, to: proposal.lead.email, subject: `Tinlance proposal ${proposal.proposalNumber}`, html: `<p>Your Tinlance proposal <strong>${proposal.proposalNumber}</strong> is ready.</p><p><a href="${link}">View proposal</a></p>`, requestId, organizationId: proposal.organizationId }).catch((error) => { console.error("proposal_notification_failed", { requestId, error }); return { sent: false, duplicate: false, configured: false }; });
     return NextResponse.json({ status: "sent", requestId, proposalId: proposal.id, proposalUrl: link, notification: email }, { status: 200, headers: { "cache-control": "no-store", "x-request-id": requestId } });
   } catch (error) { console.error("proposal_send_failed", { requestId, error }); return NextResponse.json({ error: "service_unavailable", requestId }, { status: 503, headers: { "cache-control": "no-store", "x-request-id": requestId } }); }
