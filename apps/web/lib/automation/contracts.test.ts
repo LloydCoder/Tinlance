@@ -23,12 +23,12 @@ describe("automation contracts", () => {
   });
 
   it("rejects duplicate and unpinned FDE steps", () => {
-    expect(() => validateWorkflowDefinition({ steps: [{ key: "x", type: "FDE", domain: "cybersecurity", capabilityId: "triage", capabilityVersion: "v1" }, { key: "x", type: "SYSTEM" }], policies: {} })).toThrow();
-    expect(() => validateWorkflowDefinition({ steps: [{ key: "x", type: "FDE" }], policies: {} })).toThrow();
+    expect(() => validateWorkflowDefinition({ maxSteps: 2, maxDurationSeconds: 3600, steps: [{ key: "x", type: "FDE", domain: "cybersecurity", capabilityId: "triage", capabilityVersion: "v1" }, { key: "x", type: "SYSTEM" }], policies: { dryRun: true, externalWritesRequireApproval: true, customerDataUntrusted: true } })).toThrow();
+    expect(() => validateWorkflowDefinition({ maxSteps: 1, maxDurationSeconds: 3600, steps: [{ key: "x", type: "FDE" }], policies: { dryRun: true, externalWritesRequireApproval: true, customerDataUntrusted: true } })).toThrow();
   });
 
   it("accepts a bounded pinned workflow", () => {
-    expect(validateWorkflowDefinition({ steps: [{ key: "scope", type: "SYSTEM" }, { key: "fde", type: "FDE", domain: "cybersecurity", capabilityId: "triage", capabilityVersion: "v1" }], policies: { customerDataUntrusted: true } })).toBe(true);
+    expect(validateWorkflowDefinition({ maxSteps: 2, maxDurationSeconds: 3600, steps: [{ key: "scope", type: "SYSTEM" }, { key: "fde", type: "FDE", domain: "cybersecurity", capabilityId: "triage", capabilityVersion: "v1" }], policies: { dryRun: true, externalWritesRequireApproval: true, customerDataUntrusted: true } })).toBe(true);
   });
 
   it("treats customer-controlled content as untrusted data", () => {
