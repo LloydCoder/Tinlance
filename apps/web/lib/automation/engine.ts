@@ -172,7 +172,7 @@ async function executeStep(run: RunRow, step: StepRow, definitionStep: Definitio
       ) v ON TRUE
       WHERE r."organizationId"=${run.organization_id}
         AND r."projectId"=${run.project_id}
-        AND r."idempotencyKey" LIKE ${`${run.id}:remediation:%`}
+        AND f."idempotencyKey" LIKE ${`${run.id}:finding:%`}
       ORDER BY r.id
     `);
     if (remediations.some(remediation => !isIndependentlyVerifiedRemediation({
@@ -322,13 +322,25 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
         AND "projectId"=${run.project_id}
         AND "assessmentId"=${run.assessment_id ?? ""}
         AND visibility='CUSTOMER'
-        AND status IN ('CUSTOMER_VISIBLE','OPEN','ACKNOWLEDGED','IN_PROGRESS','REMEDIATED','VERIFICATION_PENDING','VERIFIED')
+        AND status IN ('CUSTOMER_VISIBLE','OPEN','ACKNOWLEDGED','IN_PROGRESS','REMEDIATED','VERIFICATION_PENDING')
     `);
     let createdRemediations = 0;
     for (const finding of findings) {
       createdRemediations += await tx.$executeRaw(Prisma.sql`
-        INSERT INTO "WorkspaceRemediation" ("id","organizationId","projectId","findingId","title","description","priority","status","idempotencyKey")
-        VALUES (${randomUUID()},${run.organization_id},${run.project_id},${finding.id},${`Remediate: ${finding.title}`},${finding.recommendation},${finding.severity},'OPEN',${`${run.id}:remediation:${finding.id}`})
+        INSERT INTO "WorkspaceRemediation"
+          ("id","organizationId","projectId","findingId","title","description","priority","status","idempotencyKey")
+        SELECT ${randomUUID()},${run.organization_id},${run.project_id},f.id,
+          ${`Remediate: ${finding.title}`},${finding.recommendation},${finding.severity},'OPEN',${`${run.id}:remediation:${finding.id}`}
+        FROM "WorkspaceFinding" f
+        WHERE f.id=${finding.id}
+          AND f."organizationId"=${run.organization_id}
+          AND f."projectId"=${run.project_id}
+          AND NOT EXISTS (
+            SELECT 1 FROM "WorkspaceRemediation" existing
+            WHERE existing."findingId"=f.id
+              AND existing."organizationId"=f."organizationId"
+              AND existing.status NOT IN ('VERIFIED','CLOSED')
+          )
         ON CONFLICT ("idempotencyKey") DO NOTHING
       `);
     }
@@ -361,7 +373,7 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
       ) v ON TRUE
       WHERE r."organizationId"=${run.organization_id}
         AND r."projectId"=${run.project_id}
-        AND r."idempotencyKey" LIKE ${`${run.id}:remediation:%`}
+        AND f."idempotencyKey" LIKE ${`${run.id}:finding:%`}
       ORDER BY r.id
       FOR UPDATE OF r
     `);
