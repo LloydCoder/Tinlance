@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getRequestId } from "@/lib/security/request-id";
+import { isBookableSlot } from "@/lib/commercial/booking";
 
 const SLOT_MINUTES = 30;
 const DAYS = 14;
@@ -18,9 +19,7 @@ export async function GET(request: Request) {
   cursor.setUTCSeconds(0, 0);
   cursor.setUTCMinutes(Math.ceil(cursor.getUTCMinutes() / SLOT_MINUTES) * SLOT_MINUTES);
   while (cursor < until && slots.length < 100) {
-    const weekday = cursor.getUTCDay();
-    const hour = cursor.getUTCHours();
-    if (weekday !== 0 && weekday !== 6 && hour >= 9 && hour < 17 && !occupied.has(cursor.getTime()) && cursor.getTime() > Date.now() + 60 * 60 * 1000) slots.push(cursor.toISOString());
+    if (isBookableSlot(cursor, timezone) && !occupied.has(cursor.getTime()) && cursor.getTime() > Date.now() + 60 * 60 * 1000) slots.push(cursor.toISOString());
     cursor.setUTCMinutes(cursor.getUTCMinutes() + SLOT_MINUTES);
   }
   return NextResponse.json({ timezone, slots }, { headers: { "cache-control": "no-store", "x-request-id": requestId } });
