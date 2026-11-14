@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 export type RetryClassification = "RETRYABLE" | "NON_RETRYABLE";
 
 const retryableStatuses = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
@@ -12,6 +14,22 @@ export function classifyFailure(input: { status?: number; code?: string; message
 export function exponentialBackoff(attempt: number, initialSeconds = 5, maxSeconds = 300) {
   if (!Number.isInteger(attempt) || attempt < 1) throw new Error("attempt must be >= 1");
   return Math.min(maxSeconds, initialSeconds * 2 ** (attempt - 1));
+}
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.keys(value as Record<string, unknown>)
+        .sort()
+        .map(key => [key, canonicalize((value as Record<string, unknown>)[key])])
+    );
+  }
+  return value;
+}
+
+export function workflowDefinitionChecksum(definition: unknown) {
+  return createHash("sha256").update(JSON.stringify(canonicalize(definition))).digest("hex");
 }
 
 export function validateWorkflowDefinition(definition: unknown) {
