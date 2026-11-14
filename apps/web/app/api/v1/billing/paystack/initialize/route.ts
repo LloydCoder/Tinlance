@@ -5,6 +5,7 @@ import { getRequestId } from "@/lib/security/request-id";
 import { newId, recordOutboxEvent } from "@/lib/platform/lifecycle";
 import { validateProductionEnv } from "@/lib/security/env";
 import { Prisma } from "@prisma/client";
+import { canonicalAppUrl, isTrustedPaystackCheckoutUrl } from "@/lib/commercial/urls";
 
 const MAX_BODY_BYTES = 4_096;
 export async function POST(request: Request) {
@@ -31,12 +32,12 @@ export async function POST(request: Request) {
     if (!existing[0]) await db.$executeRaw`INSERT INTO "Payment" ("id", "invoiceId", "organizationId", "provider", "providerReference", "status", "amountMinor", "currency") VALUES (${newId()}, ${invoice.id}, ${invoice.organizationId}, 'paystack', ${reference}, 'PENDING', ${invoice.amountMinor}, ${invoice.currency}) ON CONFLICT ("providerReference") DO NOTHING`;
     const secret = process.env.PAYSTACK_SECRET_KEY;
     if (!secret) return NextResponse.json({ error: "billing_not_configured", requestId }, { status: 503 });
-    const response = await fetch("https://api.paystack.co/transaction/initialize", { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json", "Idempotency-Key": `paystack-init:${invoice.id}` }, body: JSON.stringify({ amount: invoice.amountMinor, currency: invoice.currency, email: invoice.customerEmail, reference, metadata: { invoiceId: invoice.id, organizationId: invoice.organizationId }, callback_url: new URL(`/payment/callback?reference=${encodeURIComponent(reference)}`, request.url).toString() }), cache: "no-store" });
+    const response = await fetch("https://api.paystack.co/transaction/initialize", { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json", "Idempotency-Key": `paystack-init:${invoice.id}` }, body: JSON.stringify({ amount: invoice.amountMinor, currency: invoice.currency, email: invoice.customerEmail, reference, metadata: { invoiceId: invoice.id, organizationId: invoice.organizationId }, callback_url: canonicalAppUrl(`/payment/callback?reference=${encodeURIComponent(reference)}`) }), cache: "no-store" });
     const payload = await response.json().catch(() => null) as { status?: boolean; data?: { authorization_url?: string; reference?: string }; message?: string } | null;
-    if (!response.ok || !payload?.status || !payload.data?.authorization_url) { await db.$executeRaw`UPDATE "Payment" SET "status" = 'FAILED', "failureReason" = ${String(payload?.message ?? `Paystack HTTP ${response.status}`).slice(0, 500)}, "updatedAt" = NOW() WHERE "providerReference" = ${reference}`; return NextResponse.json({ error: "payment_initialization_failed", requestId }, { status: 502 }); }
+    if (!response.ok || !payload?.status || !payload.data?.authorization_url || !isTrustedPaystackCheckoutUrl(payload.data.authorization_url)) { await db.$executeRaw`UPDATE "Payment" SET "status" = 'FAILED', "failureReason" = ${String(payload?.message ?? `Paystack HTTP ${response.status}`).slice(0, 500)}, "updatedAt" = NOW() WHERE "providerReference" = ${reference}`; return NextResponse.json({ error: "payment_initialization_failed", requestId }, { status: 502 }); }
     await db.$executeRaw`UPDATE "Payment" SET "status" = 'PENDING', "updatedAt" = NOW() WHERE "providerReference" = ${reference}`;
     await recordOutboxEvent({ eventKey: `payment.initialized:${invoice.id}:${reference}`, eventType: "payment.initialized", aggregateType: "payment", aggregateId: invoice.id, organizationId: invoice.organizationId, payload: { invoiceId: invoice.id, provider: "paystack", reference } });
-    if (request.headers.get("accept")?.includes("text/html")) return NextResponse.redirect(payload.data.authorization_url, 303);
+    if (request.headers.get("accept")?.includes("text/html")) return NextResponse.redirect(new URL(payload.data.authorization_url), 303);
     return NextResponse.json({ authorizationUrl: payload.data.authorization_url, reference, requestId }, { headers: { "cache-control": "no-store", "x-request-id": requestId } });
   } catch (error) {
     if (error instanceof SyntaxError) return NextResponse.json({ error: "invalid_json", requestId }, { status: 400 });
