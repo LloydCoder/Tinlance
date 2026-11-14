@@ -19,6 +19,12 @@ export function validateWorkflowDefinition(definition: unknown) {
   const value = definition as Record<string, unknown>;
   const steps = value.steps;
   if (!Array.isArray(steps) || steps.length === 0 || steps.length > 100) throw new Error("workflow must contain 1-100 steps");
+  if (!Number.isInteger(value.maxSteps) || Number(value.maxSteps) < steps.length || Number(value.maxSteps) > 100) {
+    throw new Error("workflow maxSteps must cover every declared step and be <= 100");
+  }
+  if (!Number.isInteger(value.maxDurationSeconds) || Number(value.maxDurationSeconds) < 1 || Number(value.maxDurationSeconds) > 604800) {
+    throw new Error("workflow maxDurationSeconds must be between 1 and 604800");
+  }
   const keys = new Set<string>();
   for (const raw of steps) {
     if (!raw || typeof raw !== "object") throw new Error("workflow step must be an object");
@@ -28,9 +34,28 @@ export function validateWorkflowDefinition(definition: unknown) {
     keys.add(step.key);
     if (!["SYSTEM", "FDE", "APPROVAL", "CUSTOMER_INPUT"].includes(String(step.type))) throw new Error("unsupported workflow step type");
     if (step.type === "FDE" && (typeof step.domain !== "string" || typeof step.capabilityId !== "string" || typeof step.capabilityVersion !== "string")) throw new Error("FDE steps require pinned domain and capability version");
+    if (step.timeoutSeconds !== undefined && (!Number.isInteger(step.timeoutSeconds) || Number(step.timeoutSeconds) < 1 || Number(step.timeoutSeconds) > 3600)) {
+      throw new Error("step timeoutSeconds must be between 1 and 3600");
+    }
+    if (step.retry !== undefined) {
+      if (!step.retry || typeof step.retry !== "object") throw new Error("step retry policy must be an object");
+      const retry = step.retry as Record<string, unknown>;
+      if (retry.maxAttempts !== undefined && (!Number.isInteger(retry.maxAttempts) || Number(retry.maxAttempts) < 1 || Number(retry.maxAttempts) > 10)) {
+        throw new Error("step retry maxAttempts must be between 1 and 10");
+      }
+      if (retry.backoffSeconds !== undefined && (!Number.isInteger(retry.backoffSeconds) || Number(retry.backoffSeconds) < 1 || Number(retry.backoffSeconds) > 300)) {
+        throw new Error("step retry backoffSeconds must be between 1 and 300");
+      }
+    }
   }
   const policies = value.policies;
   if (!policies || typeof policies !== "object") throw new Error("workflow policies are required");
+  const policyValues = policies as Record<string, unknown>;
+  if (typeof policyValues.dryRun !== "boolean" ||
+      typeof policyValues.externalWritesRequireApproval !== "boolean" ||
+      typeof policyValues.customerDataUntrusted !== "boolean") {
+    throw new Error("workflow policies must explicitly define dryRun, externalWritesRequireApproval and customerDataUntrusted");
+  }
   return true;
 }
 
