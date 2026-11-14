@@ -223,8 +223,18 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
     await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET state=state || ${json({ findings })}::jsonb,"updated_at"=${now()} WHERE id=${run.id}`);
   }
   if (step.step_key === "request_evidence") {
-    const existing = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT id FROM "WorkspaceEvidenceRequest" WHERE "organizationId"=${run.organization_id} AND "projectId"=${run.project_id} AND title='M4 automated assessment evidence' AND status IN ('REQUESTED','SUBMITTED','REOPENED') LIMIT 1`);
-    if (!existing[0]) await tx.$executeRaw(Prisma.sql`INSERT INTO "WorkspaceEvidenceRequest" ("id","organizationId","projectId","assessmentId","title","description","requestedType","requestedByUserId") VALUES (${randomUUID()},${run.organization_id},${run.project_id},${run.assessment_id ?? null},'M4 automated assessment evidence','Provide supporting evidence required to validate the automated assessment output.','assessment-evidence',${run.initiating_actor_user_id})`);
+    const evidenceId = stateValue(run, "customerEvidenceId");
+    if (typeof evidenceId !== "string") throw new Error("customer_evidence_missing");
+    await tx.$executeRaw(Prisma.sql`
+      INSERT INTO "WorkspaceEvidenceRequest"
+        ("id","organizationId","projectId","assessmentId","title","description","requestedType","requestedByUserId","status","submittedEvidenceId")
+      VALUES
+        (${`${run.id}:evidence-request`},${run.organization_id},${run.project_id},${run.assessment_id ?? null},
+         'M4 automated assessment evidence','Provide supporting evidence required to validate the automated assessment output.',
+         'assessment-evidence',${run.initiating_actor_user_id},'SUBMITTED',${evidenceId})
+      ON CONFLICT ("id") DO UPDATE
+        SET status='SUBMITTED',"submittedEvidenceId"=EXCLUDED."submittedEvidenceId","updatedAt"=${now()}
+    `);
   }
   if (step.step_key === "draft_report") {
     const findings = await tx.$queryRaw<Array<{ id: string; title: string; description: string; severity: string; category: string; affectedAsset: string | null; recommendation: string }>>(Prisma.sql`
@@ -382,7 +392,31 @@ async function processRun(run: RunRow) {
     if (!approvals[0]) await db.$transaction(async tx=>{ await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_approvals" ("id","workflow_run_id","step_id","organization_id","requested_by_user_id","status","policy") VALUES (${randomUUID()},${run.id},${step.id},${run.organization_id},${run.initiating_actor_user_id},'PENDING',${stepDef.policy ?? 'HUMAN_APPROVAL'})`); await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='WAITING_FOR_APPROVAL',"updated_at"=${now()} WHERE id=${run.id}`); await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_steps" SET status='WAITING_FOR_APPROVAL',"updated_at"=${now()} WHERE id=${step.id}`); await appendEvent(tx,run,"APPROVAL_REQUESTED",{policy:stepDef.policy},step.step_key); await audit(tx,run,"APPROVAL_REQUESTED",{policy:stepDef.policy}); });
     return;
   }
-  if (step.step_type === "CUSTOMER_INPUT" && step.step_key === "request_evidence" && !run.state.customerEvidenceId) { await db.$transaction(async tx=>{ await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_runs" SET status='WAITING',"updated_at"=${now()} WHERE id=${run.id}`); await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_steps" SET status='WAITING',"updated_at"=${now()} WHERE id=${step.id}`); await appendEvent(tx,run,"WORKFLOW_WAITING",{reason:"customer_input"},step.step_key); }); return; }
+  if (step.step_type === "CUSTOMER_INPUT" && step.step_key === "request_evidence" && !run.state.customerEvidenceId) {
+    await db.$transaction(async tx => {
+      await tx.$executeRaw(Prisma.sql`
+        INSERT INTO "WorkspaceEvidenceRequest"
+          ("id","organizationId","projectId","assessmentId","title","description","requestedType","requestedByUserId","status")
+        VALUES
+          (${`${run.id}:evidence-request`},${run.organization_id},${run.project_id},${run.assessment_id ?? null},
+           'M4 automated assessment evidence','Provide supporting evidence required to validate the automated assessment output.',
+           'assessment-evidence',${run.initiating_actor_user_id},'REQUESTED')
+        ON CONFLICT ("id") DO NOTHING
+      `);
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "automation_workflow_runs"
+        SET status='WAITING',"next_run_at"=NULL,"updated_at"=${now()}
+        WHERE id=${run.id} AND status IN ('RUNNING','RETRYING','WAITING')
+      `);
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "automation_workflow_steps"
+        SET status='WAITING',"updated_at"=${now()}
+        WHERE id=${step.id}
+      `);
+      await appendEvent(tx, run, "WORKFLOW_WAITING", { reason: "customer_input" }, step.step_key);
+    });
+    return;
+  }
   const attemptRows = await db.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`SELECT COUNT(*) FROM "automation_step_attempts" WHERE "step_id"=${step.id}`); const attemptNo=Number(attemptRows[0]?.count??0n)+1; const maxAttempts=stepDef.retry?.maxAttempts??1;
   await db.$transaction(async tx=>{ await tx.$executeRaw(Prisma.sql`UPDATE "automation_workflow_steps" SET status='RUNNING',"started_at"=COALESCE("started_at",${now()}),"actor_type"='system',"actor_id"=${run.initiating_actor_user_id},"authorization_decision"='ALLOW',"updated_at"=${now()} WHERE id=${step.id}`); await tx.$executeRaw(Prisma.sql`INSERT INTO "automation_step_attempts" ("id","step_id","attempt_no","status","request_id") VALUES (${randomUUID()},${step.id},${attemptNo},'RUNNING',${run.request_id})`); });
   const started=Date.now();
@@ -526,12 +560,12 @@ export async function signalAutomation(runId: string, organizationId: string, ac
       if (run.status !== "WAITING" || !validatedSignal.customerEvidenceId) {
         throw new Error("workflow is not waiting for supported customer evidence input");
       }
-      const steps = await tx.$queryRaw<Array<{ step_key: string; step_type: string }>>(Prisma.sql`
-        SELECT "step_key","step_type" FROM "automation_workflow_steps"
+      const steps = await tx.$queryRaw<Array<{ step_key: string; step_type: string; status: string }>>(Prisma.sql`
+        SELECT "step_key","step_type",status FROM "automation_workflow_steps"
         WHERE "workflow_run_id"=${runId} AND ordinal=${run.current_step}
         LIMIT 1
       `);
-      if (steps[0]?.step_key !== "request_evidence" || steps[0]?.step_type !== "CUSTOMER_INPUT") {
+      if (steps[0]?.step_key !== "request_evidence" || steps[0]?.step_type !== "CUSTOMER_INPUT" || steps[0]?.status !== "WAITING") {
         throw new Error("workflow is not waiting for evidence input");
       }
       const evidence = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
