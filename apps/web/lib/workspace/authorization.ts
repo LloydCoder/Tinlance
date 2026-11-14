@@ -14,10 +14,9 @@ async function m7Authorize(principal: WorkspacePrincipal, permission: WorkspaceP
   const requestId = requestHeaders.get("x-request-id") ?? randomUUID();
   return enforcePersistedSecurity({
     principal: { principalId: principal.userId, principalType: "HUMAN", organizationId: principal.organizationId, userId: principal.userId, scopes: [], permissions: hasWorkspacePermission(principal, permission) ? [permission] : [], authenticationMethod: "better-auth-session", authenticationStrength: "MFA" },
-    action: "workspace.authorization",
+    action: permission,
     resourceType,
     resourceId,
-    requestedRisk: "LOW",
     context: { tenantId: principal.organizationId, requiredPermission: permission },
     stepUpToken: requestHeaders.get("x-security-step-up") ?? undefined,
     requestId,
