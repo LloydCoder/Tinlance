@@ -10,7 +10,7 @@ The browser never calls FDE Mastery directly.
 
 ## Durable execution
 
-M4 uses PostgreSQL-backed workflow state rather than browser state or an in-memory queue. A Vercel cron invokes `/api/internal/automation/worker` every five minutes. The worker claims eligible runs with `FOR UPDATE SKIP LOCKED` and a lease. A lease expiry makes a run recoverable after worker interruption. Retry timing is persisted in `next_run_at`.
+M4 uses PostgreSQL-backed workflow state rather than browser state or an in-memory queue. A GitHub Actions schedule invokes `/api/internal/automation/worker` every five minutes using a repository/workflow-scoped GitHub OIDC token. A daily Vercel Cron fallback uses the encrypted `CRON_SECRET` environment variable. The worker verifies the GitHub OIDC signature against GitHub's published JWKS and restricts repository, branch, workflow path, audience and event claims. The worker claims eligible runs with `FOR UPDATE SKIP LOCKED` and a lease. A lease expiry makes a run recoverable after worker interruption. Retry timing is persisted in `next_run_at`.
 
 The worker processes bounded steps. Playbook definitions must declare bounded `maxSteps` and `maxDurationSeconds`; step timeouts and retry policies are validated before execution. A run that exceeds its configured maximum duration is expired and audited. Pause/cancel controls cannot be overwritten by a late worker completion or failure.
 
@@ -65,7 +65,7 @@ FDE results are hashed and stored as workflow artifacts. AI-assisted findings ar
 
 ## Scheduling
 
-Schedules are persisted with interval, timezone, next-run and provenance fields. The current playbook schedules a 90-day reassessment after successful closure. Duplicate scheduled runs are prevented through the same tenant/idempotency constraints used for manual starts.
+Schedules are persisted with interval, timezone, next-run, creator identity, failure state and an expiring worker lease. A due schedule is atomically claimed; the scheduler creates a new M1 Assessment and M3 WorkspaceAssessment by cloning the latest approved assessment scope, then starts the exact pinned playbook version. A scheduled reassessment re-enters the project lifecycle through the audited COMPLETED → ASSESSMENT transition. The current playbook schedules a 90-day reassessment after successful closure. Duplicate scheduled runs are prevented through the same tenant/idempotency constraints used for manual starts.
 
 ## Security baseline
 
