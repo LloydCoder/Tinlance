@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createPublicKey, randomUUID, verify } from "node:crypto";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -18,11 +18,44 @@ type ScheduleRow = {
   created_by_user_id: string | null;
 };
 
-function authorized(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
+async function authorized(request: Request) {
   const provided = request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "").trim();
-  return Boolean(provided && provided === secret);
+  if (!provided) return false;
+
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && provided === cronSecret) return true;
+
+  try {
+    const [encodedHeader, encodedPayload, encodedSignature] = provided.split(".");
+    if (!encodedHeader || !encodedPayload || !encodedSignature) return false;
+    const header = JSON.parse(Buffer.from(encodedHeader, "base64url").toString("utf8")) as { alg?: string; kid?: string };
+    if (header.alg !== "RS256" || !header.kid) return false;
+    const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as Record<string, unknown>;
+    const response = await fetch("https://token.actions.githubusercontent.com/.well-known/jwks", { cache: "no-store" });
+    if (!response.ok) return false;
+    const jwks = await response.json() as { keys?: Array<JsonWebKey & { kid?: string }> };
+    const jwk = jwks.keys?.find(key => key.kid === header.kid);
+    if (!jwk) return false;
+    const publicKey = createPublicKey({ key: jwk, format: "jwk" });
+    const validSignature = verify(
+      "RSA-SHA256",
+      Buffer.from(`${encodedHeader}.${encodedPayload}`),
+      publicKey,
+      Buffer.from(encodedSignature, "base64url"),
+    );
+    if (!validSignature) return false;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    return payload.iss === "https://token.actions.githubusercontent.com" &&
+      payload.aud === "tinlance-automation-worker" &&
+      payload.repository === "LloydCoder/Tinlance" &&
+      payload.ref === "refs/heads/main" &&
+      payload.workflow_ref === "LloydCoder/Tinlance/.github/workflows/m4-automation-worker.yml@refs/heads/main" &&
+      ["schedule", "workflow_dispatch"].includes(String(payload.event_name)) &&
+      typeof payload.exp === "number" && payload.exp > nowSeconds &&
+      typeof payload.nbf === "number" && payload.nbf <= nowSeconds + 30;
+  } catch {
+    return false;
+  }
 }
 
 async function createScheduledAssessment(schedule: ScheduleRow) {
@@ -102,7 +135,7 @@ async function createScheduledAssessment(schedule: ScheduleRow) {
 }
 
 export async function GET(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const workerId = `automation-worker:${randomUUID()}`;
 
   const due = await db.$queryRaw<ScheduleRow[]>(Prisma.sql`
