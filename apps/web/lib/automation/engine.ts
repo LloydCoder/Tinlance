@@ -508,8 +508,8 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
   if (step.step_key === "schedule_reassessment") {
     const next = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
     const created = await tx.$executeRaw(Prisma.sql`
-      INSERT INTO "automation_schedules" ("id","organization_id","project_id","playbook_id","playbook_version_id","interval_seconds","timezone","status","next_run_at","idempotency_seed")
-      VALUES (${randomUUID()},${run.organization_id},${run.project_id},${run.playbook_id},${run.playbook_version_id},${90 * 24 * 60 * 60},'UTC','ACTIVE',${next},${`${run.project_id}:${run.playbook_id}:90d`})
+      INSERT INTO "automation_schedules" ("id","organization_id","project_id","playbook_id","playbook_version_id","interval_seconds","timezone","status","next_run_at","idempotency_seed","created_by_user_id")
+      VALUES (${randomUUID()},${run.organization_id},${run.project_id},${run.playbook_id},${run.playbook_version_id},${90 * 24 * 60 * 60},'UTC','ACTIVE',${next},${`${run.project_id}:${run.playbook_id}:90d`},${run.initiating_actor_user_id})
       ON CONFLICT DO NOTHING
     `);
     if (created === 1) await audit(tx, run, "WORKSPACE_REASSESSMENT_SCHEDULED", { intervalSeconds: 90 * 24 * 60 * 60, nextRunAt: next.toISOString() });
