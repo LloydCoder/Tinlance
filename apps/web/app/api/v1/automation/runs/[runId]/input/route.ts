@@ -18,8 +18,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ run
     }, { status: 400 });
   }
 
-  const runRows = await db.$queryRaw<Array<{ project_id: string; status: string }>>(Prisma.sql`
-    SELECT "project_id",status
+  const runRows = await db.$queryRaw<Array<{ project_id: string; assessment_id: string | null; status: string }>>(Prisma.sql`
+    SELECT "project_id","assessment_id",status
     FROM "automation_workflow_runs"
     WHERE id=${runId} AND organization_id=${principal.organizationId}
     LIMIT 1
@@ -31,6 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ run
     WHERE id=${body.evidenceId.trim()}
       AND "organizationId"=${principal.organizationId}
       AND "projectId"=${runRows[0].project_id}
+      AND ("assessmentId" IS NULL OR "assessmentId"=${runRows[0].assessment_id})
     LIMIT 1
   `);
   if (!evidence[0]) return NextResponse.json({ error: "Evidence is outside the workflow tenant/project" }, { status: 403 });
