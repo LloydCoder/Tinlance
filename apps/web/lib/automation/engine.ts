@@ -5,7 +5,7 @@ import { generateAssessmentReport } from "@/lib/workspace/report";
 import { authorizeWorkflowStep } from "@/lib/security-gateway/workflow";
 import { ensureProjectWorkspaceState } from "@/lib/workspace/service";
 import { assertProjectTransition, assertReportTransition } from "@/lib/workspace/workflow";
-import { isCustomerVisibleFinding, isIndependentlyVerifiedRemediation, validateWorkflowDefinition, validateWorkflowSignal } from "./contracts";
+import { isCustomerVisibleFinding, isIndependentlyVerifiedRemediation, validateWorkflowDefinition, validateWorkflowSignal, workflowDefinitionChecksum } from "./contracts";
 
 export type AutomationStatus = "PENDING" | "RUNNING" | "WAITING" | "PAUSED" | "WAITING_FOR_APPROVAL" | "RETRYING" | "COMPLETED" | "FAILED" | "CANCELLED" | "EXPIRED";
 export type StepStatus = "PENDING" | "RUNNING" | "WAITING" | "PAUSED" | "WAITING_FOR_APPROVAL" | "RETRYING" | "COMPLETED" | "FAILED" | "CANCELLED";
@@ -35,8 +35,9 @@ export async function startAutomation(input: { organizationId: string; projectId
   if (!input.idempotencyKey || input.idempotencyKey.length > 255) throw new Error("invalid idempotency key");
   const existing = await db.$queryRaw<RunRow[]>(Prisma.sql`SELECT * FROM "automation_workflow_runs" WHERE "organization_id"=${input.organizationId} AND "idempotency_key"=${input.idempotencyKey} LIMIT 1`);
   if (existing[0]) return existing[0];
-  const versions = await db.$queryRaw<Array<{ playbook_id: string; playbook_version_id: string; definition: Definition; version: string }>>(Prisma.sql`SELECT p.id AS playbook_id, v.id AS playbook_version_id, v.definition, v.version FROM "automation_playbooks" p JOIN "automation_playbook_versions" v ON v.playbook_id=p.id WHERE (p."organization_id" IS NULL OR p."organization_id"=${input.organizationId}) AND p.slug=${input.playbookSlug} AND p.status='ACTIVE' ORDER BY (p."organization_id" IS NULL) ASC, v."active_at" DESC LIMIT 1`);
+  const versions = await db.$queryRaw<Array<{ playbook_id: string; playbook_version_id: string; definition: Definition; version: string; checksum: string }>>(Prisma.sql`SELECT p.id AS playbook_id, v.id AS playbook_version_id, v.definition, v.version, v.checksum FROM "automation_playbooks" p JOIN "automation_playbook_versions" v ON v.playbook_id=p.id WHERE (p."organization_id" IS NULL OR p."organization_id"=${input.organizationId}) AND p.slug=${input.playbookSlug} AND p.status='ACTIVE' AND v."deprecated_at" IS NULL ORDER BY (p."organization_id" IS NULL) ASC, v."active_at" DESC LIMIT 1`);
   const version = versions[0]; if (!version) throw new Error("playbook not available");
+  if (workflowDefinitionChecksum(version.definition) !== version.checksum) throw new Error("playbook_definition_checksum_mismatch");
   validateWorkflowDefinition(version.definition);
   const hasSideEffects = version.definition.steps.some(step =>
     ["publish_report", "create_remediation", "close", "schedule_reassessment"].includes(step.key)
@@ -73,9 +74,10 @@ export async function startAutomation(input: { organizationId: string; projectId
 }
 
 async function loadDefinition(run: RunRow): Promise<Definition> {
-  const rows = await db.$queryRaw<Array<{ definition: Definition }>>(Prisma.sql`SELECT definition FROM "automation_playbook_versions" WHERE id=${run.playbook_version_id}`);
+  const rows = await db.$queryRaw<Array<{ definition: Definition; checksum: string }>>(Prisma.sql`SELECT definition,checksum FROM "automation_playbook_versions" WHERE id=${run.playbook_version_id}`);
   if (!rows[0]) throw new Error("workflow definition missing");
   const definition = rows[0].definition;
+  if (workflowDefinitionChecksum(definition) !== rows[0].checksum) throw new Error("playbook_definition_checksum_mismatch");
   validateWorkflowDefinition(definition);
   const step = definition.steps[run.current_step];
   if (step && run.initiating_actor_user_id) {
