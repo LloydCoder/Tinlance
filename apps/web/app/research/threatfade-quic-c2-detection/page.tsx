@@ -3,12 +3,13 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { JsonLd, breadcrumbSchema } from "../../../components/json-ld";
 import { getAuthor, researchItems } from "../../../lib/authority";
+import { absoluteUrl } from "../../../lib/site";
 
 const research = researchItems[0];
 const author = getAuthor(research.authors[0]);
 
 export const metadata: Metadata = {
-  title: "ThreatFade QUIC C2 Detection | Tinlance Research",
+  title: "ThreatFade QUIC C2 Detection",
   description: research.summary,
   authors: [{ name: author?.name ?? "Tinlance Engineering" }],
   alternates: { canonical: research.canonicalPath },
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
     type: "article",
     title: research.title,
     description: research.summary,
-    url: `https://tinlance.com${research.canonicalPath}`,
+    url: absoluteUrl(research.canonicalPath),
     publishedTime: research.publishedAt,
     modifiedTime: research.updatedAt,
     authors: [author?.name ?? "Tinlance Engineering"],
@@ -33,10 +34,10 @@ const researchSchema = {
   author: {
     "@type": "Organization",
     name: author?.name ?? "Tinlance Engineering",
-    url: author?.url ?? "https://tinlance.com/about",
+    url: absoluteUrl("/about"),
   },
-  publisher: { "@id": "https://tinlance.com/#organization" },
-  mainEntityOfPage: `https://tinlance.com${research.canonicalPath}`,
+  publisher: { "@id": absoluteUrl("/#organization") },
+  mainEntityOfPage: absoluteUrl(research.canonicalPath),
   about: ["ThreatFade", "QUIC", "C2 detection", "AI security"],
 };
 

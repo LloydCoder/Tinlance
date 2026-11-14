@@ -7,11 +7,11 @@ import { evidenceRecords } from "../../../lib/evidence/taxonomy";
 import { socialImageUrl, socialImages } from "../../../lib/metadata";
 
 export const metadata: Metadata = {
-  title: "FDSE — Forward-Deployed Software Engineering Intelligence",
+  title: "FDSE: Forward-Deployed Engineering",
   description: "FDSE is Tinlance's engineering intelligence and assurance layer for context, risk, policy, evidence, evaluation, security, supply-chain and engineering lineage.",
   alternates: { canonical: "/engineering/fdse" },
-  openGraph: { title: "FDSE — Forward-Deployed Software Engineering Intelligence | Tinlance", description: "Engineering intelligence and assurance for forward-deployed software engineering.", url: "/engineering/fdse", type: "website", images: socialImages },
-  twitter: { card: "summary_large_image", title: "FDSE — Forward-Deployed Software Engineering Intelligence | Tinlance", description: "Engineering intelligence and assurance for forward-deployed software engineering.", images: [socialImageUrl] },
+  openGraph: { title: "FDSE: Forward-Deployed Engineering", description: "Engineering intelligence and assurance for forward-deployed software engineering.", url: "/engineering/fdse", type: "website", images: socialImages },
+  twitter: { card: "summary_large_image", title: "FDSE: Forward-Deployed Engineering", description: "Engineering intelligence and assurance for forward-deployed software engineering.", images: [socialImageUrl] },
 };
 
 const layers = [

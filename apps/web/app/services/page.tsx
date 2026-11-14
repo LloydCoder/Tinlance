@@ -30,6 +30,11 @@ export default function ServicesPage() {
           </article>
         ))}
       </section>
+      <section className="mt-16 grid gap-6 border-t border-neutral-200 pt-12 md:grid-cols-3">
+        <article><h2 className="text-xl font-semibold">Discover the constraint</h2><p className="mt-3 leading-7 text-neutral-600">We start with the workflow, architecture, data boundaries, operating constraints, and the result the team needs. This keeps delivery grounded in the real environment rather than a generic technology package.</p></article>
+        <article><h2 className="text-xl font-semibold">Build and integrate</h2><p className="mt-3 leading-7 text-neutral-600">Engineering work can include system design, application development, model and tool integration, automation, testing, security controls, and deployment into the customer's operating environment.</p></article>
+        <article><h2 className="text-xl font-semibold">Verify the outcome</h2><p className="mt-3 leading-7 text-neutral-600">Acceptance criteria, evidence, operational ownership, and follow-on support are defined as part of the engagement. Scope and responsibilities are agreed before implementation begins.</p></article>
+      </section>
     </main>
   );
 }

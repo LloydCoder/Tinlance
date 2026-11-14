@@ -7,6 +7,7 @@ import { getClientIp } from "@/lib/security/client-ip";
 import { enforcePublicRateLimit } from "@/lib/security/rate-limit";
 import { validateProductionEnv } from "@/lib/security/env";
 import { recordGrowthEvent } from "@/lib/growth/events";
+import { verifyCsrfToken } from "@/lib/security/csrf";
 
 const MAX_BODY_BYTES = 16_384;
 const MAX_IDEMPOTENCY_KEY_LENGTH = 128;
@@ -59,6 +60,41 @@ export async function POST(request: Request) {
       );
     }
 
+    const origin = request.headers.get("origin");
+    const fetchSite = request.headers.get("sec-fetch-site");
+    const isBrowserRequest = origin !== null || fetchSite !== null;
+
+    if (isBrowserRequest) {
+      let originMatches = fetchSite === "same-origin" && origin === null;
+      if (origin !== null) {
+        try {
+          originMatches = new URL(origin).origin === new URL(request.url).origin;
+        } catch {
+          originMatches = false;
+        }
+      }
+
+      if (
+        !originMatches ||
+        (fetchSite !== null && fetchSite !== "same-origin") ||
+        !verifyCsrfToken(body.csrfToken)
+      ) {
+        return NextResponse.json(
+          { error: "csrf_validation_failed", requestId },
+          {
+            status: 403,
+            headers: {
+              "cache-control": "no-store",
+              "x-request-id": requestId,
+            },
+          },
+        );
+      }
+    }
+
+    const leadPayload = { ...body };
+    delete leadPayload.csrfToken;
+
     if (typeof body.website === "string" && body.website.trim().length > 0) {
       return NextResponse.json(
         { status: "accepted", requestId },
@@ -66,7 +102,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const parsed = leadSchema.safeParse(body);
+    const parsed = leadSchema.safeParse(leadPayload);
     if (!parsed.success) {
       return NextResponse.json(
         { error: "invalid_request", requestId },

@@ -64,6 +64,13 @@ export default function GuidesPage() {
           </div>
         </div>
       </section>
+      <section className="mt-16 border-t border-neutral-200 pt-12">
+        <p className="kicker">HOW TO USE THESE GUIDES</p>
+        <h2 className="mt-3 max-w-3xl text-3xl font-semibold">Start with the operating problem, then follow the evidence.</h2>
+        <p className="mt-5 max-w-3xl leading-7 text-neutral-600">The guides are entry points into longer engineering explanations. They are intended to help technical leaders and practitioners identify the questions that matter—identity, permissions, data boundaries, reliability, evaluation, observability, and operational ownership—before selecting tools or committing to an implementation.</p>
+        <p className="mt-4 max-w-3xl leading-7 text-neutral-600">Each guide links to its underlying insight so readers can review the assumptions and context. For a system-specific recommendation, use the technical assessment rather than treating general guidance as a substitute for architecture review.</p>
+        <Link className="text-link mt-6 inline-flex" href="/assessment">Discuss your system <ArrowUpRight size={16} /></Link>
+      </section>
     </main>
   );
 }

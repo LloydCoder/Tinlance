@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import React, { type FormEvent } from "react";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 
 const services = [
@@ -11,11 +11,11 @@ const services = [
   "Other / not sure",
 ];
 
-export function LeadForm() {
-  const [status, setStatus] = useState<
+export function LeadForm({ csrfToken }: { csrfToken: string }) {
+  const [status, setStatus] = React.useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
-  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = React.useState<string | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,7 +67,8 @@ export function LeadForm() {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-5" noValidate>
+    <form method="post" onSubmit={submit} className="grid gap-5" noValidate>
+      <input type="hidden" name="csrfToken" value={csrfToken} />
       <div className="grid gap-5 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold">
           Organization

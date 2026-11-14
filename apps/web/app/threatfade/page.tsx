@@ -4,7 +4,7 @@ import { EvidenceStatusBadge } from "../../components/evidence-status";
 import { evidenceRecords } from "../../lib/evidence/taxonomy";
 
 export const metadata = {
-  title: "ThreatFade | Tinlance",
+  title: "ThreatFade",
   description: "ThreatFade is a Tinlance-developed open-core, offline-first platform for evidence-first detection and investigation of evasive behavior.",
   alternates: { canonical: "/threatfade" },
 };
@@ -30,7 +30,11 @@ export default function ThreatFadePage() {
         </dl>
       </section>
 
-      <div className="mt-10 flex flex-wrap gap-4">
+      <section className="mt-12 grid gap-6 md:grid-cols-2">
+        <article className="rounded-2xl border p-6"><h2 className="text-xl font-semibold">Detection and investigation</h2><p className="mt-3 leading-7 text-muted-foreground">ThreatFade focuses on behavioral evidence around encrypted traffic, evasive beaconing, and deliberate operational silencing. Its product direction is to help investigators move from telemetry to explainable observations rather than rely on a single opaque alert.</p></article>
+        <article className="rounded-2xl border p-6"><h2 className="text-xl font-semibold">Open-core and offline-first</h2><p className="mt-3 leading-7 text-muted-foreground">The project is developed as an open-core, offline-first security platform. The public repository and research record provide a way to inspect implementation and historical test scope; current capability should be evaluated against the version and environment actually deployed.</p></article>
+      </section>
+            <div className="mt-10 flex flex-wrap gap-4">
         <Link href="/research/threatfade-quic-c2-detection" className="rounded-md border px-5 py-3 text-sm font-medium">Read the research</Link>
         <a href="https://github.com/LloydCoder/tinlance-threatfade" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-md border px-5 py-3 text-sm font-medium" aria-label="ThreatFade GitHub repository">GitHub repository <ExternalLink size={16} /></a>
         <a href="https://threatfade.com" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-md bg-foreground px-5 py-3 text-sm font-medium text-background">Visit ThreatFade <ExternalLink size={16} /></a>

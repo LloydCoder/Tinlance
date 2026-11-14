@@ -5,17 +5,44 @@ import { NextResponse } from "next/server";
 const CANONICAL_HOST = "www.tinlance.com";
 const LEGACY_HOST = "tinlance.com";
 const protectedPrefixes = ["/portal", "/admin"] as const;
-const nonHtmlPrefixes = ["/api", "/_next", "/feed.xml", "/sitemap.xml", "/robots.txt", "/icon.svg", "/opengraph-image.svg"] as const;
+const nonHtmlPrefixes = [
+  "/api",
+  "/v1",
+  "/docs/api/openapi",
+  "/proposal/",
+  "/client-onboarding/",
+  "/pay/",
+  "/_next",
+  "/feed.xml",
+  "/sitemap.xml",
+  "/robots.txt",
+  "/icon.svg",
+  "/opengraph-image.svg",
+] as const;
 
-function isProtectedPath(pathname: string) { return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)); }
-function shouldSetCanonical(pathname: string) { return !nonHtmlPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)); }
+function isProtectedPath(pathname: string) {
+  return protectedPrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+function shouldSetCanonical(pathname: string) {
+  return !nonHtmlPrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
 
 function redirectLegacyHost(request: NextRequest) {
   const hostname = request.nextUrl.hostname.toLowerCase();
-  if (hostname !== LEGACY_HOST) return null;
+
+  if (hostname !== LEGACY_HOST) {
+    return null;
+  }
+
   const url = request.nextUrl.clone();
   url.hostname = CANONICAL_HOST;
   url.protocol = "https:";
+
   return NextResponse.redirect(url, 308);
 }
 
@@ -39,25 +66,51 @@ function nextResponseWithCanonical(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
   requestHeaders.set("Content-Security-Policy", cspHeader);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", cspHeader);
-  if (shouldSetCanonical(request.nextUrl.pathname)) response.headers.set("Link", `<https://${CANONICAL_HOST}${request.nextUrl.pathname}>; rel="canonical"`);
+  if (request.nextUrl.pathname.startsWith("/client-onboarding/")) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+
+  if (shouldSetCanonical(request.nextUrl.pathname)) {
+    response.headers.set(
+      "Link",
+      `<https://${CANONICAL_HOST}${request.nextUrl.pathname}>; rel="canonical"`,
+    );
+  }
+
   return response;
 }
 
 export default function middleware(request: NextRequest) {
   const legacyRedirect = redirectLegacyHost(request);
-  if (legacyRedirect) return legacyRedirect;
-  if (!isProtectedPath(request.nextUrl.pathname)) return nextResponseWithCanonical(request);
+
+  if (legacyRedirect) {
+    return legacyRedirect;
+  }
+
+  if (!isProtectedPath(request.nextUrl.pathname)) {
+    return nextResponseWithCanonical(request);
+  }
+
   const sessionCookie = getSessionCookie(request, { cookiePrefix: "tinlance" });
+
   if (!sessionCookie) {
     const signInUrl = new URL("/sign-in", request.url);
-    signInUrl.searchParams.set("callbackURL", `${request.nextUrl.pathname}${request.nextUrl.search}`);
+    signInUrl.searchParams.set(
+      "callbackURL",
+      `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    );
+
     return NextResponse.redirect(signInUrl);
   }
+
   return nextResponseWithCanonical(request);
 }
 
-export const config = { matcher: ["/((?!_next/static|_next/image).*)"] };
+export const config = {
+  matcher: ["/((?!_next/static|_next/image).*)"],
+};

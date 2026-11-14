@@ -24,3 +24,17 @@ export function absoluteUrl(path = ""): string {
   const normalizedPath = path ? (path.startsWith("/") ? path : `/${path}`) : "";
   return `${getSiteUrl()}${normalizedPath}`;
 }
+
+export function canonicalPathFromPathname(pathname: string | null | undefined): string | null {
+  if (!pathname || !pathname.startsWith("/")) return "/";
+  const path = pathname.split(/[?#]/, 1)[0] || "/";
+  if (path.startsWith("//") || path.includes("\\") || /[\u0000-\u001f]/.test(path)) return "/";
+  if (
+    path.startsWith("/proposal/") ||
+    path.startsWith("/client-onboarding/") ||
+    path.startsWith("/pay/")
+  ) {
+    return null;
+  }
+  return path;
+}
