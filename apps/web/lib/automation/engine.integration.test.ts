@@ -7,6 +7,8 @@ import { cancelAutomation, persistStepOutcome, startAutomation } from "./engine"
 const createdOrganizations: string[] = [];
 const createdUsers: string[] = [];
 const createdProjects: string[] = [];
+const createdLeads: string[] = [];
+const createdAssessments: string[] = [];
 const createdFindings: string[] = [];
 const createdRemediations: string[] = [];
 
@@ -17,6 +19,13 @@ afterEach(async () => {
   }
   for (const findingId of createdFindings.splice(0)) {
     await db.$executeRaw(Prisma.sql`DELETE FROM "WorkspaceFinding" WHERE id=${findingId}`);
+  }
+  for (const assessmentId of createdAssessments.splice(0)) {
+    await db.$executeRaw(Prisma.sql`DELETE FROM "WorkspaceAssessment" WHERE "assessmentId"=${assessmentId}`);
+    await db.$executeRaw(Prisma.sql`DELETE FROM "Assessment" WHERE id=${assessmentId}`);
+  }
+  for (const leadId of createdLeads.splice(0)) {
+    await db.$executeRaw(Prisma.sql`DELETE FROM "Lead" WHERE id=${leadId}`);
   }
   for (const projectId of createdProjects.splice(0)) {
     await db.$executeRaw(Prisma.sql`DELETE FROM "ProjectWorkspaceState" WHERE "projectId"=${projectId}`);
@@ -39,9 +48,13 @@ describe("M4 durable workflow persistence", () => {
     const projectA = randomUUID();
     const projectB = randomUUID();
     const userId = randomUUID();
+    const leadId = randomUUID();
+    const assessmentId = randomUUID();
     createdOrganizations.push(orgA, orgB);
     createdUsers.push(userId);
     createdProjects.push(projectA, projectB);
+    createdLeads.push(leadId);
+    createdAssessments.push(assessmentId);
 
     await db.$executeRaw(
       Prisma.sql`
@@ -65,10 +78,23 @@ describe("M4 durable workflow persistence", () => {
           (${projectB},${orgB},'M4 Project B','active',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
       `
     );
+    await db.$executeRaw(Prisma.sql`
+      INSERT INTO "Lead" (id,"organizationId","organizationName","contactName",email,country,service)
+      VALUES (${leadId},${orgA},'M4 Test Organization','M4 Test Contact',${`m4-lead-${leadId}@example.invalid`},'Nigeria','FDE assessment')
+    `);
+    await db.$executeRaw(Prisma.sql`
+      INSERT INTO "Assessment" (id,"organizationId","leadId",problem,"desiredOutcome","idempotencyKey")
+      VALUES (${assessmentId},${orgA},${leadId},'Synthetic assessment problem','Synthetic assessment outcome',${`m4-assessment-${assessmentId}`})
+    `);
+    await db.$executeRaw(Prisma.sql`
+      INSERT INTO "WorkspaceAssessment" (id,"projectId","organizationId","assessmentId",type,objective,scope,methodology,status,"resultStatus","assessorUserId",version)
+      VALUES (${randomUUID()},${projectA},${orgA},${assessmentId},'FDE','Synthetic objective',${JSON.stringify({target:"synthetic"})}::jsonb,'Synthetic methodology','PLANNED','NOT_ASSESSED',${userId},'1.0')
+    `);
 
     const first = await startAutomation({
       organizationId: orgA,
       projectId: projectA,
+      assessmentId,
       playbookSlug: "fde-technical-assessment",
       actorUserId: userId,
       triggerType: "TEST",
@@ -92,6 +118,7 @@ describe("M4 durable workflow persistence", () => {
       startAutomation({
         organizationId: orgA,
         projectId: projectB,
+        assessmentId,
         playbookSlug: "fde-technical-assessment",
         actorUserId: userId,
         triggerType: "TEST",
@@ -109,6 +136,8 @@ describe("M4 durable workflow persistence", () => {
     const organizationId = randomUUID();
     const projectId = randomUUID();
     const userId = randomUUID();
+    const leadId = randomUUID();
+    const assessmentId = randomUUID();
     const findingId = randomUUID();
     const remediationId = randomUUID();
     const runId = randomUUID();
@@ -116,6 +145,8 @@ describe("M4 durable workflow persistence", () => {
     createdOrganizations.push(organizationId);
     createdProjects.push(projectId);
     createdUsers.push(userId);
+    createdLeads.push(leadId);
+    createdAssessments.push(assessmentId);
     createdFindings.push(findingId);
     createdRemediations.push(remediationId);
 
@@ -137,10 +168,22 @@ describe("M4 durable workflow persistence", () => {
         VALUES (${projectId},${organizationId},'M4 Verification Project','active',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
       `
     );
+    await db.$executeRaw(Prisma.sql`
+      INSERT INTO "Lead" (id,"organizationId","organizationName","contactName",email,country,service)
+      VALUES (${leadId},${organizationId},'M4 Verification Org','M4 Verification Contact',${`m4-lead-${leadId}@example.invalid`},'Nigeria','FDE assessment')
+    `);
+    await db.$executeRaw(Prisma.sql`
+      INSERT INTO "Assessment" (id,"organizationId","leadId",problem,"desiredOutcome","idempotencyKey")
+      VALUES (${assessmentId},${organizationId},${leadId},'Synthetic assessment problem','Synthetic assessment outcome',${`m4-assessment-${assessmentId}`})
+    `);
+    await db.$executeRaw(Prisma.sql`
+      INSERT INTO "WorkspaceAssessment" (id,"projectId","organizationId","assessmentId",type,objective,scope,methodology,status,"resultStatus","assessorUserId",version)
+      VALUES (${randomUUID()},${projectId},${organizationId},${assessmentId},'FDE','Synthetic objective',${JSON.stringify({target:"synthetic"})}::jsonb,'Synthetic methodology','PLANNED','NOT_ASSESSED',${userId},'1.0')
+    `);
     await db.$executeRaw(
       Prisma.sql`
         INSERT INTO "WorkspaceFinding" (id,"organizationId","projectId","assessmentId",title,description,category,severity,status,recommendation,"ownerUserId",visibility,authorship,"createdAt","updatedAt")
-        VALUES (${findingId},${organizationId},${projectId},'assessment-m4-verification','M4 verification finding','Synthetic test finding','security','HIGH','OPEN','Apply the remediation',${userId},'CUSTOMER','HUMAN_AUTHORED',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+        VALUES (${findingId},${organizationId},${projectId},${assessmentId},'M4 verification finding','Synthetic test finding','security','HIGH','OPEN','Apply the remediation',${userId},'CUSTOMER','HUMAN_AUTHORED',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
       `
     );
     await db.$executeRaw(
@@ -154,7 +197,7 @@ describe("M4 durable workflow persistence", () => {
       id: runId,
       organization_id: organizationId,
       project_id: projectId,
-      assessment_id: "assessment-m4-verification",
+      assessment_id: assessmentId,
       playbook_id: "playbook-m4-verification",
       playbook_version_id: "playbook-version-m4-verification",
       status: "RUNNING" as const,
