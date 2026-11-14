@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getRequestId } from "@/lib/security/request-id";
-import { isBookableSlot } from "@/lib/commercial/booking";
+import { isBookableSlot, nextLocalHalfHour } from "@/lib/commercial/booking";
 
 const SLOT_MINUTES = 30;
 const DAYS = 14;
@@ -15,9 +15,7 @@ export async function GET(request: Request) {
   const bookings = await db.booking.findMany({ where: { startsAt: { gte: from, lt: until }, status: { in: ["requested", "confirmed"] } }, select: { startsAt: true } });
   const occupied = new Set(bookings.map((booking) => booking.startsAt.getTime()));
   const slots: string[] = [];
-  const cursor = new Date(from);
-  cursor.setUTCSeconds(0, 0);
-  cursor.setUTCMinutes(Math.ceil(cursor.getUTCMinutes() / SLOT_MINUTES) * SLOT_MINUTES);
+  const cursor = nextLocalHalfHour(from, timezone);
   while (cursor < until && slots.length < 100) {
     if (isBookableSlot(cursor, timezone, from) && !occupied.has(cursor.getTime())) slots.push(cursor.toISOString());
     cursor.setUTCMinutes(cursor.getUTCMinutes() + SLOT_MINUTES);
