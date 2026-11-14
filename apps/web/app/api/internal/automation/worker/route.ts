@@ -1,4 +1,4 @@
-import { createPublicKey, randomUUID, verify } from "node:crypto";
+import { createPublicKey, randomUUID, verify, type JsonWebKeyInput } from "node:crypto";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -37,7 +37,7 @@ async function authorized(request: Request) {
     const jwks = await response.json() as { keys?: Array<JsonWebKey & { kid?: string }> };
     const jwk = jwks.keys?.find(key => key.kid === header.kid);
     if (!jwk) return false;
-    const publicKey = createPublicKey({ key: jwk, format: "jwk" });
+    const publicKey = createPublicKey({ key: jwk as JsonWebKeyInput, format: "jwk" });
     const validSignature = verify(
       "RSA-SHA256",
       Buffer.from(`${encodedHeader}.${encodedPayload}`),
