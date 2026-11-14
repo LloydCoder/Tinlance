@@ -13,6 +13,11 @@ describe("M3 workspace state machines", () => {
     expect(() => assertProjectTransition(ProjectWorkspaceStatus.VERIFICATION, ProjectWorkspaceStatus.COMPLETED)).not.toThrow();
   });
 
+
+  it("allows a completed project to re-enter assessment for a scheduled reassessment cycle", () => {
+    expect(() => assertProjectTransition(ProjectWorkspaceStatus.COMPLETED, ProjectWorkspaceStatus.ASSESSMENT)).not.toThrow();
+  });
+
   it("blocks project lifecycle skipping", () => {
     expect(() => assertProjectTransition(ProjectWorkspaceStatus.DRAFT, ProjectWorkspaceStatus.COMPLETED)).toThrow(/Invalid project transition/);
   });

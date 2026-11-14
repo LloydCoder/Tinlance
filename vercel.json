@@ -6,6 +6,10 @@
     {
       "path": "/api/internal/outbox",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/internal/automation/worker",
+      "schedule": "0 2 * * *"
     }
   ]
 }
