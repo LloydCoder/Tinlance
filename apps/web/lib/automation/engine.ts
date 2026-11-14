@@ -256,6 +256,9 @@ export async function persistStepOutcome(tx: Prisma.TransactionClient, run: RunR
       WHERE "organizationId"=${run.organization_id}
         AND "projectId"=${run.project_id}
         AND ("assessmentId" IS NULL OR "assessmentId"=${run.assessment_id})
+        AND "integrityStatus"='VERIFIED'
+        AND visibility IN ('CUSTOMER','CUSTOMER_CONFIDENTIAL')
+        AND classification IN ('CUSTOMER','CUSTOMER_CONFIDENTIAL')
       ORDER BY "createdAt"
     `);
     const remediation = await tx.$queryRaw<Array<{ findingId: string; title: string; status: string; priority: string }>>(Prisma.sql`
@@ -678,6 +681,9 @@ export async function signalAutomation(runId: string, organizationId: string, ac
           AND "organizationId"=${organizationId}
           AND "projectId"=${run.project_id}
           AND ("assessmentId" IS NULL OR "assessmentId"=${run.assessment_id})
+          AND "integrityStatus"='VERIFIED'
+          AND visibility IN ('CUSTOMER','CUSTOMER_CONFIDENTIAL')
+          AND classification IN ('CUSTOMER','CUSTOMER_CONFIDENTIAL')
         LIMIT 1
       `);
       if (!evidence[0]) throw new Error("evidence is outside the workflow tenant/project");
